@@ -1,8 +1,10 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-swift_binary(
+swift_library(
 	name = "nnc",
-	srcs = ["nnc.swift"],
+	module_name = "nnc",
+	srcs = ["DynamicGraph.swift"],
+	visibility = ["//visibility:public"],
 	deps = [
 		"@ccv//lib:nnc"
 	]

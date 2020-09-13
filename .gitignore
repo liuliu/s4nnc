@@ -93,3 +93,4 @@ bazel-*
 
 .bazelrc
 clang.bazelrc
+.cache
