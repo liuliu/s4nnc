@@ -3,7 +3,13 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 swift_library(
 	name = "nnc",
 	module_name = "nnc",
-	srcs = ["DynamicGraph.swift"],
+	srcs = [
+		"Tensor.swift",
+		"DynamicGraph.swift",
+		"DataFrame.swift",
+		"Model.swift",
+		"StreamContext.swift"
+	],
 	visibility = ["//visibility:public"],
 	deps = [
 		"@ccv//lib:nnc"
