@@ -17,7 +17,7 @@ public final class DynamicGraph {
     }
   }
 
-  public final class Tensor<Element: Numeric>: AnyTensor {
+  public final class Tensor<Element: TensorNumeric>: AnyTensor {
   }
 
   let _graph: OpaquePointer
@@ -42,6 +42,18 @@ public extension DynamicGraph {
   func constant() -> AnyTensor {
     let tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
     return AnyTensor(graph: self, tensor: tensor)
+  }
+
+  func variable<Element: TensorNumeric>(_ tensor: nnc.Tensor<Element>) -> Tensor<Element> {
+    let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
+    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor._tensor)
+    return Tensor<Element>(graph: self, tensor: _tensor)
+  }
+
+  func constant<Element: TensorNumeric>(_ tensor: nnc.Tensor<Element>) -> Tensor<Element> {
+    let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
+    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor._tensor)
+    return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
   func variable<Element: TensorNumeric>(_ device: DeviceKind, format: TensorFormat, dimensions: [Int]) -> Tensor<Element> {

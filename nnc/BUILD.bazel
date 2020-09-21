@@ -8,6 +8,7 @@ swift_library(
 		"DynamicGraph.swift",
 		"DataFrame.swift",
 		"Model.swift",
+		"ModelAddons.swift",
 		"StreamContext.swift"
 	],
 	visibility = ["//visibility:public"],

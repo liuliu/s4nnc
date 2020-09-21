@@ -55,17 +55,14 @@ public extension Model {
   func callAsFunction(_ inputs: [DynamicGraph.AnyTensor], streamContext: StreamContext? = nil) -> [DynamicGraph.AnyTensor] {
     assert(inputs.count > 0)
     let graph = inputs[0].graph
-    var _inputs = [ccv_nnc_tensor_variable_t?]()
     for input in inputs {
       assert(ObjectIdentifier(input.graph) == ObjectIdentifier(graph))
-      _inputs.append(input._tensor)
     }
+    let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0._tensor }
     let outputSize = ccv_cnnp_model_output_size(_model)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize))
-    var outputs = [DynamicGraph.AnyTensor]()
-    for i in 0..<outputSize {
-      let variable = graph.variable()
-      outputs.append(variable)
+    let outputs: [DynamicGraph.AnyTensor] = (0..<outputSize).map { _ in graph.variable() }
+    for (i, variable) in outputs.enumerated() {
       (_outputs + Int(i)).initialize(to: variable._tensor)
     }
     let _graph = graph._graph

@@ -54,21 +54,113 @@ extension UInt8: TensorNumeric {
   public static var dataType: DataType { .UInt8 }
 }
 
-public final class Tensor <Element: TensorNumeric> {
-
+public class AnyTensor {
   let _tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
-  private let owned: Bool
+  private let isOwned: Bool
 
-  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, owned: Bool = true) {
-    self.owned = owned
+  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, isOwned: Bool = true) {
+    self.isOwned = isOwned
     _tensor = tensor
   }
 
+  deinit {
+    if isOwned {
+      ccv_nnc_tensor_free(_tensor)
+    }
+  }
+
+  public var dataType: DataType {
+    switch Int(_tensor.pointee.info.datatype) {
+      case CCV_64F:
+        return .Float64
+      case CCV_64S:
+        return .Int64
+      case CCV_32F:
+        return .Float32
+      case CCV_32S:
+        return .Int32
+      case CCV_16F:
+        return .Float16
+      case CCV_8U:
+        return .UInt8
+      default:
+        fatalError("unspecified datatype")
+    }
+  }
+
+  public var kind: DeviceKind {
+    let type = Int(_tensor.pointee.info.type)
+    if (type & CCV_TENSOR_CPU_MEMORY) == CCV_TENSOR_CPU_MEMORY {
+      return .CPU
+    } else {
+      assert((type & CCV_TENSOR_GPU_MEMORY) == CCV_TENSOR_GPU_MEMORY)
+      let ordinal = (type & 0xfff00) >> 8
+      return .GPU(ordinal)
+    }
+  }
+
+  public var dimensions: [Int] {
+    let dim = _tensor.pointee.info.dim
+    if dim.0 == 0 {
+      return []
+    } else if dim.1 == 0 {
+      return [Int(dim.0)]
+    } else if dim.2 == 0 {
+      return [Int(dim.0), Int(dim.1)]
+    } else if dim.3 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2)]
+    } else if dim.4 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3)]
+    } else if dim.5 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4)]
+    } else if dim.6 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5)]
+    } else if dim.7 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6)]
+    } else {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6), Int(dim.7)]
+    }
+  }
+
+  public var isTensorView: Bool {
+    let type = Int(_tensor.pointee.type)
+    return (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW
+  }
+
+  public var increments: [Int] {
+    guard isTensorView else {
+      return dimensions
+    }
+    let inc = UnsafeMutableRawPointer(_tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
+    if inc.0 == 0 {
+      return dimensions
+    } else if inc.1 == 0 {
+      return [Int(inc.0)]
+    } else if inc.2 == 0 {
+      return [Int(inc.0), Int(inc.1)]
+    } else if inc.3 == 0 {
+      return [Int(inc.0), Int(inc.1), Int(inc.2)]
+    } else if inc.4 == 0 {
+      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3)]
+    } else if inc.5 == 0 {
+      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4)]
+    } else if inc.6 == 0 {
+      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4), Int(inc.5)]
+    } else if inc.7 == 0 {
+      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4), Int(inc.5), Int(inc.6)]
+    } else {
+      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4), Int(inc.5), Int(inc.6), Int(inc.7)]
+    }
+  }
+}
+
+public final class Tensor <Element: TensorNumeric>: AnyTensor {
+
   private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
-    owned = true
-    _tensor = ccv_nnc_tensor_new(nil,
+    let tensor = ccv_nnc_tensor_new(nil,
       toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
       0)!
+    super.init(tensor)
   }
 
   private convenience init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
@@ -90,9 +182,30 @@ public final class Tensor <Element: TensorNumeric> {
     self.init(kind, Element.dataType, dimensionFormat)
   }
 
-  deinit {
-    if owned {
-      ccv_nnc_tensor_free(_tensor)
+  public subscript(indices: Int...) -> Element {
+    get {
+      assert(increments.count == indices.count)
+      let increments = self.increments
+      let count = increments.reduce(1, *)
+      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      var offset = 0
+      for (i, increment) in increments.enumerated() {
+        offset *= increment
+        offset += indices[i]
+      }
+      return (pointer + offset).pointee
+    }
+    set(v) {
+      assert(increments.count == indices.count)
+      let increments = self.increments
+      let count = increments.reduce(1, *)
+      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      var offset = 0
+      for (i, increment) in increments.enumerated() {
+        offset *= increment
+        offset += indices[i]
+      }
+      (pointer + offset).pointee = v
     }
   }
 }
