@@ -9,4 +9,11 @@ let t1 = Tensor<Float32>(.CPU, .NHWC(1, 1, 1, 1))
 t1[0, 0, 0, 0] = 2
 let tv1 = dynamicGraph.variable(t1)
 let mul = Mul()
-print(mul([tv0, tv1]))
+let tv2 = mul(tv0, tv1)
+let t3 = Tensor<Float32>(.CPU, .NHWC(1, 1, 1, 1))
+t3[0, 0, 0, 0] = -1
+let tv3 = dynamicGraph.variable(t3)
+let add = Add()
+let tv4 = add(tv2, tv3)
+
+print(tv4.rawValue[0, 0, 0, 0])

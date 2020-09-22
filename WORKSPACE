@@ -3,8 +3,8 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 git_repository(
 	name = "ccv",
 	remote = "https://github.com/liuliu/ccv.git",
-	commit = "0ad0af5ebdfd8ab5ec23f6d9009f0f7bb3b37a4f",
-	shallow_since = "1600581289 -0400"
+	commit = "840bd6588a80db579d58cb0c0772f162f8630571",
+	shallow_since = "1600757889 -0400"
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")

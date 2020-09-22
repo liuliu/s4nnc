@@ -14,15 +14,30 @@ public class Model {
   public var isTest: Bool = false
 
   let _model: OpaquePointer
+  private var selfOwned: Bool = true
 
   init(_ model: OpaquePointer) {
     _model = model
+    ccv_cnnp_model_owner_hook(model, { _, owner, ctx in
+      guard owner != nil else { return }
+      let model = Unmanaged<Model>.fromOpaque(ctx!).takeUnretainedValue()
+      model.selfOwned = false // No longer owned it, there is a new owner (!= nil).
+    }, Unmanaged.passUnretained(self).toOpaque())
   }
 
   public func apply(_ inputs: IO...) -> IO {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _io = ccv_cnnp_model_apply(_model, _inputs, Int32(inputs.count))!
     return IO(_io)
+  }
+
+  deinit {
+    if selfOwned {
+      ccv_cnnp_model_free(_model)
+      return
+    }
+    // Unhook because I am no longer active (but the model can still be available).
+    ccv_cnnp_model_owner_hook(_model, nil, nil)
   }
 
 }

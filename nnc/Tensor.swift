@@ -56,17 +56,16 @@ extension UInt8: TensorNumeric {
 
 public class AnyTensor {
   let _tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
-  private let isOwned: Bool
+  fileprivate let owner: Any?
 
-  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, isOwned: Bool = true) {
-    self.isOwned = isOwned
+  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, owner: Any? = nil) {
+    self.owner = owner
     _tensor = tensor
   }
 
   deinit {
-    if isOwned {
-      ccv_nnc_tensor_free(_tensor)
-    }
+    guard owner == nil else { return }
+    ccv_nnc_tensor_free(_tensor)
   }
 
   public var dataType: DataType {
@@ -156,11 +155,11 @@ public class AnyTensor {
 
 public final class Tensor <Element: TensorNumeric>: AnyTensor {
 
-  private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
+  private convenience init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
     let tensor = ccv_nnc_tensor_new(nil,
       toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
       0)!
-    super.init(tensor)
+    self.init(tensor)
   }
 
   private convenience init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
@@ -172,6 +171,11 @@ public final class Tensor <Element: TensorNumeric>: AnyTensor {
     case let .CHWN(c, h, w, n):
       self.init(kind, dataType: dataType, format: .CHWN, dimensions: [c, h, w, n])
     }
+  }
+
+  public convenience init(_ tensor: AnyTensor) {
+    assert(tensor.dataType == Element.dataType)
+    self.init(tensor._tensor, owner: tensor) // We cannot free it, the owner it is the other tensor.
   }
 
   public convenience init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
