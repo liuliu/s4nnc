@@ -18,6 +18,15 @@ public func +(left: Model.IO, right: Model.IO) -> Model.IO {
   return Add()(left, right)
 }
 
+// Element-wise subtraction.
+public func -<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+  return Functional.add(left: left, right: right, rightScalar: -1)
+}
+
+public func -(left: Model.IO, right: Model.IO) -> Model.IO {
+  return Add(rightScalar: -1)(left, right)
+}
+
 // Matrix multiplication
 public func *<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
   return Functional.matmul(left: left, right: right)

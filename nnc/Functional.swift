@@ -32,10 +32,10 @@ public extension Functional {
   }
 
   // Element-wise addition
-  static func add<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, left_scalar: Float32 = 1, right_scalar: Float32 = 1, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
+  static func add<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, leftScalar: Float32 = 1, rightScalar: Float32 = 1, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
     var params = ccv_nnc_cmd_param_t()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
-    params.blas.a = (left_scalar, right_scalar, 0)
+    params.blas.a = (leftScalar, rightScalar, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])

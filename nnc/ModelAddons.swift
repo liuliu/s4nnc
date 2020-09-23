@@ -12,8 +12,8 @@ public final class Sum: Model {
 }
 
 public final class Add: Model {
-  public init(name: String = "") {
-    super.init(ccv_cnnp_add(name))
+  public init(leftScalar: Float32 = 1, rightScalar: Float32 = 1, name: String = "") {
+    super.init(ccv_cnnp_add(leftScalar, rightScalar, name))
   }
 
   public func callAsFunction<Element: TensorNumeric>(_ left: DynamicGraph.Tensor<Element>, _ right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
@@ -23,8 +23,8 @@ public final class Add: Model {
 }
 
 public final class Mul: Model {
-  public init(name: String = "") {
-    super.init(ccv_cnnp_mul(name))
+  public init(scalar: Float32 = 1, name: String = "") {
+    super.init(ccv_cnnp_mul(scalar, name))
   }
 
   public func callAsFunction<Element: TensorNumeric>(_ left: DynamicGraph.Tensor<Element>, _ right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {

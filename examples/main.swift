@@ -12,8 +12,7 @@ let tv2 = tv0 .* tv1
 let t3 = Tensor<Float32>(.CPU, .NHWC(1, 1, 1, 1))
 t3[0, 0, 0, 0] = -1
 let tv3 = dynamicGraph.variable(t3)
-let add = Add()
-let tv4 = add(tv2, tv3)
+let tv4 = tv2 + tv3
 
 print(tv4.rawValue[0, 0, 0, 0])
 
@@ -22,7 +21,7 @@ func MulAdd() -> Model {
   let i1 = Input()
   let i2 = i0 .* i1
   let i3 = Input()
-  let i4 = i2 + i3
+  let i4 = i2 - i3
   return Model([i0, i1, i3], [i4])
 }
 
