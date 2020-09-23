@@ -7,16 +7,16 @@ public final class DynamicGraph {
     let graph: DynamicGraph
     let _tensor: ccv_nnc_tensor_variable_t
 
-    private let owner: AnyTensor?
+    private let original: AnyTensor?
 
-    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, owner: AnyTensor? = nil) {
+    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, original: AnyTensor? = nil) {
       self.graph = graph
       _tensor = tensor
-      self.owner = owner
+      self.original = original
     }
 
     deinit {
-      guard owner == nil else { return }
+      guard original == nil else { return }
       ccv_nnc_tensor_variable_free(graph._graph, _tensor)
     }
   }
@@ -25,12 +25,12 @@ public final class DynamicGraph {
     public var rawValue: nnc.Tensor<Element> {
       let _graph = graph._graph
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-      return nnc.Tensor<Element>(tensor, owner: self)
+      return nnc.Tensor<Element>(tensor, original: self)
     }
 
     // If we did type conversion, we need to hold a reference to its parent.
     public convenience init(_ tensor: AnyTensor) {
-      self.init(graph: tensor.graph, tensor: tensor._tensor, owner: tensor)
+      self.init(graph: tensor.graph, tensor: tensor._tensor, original: tensor)
     }
   }
 

@@ -7,8 +7,10 @@ swift_library(
 		"Tensor.swift",
 		"DynamicGraph.swift",
 		"DataFrame.swift",
+		"Functional.swift",
 		"Model.swift",
 		"ModelAddons.swift",
+		"Operators.swift",
 		"StreamContext.swift"
 	],
 	visibility = ["//visibility:public"],

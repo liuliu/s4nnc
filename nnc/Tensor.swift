@@ -56,15 +56,15 @@ extension UInt8: TensorNumeric {
 
 public class AnyTensor {
   let _tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
-  fileprivate let owner: Any?
+  fileprivate let original: Any?
 
-  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, owner: Any? = nil) {
-    self.owner = owner
+  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil) {
+    self.original = original
     _tensor = tensor
   }
 
   deinit {
-    guard owner == nil else { return }
+    guard original == nil else { return }
     ccv_nnc_tensor_free(_tensor)
   }
 
@@ -175,7 +175,7 @@ public final class Tensor <Element: TensorNumeric>: AnyTensor {
 
   public convenience init(_ tensor: AnyTensor) {
     assert(tensor.dataType == Element.dataType)
-    self.init(tensor._tensor, owner: tensor) // We cannot free it, the owner it is the other tensor.
+    self.init(tensor._tensor, original: tensor) // We cannot free it, it is the other tensor.
   }
 
   public convenience init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
