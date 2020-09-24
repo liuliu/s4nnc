@@ -58,3 +58,25 @@ public final class Dense: Model {
     return DynamicGraph.Tensor<Element>(outputs[0])
   }
 }
+
+public final class Reshape: Model {
+  public init(dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil, name: String = "") {
+    var dimensions = toCDimensions(dimensions)
+    var offset = toCDimensions(offset)
+    var increments = toCDimensions(increments)
+    let _model = withUnsafePointer(to: &dimensions.0) { dimensions in
+      withUnsafePointer(to: &offset.0) { offset in
+        withUnsafePointer(to: &increments.0) { increments in
+          ccv_cnnp_reshape(dimensions, offset, increments, name)!
+        }
+      }
+    }
+    super.init(_model)
+  }
+}
+
+public extension Model.IO {
+  func reshape(_ dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> Model.IO {
+    return Reshape(dimensions: dimensions, offset: offset, increments: increments)(self)
+  }
+}

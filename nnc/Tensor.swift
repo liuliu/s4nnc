@@ -3,6 +3,17 @@ import C_nnc
 public enum DeviceKind {
   case CPU
   case GPU(Int)
+
+  static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DeviceKind {
+    let type = Int(cTensorParams.type)
+    if (type & CCV_TENSOR_CPU_MEMORY) == CCV_TENSOR_CPU_MEMORY {
+      return .CPU
+    } else {
+      assert((type & CCV_TENSOR_GPU_MEMORY) == CCV_TENSOR_GPU_MEMORY)
+      let ordinal = (type & 0xfff00) >> 8
+      return .GPU(ordinal)
+    }
+  }
 }
 
 public enum TensorFormat {
@@ -24,6 +35,25 @@ public enum DataType {
   case Int32
   case Float16
   case UInt8
+
+  static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DataType {
+    switch Int(cTensorParams.datatype) {
+      case CCV_64F:
+        return .Float64
+      case CCV_64S:
+        return .Int64
+      case CCV_32F:
+        return .Float32
+      case CCV_32S:
+        return .Int32
+      case CCV_16F:
+        return .Float16
+      case CCV_8U:
+        return .UInt8
+      default:
+        fatalError("unspecified datatype")
+    }
+  }
 }
 
 public protocol TensorNumeric: Numeric {
@@ -54,7 +84,7 @@ extension UInt8: TensorNumeric {
   public static var dataType: DataType { .UInt8 }
 }
 
-public class AnyTensor {
+public final class _AnyTensor {
   let _tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
   fileprivate let original: Any?
 
@@ -67,39 +97,23 @@ public class AnyTensor {
     guard original == nil else { return }
     ccv_nnc_tensor_free(_tensor)
   }
+}
 
-  public var dataType: DataType {
-    switch Int(_tensor.pointee.info.datatype) {
-      case CCV_64F:
-        return .Float64
-      case CCV_64S:
-        return .Int64
-      case CCV_32F:
-        return .Float32
-      case CCV_32S:
-        return .Int32
-      case CCV_16F:
-        return .Float16
-      case CCV_8U:
-        return .UInt8
-      default:
-        fatalError("unspecified datatype")
-    }
+public protocol AnyTensor {
+  var tensor: _AnyTensor { get }
+}
+
+public extension AnyTensor {
+  var dataType: DataType {
+    DataType.from(cTensorParams: tensor._tensor.pointee.info)
   }
 
-  public var kind: DeviceKind {
-    let type = Int(_tensor.pointee.info.type)
-    if (type & CCV_TENSOR_CPU_MEMORY) == CCV_TENSOR_CPU_MEMORY {
-      return .CPU
-    } else {
-      assert((type & CCV_TENSOR_GPU_MEMORY) == CCV_TENSOR_GPU_MEMORY)
-      let ordinal = (type & 0xfff00) >> 8
-      return .GPU(ordinal)
-    }
+  var kind: DeviceKind {
+    DeviceKind.from(cTensorParams: tensor._tensor.pointee.info)
   }
 
-  public var dimensions: [Int] {
-    let dim = _tensor.pointee.info.dim
+  var dimensions: [Int] {
+    let dim = tensor._tensor.pointee.info.dim
     if dim.0 == 0 {
       return []
     } else if dim.1 == 0 {
@@ -121,16 +135,16 @@ public class AnyTensor {
     }
   }
 
-  public var isTensorView: Bool {
-    let type = Int(_tensor.pointee.type)
+  var isTensorView: Bool {
+    let type = Int(tensor._tensor.pointee.type)
     return (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW
   }
 
-  public var increments: [Int] {
+  var increments: [Int] {
     guard isTensorView else {
       return dimensions
     }
-    let inc = UnsafeMutableRawPointer(_tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
+    let inc = UnsafeMutableRawPointer(tensor._tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
     if inc.0 == 0 {
       return dimensions
     } else if inc.1 == 0 {
@@ -153,16 +167,20 @@ public class AnyTensor {
   }
 }
 
-public final class Tensor <Element: TensorNumeric>: AnyTensor {
+public struct Tensor <Element: TensorNumeric>: AnyTensor {
 
-  private convenience init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
+  private var _tensor: _AnyTensor
+
+  public var tensor: _AnyTensor { _tensor }
+
+  private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
     let tensor = ccv_nnc_tensor_new(nil,
       toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
       0)!
-    self.init(tensor)
+    _tensor = _AnyTensor(tensor)
   }
 
-  private convenience init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
+  private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
     switch dimensionFormat {
     case let .NHWC(n, h, w, c):
       self.init(kind, dataType: dataType, format: .NHWC, dimensions: [n, h, w, c])
@@ -173,16 +191,20 @@ public final class Tensor <Element: TensorNumeric>: AnyTensor {
     }
   }
 
-  public convenience init(_ tensor: AnyTensor) {
-    assert(tensor.dataType == Element.dataType)
-    self.init(tensor._tensor, original: tensor) // We cannot free it, it is the other tensor.
+  init(_ tensor: _AnyTensor) {
+    _tensor = tensor
   }
 
-  public convenience init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
+  public init(_ tensor: AnyTensor) {
+    assert(tensor.dataType == Element.dataType)
+    _tensor = tensor.tensor
+  }
+
+  public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
     self.init(kind, dataType: Element.dataType, format: format, dimensions: dimensions)
   }
 
-  public convenience init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) {
+  public init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) {
     self.init(kind, Element.dataType, dimensionFormat)
   }
 
@@ -191,7 +213,8 @@ public final class Tensor <Element: TensorNumeric>: AnyTensor {
       assert(increments.count == indices.count)
       let increments = self.increments
       let count = increments.reduce(1, *)
-      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      let tensor = _tensor._tensor
+      let pointer = tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       var offset = 0
       for (i, increment) in increments.enumerated() {
         offset *= increment
@@ -203,7 +226,17 @@ public final class Tensor <Element: TensorNumeric>: AnyTensor {
       assert(increments.count == indices.count)
       let increments = self.increments
       let count = increments.reduce(1, *)
-      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      if !isKnownUniquelyReferenced(&_tensor) {
+        // Make a copy (copy-on-write).
+        var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = _tensor._tensor
+        var output = ccv_nnc_tensor_new(nil, _tensor._tensor.pointee.info, 0)
+        ccv_nnc_cmd_exec(ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, ccv_nnc_cmd_param_t(), 0),
+          ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
+        _tensor = _AnyTensor(output!)
+      }
+      // We need to deal with GPU memory.
+      let tensor = _tensor._tensor
+      let pointer = tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       var offset = 0
       for (i, increment) in increments.enumerated() {
         offset *= increment
@@ -211,6 +244,33 @@ public final class Tensor <Element: TensorNumeric>: AnyTensor {
       }
       (pointer + offset).pointee = v
     }
+  }
+}
+
+func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32) {
+  guard let dimensions = dimensions else {
+    return (0, 0, 0, 0, 0, 0, 0, 0)
+  }
+  assert(dimensions.count <= CCV_NNC_MAX_DIM_ALLOC)
+  switch dimensions.count {
+    case 1:
+      return (Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0)
+    case 2:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0)
+    case 3:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0)
+    case 4:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), 0, 0, 0, 0)
+    case 5:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), 0, 0, 0)
+    case 6:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), 0, 0)
+    case 7:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0)
+    case 8:
+      return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]))
+    default:
+    return (0, 0, 0, 0, 0, 0, 0, 0)
   }
 }
 
@@ -244,26 +304,6 @@ func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorForma
     case .CHWN:
       params.format = Int32(CCV_TENSOR_FORMAT_CHWN)
   }
-  assert(dimensions.count <= CCV_NNC_MAX_DIM_ALLOC)
-  switch dimensions.count {
-    case 1:
-      params.dim = (Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0)
-    case 2:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0)
-    case 3:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0)
-    case 4:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), 0, 0, 0, 0)
-    case 5:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), 0, 0, 0)
-    case 6:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), 0, 0)
-    case 7:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0)
-    case 8:
-      params.dim = (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]))
-    default:
-      break
-  }
+  params.dim = toCDimensions(dimensions)
   return params
 }
