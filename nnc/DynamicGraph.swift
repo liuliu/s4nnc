@@ -2,39 +2,51 @@ import C_nnc
 
 public final class DynamicGraph {
 
-  public class AnyTensor {
+  class _AnyTensor {
 
     let graph: DynamicGraph
     let _tensor: ccv_nnc_tensor_variable_t
 
-    private let original: AnyTensor?
-
-    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, original: AnyTensor? = nil) {
+    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t) {
       self.graph = graph
       _tensor = tensor
-      self.original = original
     }
 
     deinit {
-      guard original == nil else { return }
       ccv_nnc_tensor_variable_free(graph._graph, _tensor)
     }
   }
 
+  public class AnyTensor {
+
+    let underlying: _AnyTensor
+
+    var graph: DynamicGraph { underlying.graph }
+    var _tensor: ccv_nnc_tensor_variable_t { underlying._tensor }
+
+    fileprivate init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t) {
+      underlying = _AnyTensor(graph: graph, tensor: tensor)
+    }
+
+    fileprivate init(_ underlying: _AnyTensor) {
+      self.underlying = underlying
+    }
+  }
+
   public final class Tensor<Element: TensorNumeric>: AnyTensor {
-    private var _rawValue: _AnyTensor? = nil
+    private var _rawValue: nnc._AnyTensor? = nil
 
     public var rawValue: nnc.Tensor<Element> {
       let _graph = graph._graph
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-      let rawValue = _AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
+      let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
       _rawValue = rawValue
       return nnc.Tensor<Element>(rawValue)
     }
 
     // If we did type conversion, we need to hold a reference to its parent.
     public convenience init(_ tensor: AnyTensor) {
-      self.init(graph: tensor.graph, tensor: tensor._tensor, original: tensor)
+      self.init(tensor.underlying)
     }
   }
 
@@ -64,7 +76,7 @@ public extension DynamicGraph.Tensor {
           toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
       }
     }
-    return DynamicGraph.Tensor<Element>(graph: graph, tensor: _alias, original: self)
+    return DynamicGraph.Tensor<Element>(graph: underlying.graph, tensor: _alias)
   }
 
   func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> DynamicGraph.Tensor<Element> {
@@ -99,7 +111,7 @@ public extension DynamicGraph {
     ccv_nnc_tensor_variable_owner_hook(_graph, _tensor, { _, _, owner, ctx in
       guard owner == nil else { return }
       // No longer need to retain the tensor.
-      Unmanaged<_AnyTensor>.fromOpaque(ctx!).release()
+      Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
     }, Unmanaged.passRetained(tensor.underlying).toOpaque())
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
@@ -111,7 +123,7 @@ public extension DynamicGraph {
     ccv_nnc_tensor_variable_owner_hook(_graph, _tensor, { _, _, owner, ctx in
       guard owner == nil else { return }
       // No longer need to retain the tensor.
-      Unmanaged<_AnyTensor>.fromOpaque(ctx!).release()
+      Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
     }, Unmanaged.passRetained(tensor.underlying).toOpaque())
     return Tensor<Element>(graph: self, tensor: _tensor)
   }

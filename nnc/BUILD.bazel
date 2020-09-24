@@ -4,6 +4,7 @@ swift_library(
 	name = "nnc",
 	module_name = "nnc",
 	srcs = [
+		"AutoGrad.swift",
 		"Tensor.swift",
 		"DynamicGraph.swift",
 		"DataFrame.swift",
