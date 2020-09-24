@@ -94,25 +94,25 @@ public extension DynamicGraph {
 
   func variable<Element: TensorNumeric>(_ tensor: nnc.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
-    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.tensor._tensor)
+    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_owner_hook(_graph, _tensor, { _, _, owner, ctx in
       guard owner == nil else { return }
       // No longer need to retain the tensor.
       Unmanaged<_AnyTensor>.fromOpaque(ctx!).release()
-    }, Unmanaged.passRetained(tensor.tensor).toOpaque())
+    }, Unmanaged.passRetained(tensor.underlying).toOpaque())
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
   func constant<Element: TensorNumeric>(_ tensor: nnc.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
-    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.tensor._tensor)
+    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_owner_hook(_graph, _tensor, { _, _, owner, ctx in
       guard owner == nil else { return }
       // No longer need to retain the tensor.
       Unmanaged<_AnyTensor>.fromOpaque(ctx!).release()
-    }, Unmanaged.passRetained(tensor.tensor).toOpaque())
+    }, Unmanaged.passRetained(tensor.underlying).toOpaque())
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 

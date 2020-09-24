@@ -100,20 +100,20 @@ public final class _AnyTensor {
 }
 
 public protocol AnyTensor {
-  var tensor: _AnyTensor { get }
+  var underlying: _AnyTensor { get }
 }
 
 public extension AnyTensor {
   var dataType: DataType {
-    DataType.from(cTensorParams: tensor._tensor.pointee.info)
+    DataType.from(cTensorParams: underlying._tensor.pointee.info)
   }
 
   var kind: DeviceKind {
-    DeviceKind.from(cTensorParams: tensor._tensor.pointee.info)
+    DeviceKind.from(cTensorParams: underlying._tensor.pointee.info)
   }
 
   var dimensions: [Int] {
-    let dim = tensor._tensor.pointee.info.dim
+    let dim = underlying._tensor.pointee.info.dim
     if dim.0 == 0 {
       return []
     } else if dim.1 == 0 {
@@ -136,7 +136,7 @@ public extension AnyTensor {
   }
 
   var isTensorView: Bool {
-    let type = Int(tensor._tensor.pointee.type)
+    let type = Int(underlying._tensor.pointee.type)
     return (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW
   }
 
@@ -144,7 +144,7 @@ public extension AnyTensor {
     guard isTensorView else {
       return dimensions
     }
-    let inc = UnsafeMutableRawPointer(tensor._tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
+    let inc = UnsafeMutableRawPointer(underlying._tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
     if inc.0 == 0 {
       return dimensions
     } else if inc.1 == 0 {
@@ -171,13 +171,13 @@ public struct Tensor <Element: TensorNumeric>: AnyTensor {
 
   private var _tensor: _AnyTensor
 
-  public var tensor: _AnyTensor { _tensor }
+  public var underlying: _AnyTensor { _tensor }
 
   private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
-    let tensor = ccv_nnc_tensor_new(nil,
+    let underlying = ccv_nnc_tensor_new(nil,
       toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
       0)!
-    _tensor = _AnyTensor(tensor)
+    _tensor = _AnyTensor(underlying)
   }
 
   private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
@@ -197,7 +197,7 @@ public struct Tensor <Element: TensorNumeric>: AnyTensor {
 
   public init(_ tensor: AnyTensor) {
     assert(tensor.dataType == Element.dataType)
-    _tensor = tensor.tensor
+    _tensor = tensor.underlying
   }
 
   public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
