@@ -11,7 +11,7 @@ public enum Functional {
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize))
     let outputs: [DynamicGraph.AnyTensor] = (0..<outputSize).map { _ in graph.variable() }
     for (i, variable) in outputs.enumerated() {
-      (_outputs + Int(i)).initialize(to: variable._tensor)
+      (_outputs + i).initialize(to: variable._tensor)
     }
     let _graph = graph._graph
     let _streamContext = streamContext?._stream
