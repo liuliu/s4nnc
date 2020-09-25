@@ -16,6 +16,7 @@ let tv3 = dynamicGraph.variable(t3)
 let tv4 = tv2 + tv3
 print(tv4.rawValue[0, 0, 0, 0])
 
+[tv4].backward(to: [tv0])
 tv4.backward(to: [tv0])
 print(DynamicGraph.Tensor<Float32>(tv0.grad!).rawValue[0, 0, 0, 0])
 
