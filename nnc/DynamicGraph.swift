@@ -92,14 +92,7 @@ public extension DynamicGraph.Tensor {
   }
 
   func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> DynamicGraph.Tensor<Element> {
-    switch dimensionFormat {
-    case let .NHWC(n, h, w, c):
-      return reshape(format: .NHWC, dimensions: [n, h, w, c], offset: offset, increments: increments)
-    case let .NCHW(n, c, h, w):
-      return reshape(format: .NCHW, dimensions: [n, c, h, w], offset: offset, increments: increments)
-    case let .CHWN(c, h, w, n):
-      return reshape(format: .CHWN, dimensions: [c, h, w, n], offset: offset, increments: increments)
-    }
+    return reshape(format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset, increments: increments)
   }
 
 }
@@ -156,25 +149,11 @@ public extension DynamicGraph {
   }
 
   func variable<Element: TensorNumeric>(_ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat) -> Tensor<Element> {
-    switch dimensionFormat {
-    case let .NHWC(n, h, w, c):
-      return variable(device, format: .NHWC, dimensions: [n, h, w, c])
-    case let .NCHW(n, c, h, w):
-      return variable(device, format: .NCHW, dimensions: [n, c, h, w])
-    case let .CHWN(c, h, w, n):
-      return variable(device, format: .CHWN, dimensions: [c, h, w, n])
-    }
+    return variable(device, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
   func constant<Element: TensorNumeric>(_ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat) -> Tensor<Element> {
-    switch dimensionFormat {
-    case let .NHWC(n, h, w, c):
-      return constant(device, format: .NHWC, dimensions: [n, h, w, c])
-    case let .NCHW(n, c, h, w):
-      return constant(device, format: .NCHW, dimensions: [n, c, h, w])
-    case let .CHWN(c, h, w, n):
-      return constant(device, format: .CHWN, dimensions: [c, h, w, n])
-    }
+    return constant(device, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
 }

@@ -23,9 +23,72 @@ public enum TensorFormat {
 }
 
 public enum TensorDimensionFormat {
+  case C(Int) // Assuming NCHW
+  case NC(Int, Int) // Assuming NCHW
+  case HWC(Int, Int, Int) // Assuming NHWC
+  case CHW(Int, Int, Int) // Assuming NCHW
   case NHWC(Int, Int, Int, Int)
   case NCHW(Int, Int, Int, Int)
   case CHWN(Int, Int, Int, Int)
+
+  var format: TensorFormat {
+    switch self {
+      case .C:
+        return .NCHW
+      case .NC:
+        return .NCHW
+      case .HWC:
+        return .NHWC
+      case .CHW:
+        return .NCHW
+      case .NHWC:
+        return .NHWC
+      case .NCHW:
+        return .NCHW
+      case .CHWN:
+        return .CHWN
+    }
+  }
+
+  var dimensions: [Int] {
+    switch self {
+      case let .C(c):
+        assert(c > 0)
+        return [c]
+      case let .NC(n, c):
+        assert(n > 0)
+        assert(c > 0)
+        return [n, c]
+      case let .HWC(h, w, c):
+        assert(h > 0)
+        assert(w > 0)
+        assert(c > 0)
+        return [h, w, c]
+      case let .CHW(c, h, w):
+        assert(c > 0)
+        assert(h > 0)
+        assert(w > 0)
+        return [c, h, w]
+      case let .NHWC(n, h, w, c):
+        assert(n > 0)
+        assert(h > 0)
+        assert(w > 0)
+        assert(c > 0)
+        return [n, h, w, c]
+      case let .NCHW(n, c, h, w):
+        assert(n > 0)
+        assert(c > 0)
+        assert(h > 0)
+        assert(w > 0)
+        return [n, c, h, w]
+      case let .CHWN(c, h, w, n):
+        assert(c > 0)
+        assert(h > 0)
+        assert(w > 0)
+        assert(n > 0)
+        return [c, h, w, n]
+    }
+  }
 }
 
 public enum DataType {
@@ -181,14 +244,7 @@ public struct Tensor <Element: TensorNumeric>: AnyTensor {
   }
 
   private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
-    switch dimensionFormat {
-    case let .NHWC(n, h, w, c):
-      self.init(kind, dataType: dataType, format: .NHWC, dimensions: [n, h, w, c])
-    case let .NCHW(n, c, h, w):
-      self.init(kind, dataType: dataType, format: .NCHW, dimensions: [n, c, h, w])
-    case let .CHWN(c, h, w, n):
-      self.init(kind, dataType: dataType, format: .CHWN, dimensions: [c, h, w, n])
-    }
+    self.init(kind, dataType: dataType, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
   init(_ tensor: _AnyTensor) {
