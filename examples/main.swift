@@ -5,6 +5,7 @@ let dynamicGraph = DynamicGraph()
 var t0 = Tensor<Float32>(.CPU, .NHWC(1, 1, 1, 1))
 t0[0, 0, 0, 0] = 1.23
 let tv0 = dynamicGraph.variable(t0)
+print(tv0)
 var t1 = Tensor<Float32>(.CPU, .NHWC(1, 1, 1, 1))
 t1[0, 0, 0, 0] = 2
 let tv1 = dynamicGraph.variable(t1)
@@ -35,3 +36,12 @@ var tv5a = tv5.rawValue
 tv5a[0, 0, 0, 0] = 10
 print(tv5.rawValue[0, 0, 0, 0])
 print(tv5a[0, 0, 0, 0])
+
+let tv6 = dynamicGraph.variable(Tensor<Float32>([2, 3], .NC(2, 1)))
+let tv7 = dynamicGraph.variable(Tensor<Float32>([3, 2], .NC(1, 2)))
+let tv8 = tv6 * tv7
+print(tv8.rawValue)
+print(tv8.rawValue[0, 0])
+print(tv8.rawValue[0, 1])
+print(tv8.rawValue[1, 0])
+print(tv8.rawValue[1, 1])

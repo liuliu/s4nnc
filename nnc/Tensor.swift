@@ -20,6 +20,19 @@ public enum TensorFormat {
   case NHWC
   case NCHW
   case CHWN
+
+  static func from(cTensorParams: ccv_nnc_tensor_param_t) -> TensorFormat {
+    switch Int(cTensorParams.format) {
+      case CCV_TENSOR_FORMAT_NCHW:
+        return .NCHW
+      case CCV_TENSOR_FORMAT_NHWC:
+        return .NHWC
+      case CCV_TENSOR_FORMAT_CHWN:
+        return .CHWN
+      default:
+        fatalError("unspecified format")
+    }
+  }
 }
 
 public enum TensorDimensionFormat {
@@ -175,27 +188,12 @@ public extension AnyTensor {
     DeviceKind.from(cTensorParams: underlying._tensor.pointee.info)
   }
 
+  var format: TensorFormat {
+    TensorFormat.from(cTensorParams: underlying._tensor.pointee.info)
+  }
+
   var dimensions: [Int] {
-    let dim = underlying._tensor.pointee.info.dim
-    if dim.0 == 0 {
-      return []
-    } else if dim.1 == 0 {
-      return [Int(dim.0)]
-    } else if dim.2 == 0 {
-      return [Int(dim.0), Int(dim.1)]
-    } else if dim.3 == 0 {
-      return [Int(dim.0), Int(dim.1), Int(dim.2)]
-    } else if dim.4 == 0 {
-      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3)]
-    } else if dim.5 == 0 {
-      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4)]
-    } else if dim.6 == 0 {
-      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5)]
-    } else if dim.7 == 0 {
-      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6)]
-    } else {
-      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6), Int(dim.7)]
-    }
+    fromCDimensions(underlying._tensor.pointee.info.dim)
   }
 
   var isTensorView: Bool {
@@ -208,25 +206,7 @@ public extension AnyTensor {
       return dimensions
     }
     let inc = UnsafeMutableRawPointer(underlying._tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
-    if inc.0 == 0 {
-      return dimensions
-    } else if inc.1 == 0 {
-      return [Int(inc.0)]
-    } else if inc.2 == 0 {
-      return [Int(inc.0), Int(inc.1)]
-    } else if inc.3 == 0 {
-      return [Int(inc.0), Int(inc.1), Int(inc.2)]
-    } else if inc.4 == 0 {
-      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3)]
-    } else if inc.5 == 0 {
-      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4)]
-    } else if inc.6 == 0 {
-      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4), Int(inc.5)]
-    } else if inc.7 == 0 {
-      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4), Int(inc.5), Int(inc.6)]
-    } else {
-      return [Int(inc.0), Int(inc.1), Int(inc.2), Int(inc.3), Int(inc.4), Int(inc.5), Int(inc.6), Int(inc.7)]
-    }
+    return fromCDimensions(inc)
   }
 }
 
@@ -262,6 +242,18 @@ public struct Tensor <Element: TensorNumeric>: AnyTensor {
 
   public init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) {
     self.init(kind, Element.dataType, dimensionFormat)
+  }
+
+  public init<S: Sequence>(_ sequence: S, format: TensorFormat, dimensions: [Int]) where S.Element == Element {
+    self.init(.CPU, format: format, dimensions: dimensions)
+    let cArray = ContiguousArray(sequence)
+    cArray.withUnsafeBytes { bytes -> Void in
+      memcpy(_tensor._tensor.pointee.data.u8, bytes.baseAddress!, bytes.count)
+    }
+  }
+
+  public init<S: Sequence>(_ sequence: S, _ dimensionFormat: TensorDimensionFormat) where S.Element == Element {
+    self.init(sequence, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
   public subscript(indices: Int...) -> Element {
@@ -301,6 +293,13 @@ public struct Tensor <Element: TensorNumeric>: AnyTensor {
       (pointer + offset).pointee = v
     }
   }
+
+}
+
+extension Tensor: CustomStringConvertible {
+  public var description: String {
+    return "Tensor<\(dataType)>(kind: .\(kind), format: .\(format), dimensions: \(dimensions), increments: \(increments))"
+  }
 }
 
 func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32) {
@@ -328,6 +327,28 @@ func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, 
     default:
     return (0, 0, 0, 0, 0, 0, 0, 0)
   }
+}
+
+func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)) -> [Int] {
+    if dim.0 == 0 {
+      return []
+    } else if dim.1 == 0 {
+      return [Int(dim.0)]
+    } else if dim.2 == 0 {
+      return [Int(dim.0), Int(dim.1)]
+    } else if dim.3 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2)]
+    } else if dim.4 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3)]
+    } else if dim.5 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4)]
+    } else if dim.6 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5)]
+    } else if dim.7 == 0 {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6)]
+    } else {
+      return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6), Int(dim.7)]
+    }
 }
 
 func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) -> ccv_nnc_tensor_param_t {

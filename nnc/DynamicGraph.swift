@@ -97,6 +97,22 @@ public extension DynamicGraph.Tensor {
 
 }
 
+extension DynamicGraph.AnyTensor: CustomStringConvertible {
+  public var description: String {
+    let _graph = graph._graph
+    let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
+    if cTensorParams.datatype == 0 {
+      return "DynamicGraph.AutoTensor"
+    } else {
+      let dataType = DataType.from(cTensorParams: cTensorParams)
+      let format = TensorFormat.from(cTensorParams: cTensorParams)
+      let device = DeviceKind.from(cTensorParams: cTensorParams)
+      let dimensions = fromCDimensions(cTensorParams.dim)
+      return "DynamicGraph.Tensor<\(dataType)>(kind: .\(device), format: .\(format), dimensions: \(dimensions))"
+    }
+  }
+}
+
 public extension DynamicGraph {
 
   func variable() -> AnyTensor {
