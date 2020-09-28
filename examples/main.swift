@@ -45,3 +45,23 @@ print(tv8.rawValue[0, 0])
 print(tv8.rawValue[0, 1])
 print(tv8.rawValue[1, 0])
 print(tv8.rawValue[1, 1])
+
+let builder = ModelBuilder { inputs in
+  let i0 = Input()
+  let i1 = Input()
+  let i2 = i0 .* i1
+  return Model([i0, i1], [i2])
+}
+
+let b0 = dynamicGraph.variable(Tensor<Float32>([1.2], .C(1)))
+let b1 = dynamicGraph.constant(Tensor<Float32>([2.2], .C(1)))
+let b2 = DynamicGraph.Tensor<Float32>(builder([b0, b1])[0])
+print(b2.rawValue)
+print(b2.rawValue[0])
+
+let b3 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2], .C(2)))
+let b4 = dynamicGraph.constant(Tensor<Float32>([2.2, 3.3], .C(2)))
+let b5 = DynamicGraph.Tensor<Float32>(builder([b3, b4])[0])
+print(b5.rawValue)
+print(b5.rawValue[0])
+print(b5.rawValue[1])

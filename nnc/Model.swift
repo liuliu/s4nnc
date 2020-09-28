@@ -31,6 +31,11 @@ public class Model {
     ownerHook()
   }
 
+  func obtainUnderlyingModel() -> OpaquePointer {
+    selfOwned = false
+    return _model
+  }
+
   public func callAsFunction(_ inputs: IO...) -> IO {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _io = ccv_cnnp_model_apply(_model, _inputs, Int32(inputs.count))!
