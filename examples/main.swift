@@ -1,5 +1,8 @@
 import nnc
 
 let dataframe = DataFrame(from: [1, 2, 3, 4])
-print(dataframe["a"])
-print(dataframe["a", "b"])
+let iter = dataframe["a"]
+iter.prefetch(2)
+for i in iter {
+  print(i)
+}
