@@ -180,7 +180,12 @@ public extension DataFrame {
           if data == nil {
             return nil
           }
-          return Unmanaged<AnyObject>.fromOpaque(data!).takeUnretainedValue()
+          switch property!.type {
+          case .object:
+            return Unmanaged<AnyObject>.fromOpaque(data!).takeUnretainedValue()
+          case .tensor:
+            return _AnyTensor(data!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false).toAnyTensor() as AnyObject
+          }
         default:
           fatalError()
       }
@@ -239,7 +244,14 @@ public extension DataFrame {
       guard retval == 0 else { return nil }
       var columnData = [AnyObject]()
       for i in 0..<count {
-        let object = Unmanaged<AnyObject>.fromOpaque(data[i]!).takeUnretainedValue()
+        let data = data[i]!
+        let object: AnyObject
+        switch properties[i].type {
+        case .object:
+          object = Unmanaged<AnyObject>.fromOpaque(data).takeUnretainedValue()
+        case .tensor:
+          object = _AnyTensor(data.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false).toAnyTensor() as AnyObject
+        }
         columnData.append(object)
       }
       data.deallocate()
@@ -288,7 +300,12 @@ public extension DataFrame {
       if data == nil {
         return nil
       }
-      return Unmanaged<AnyObject>.fromOpaque(data!).takeUnretainedValue() as? Element
+      switch property.type {
+      case .object:
+        return Unmanaged<AnyObject>.fromOpaque(data!).takeUnretainedValue() as? Element
+      case .tensor:
+        return _AnyTensor(data!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false).toTensor(Element.self)
+      }
     }
 
     public var underestmiatedCount: Int {
@@ -369,7 +386,7 @@ private extension DataFrame {
 // MARK - Load image.
 
 public extension DataFrame.UntypedSeries {
-  func toLoadImage(_ name: String) -> DataFrame.UntypedSeries {
+  func toLoadImage() -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
@@ -378,7 +395,7 @@ public extension DataFrame.UntypedSeries {
 }
 
 public extension DataFrame.TypedSeries where Element == String {
-  func toLoadImage(_ name: String) -> DataFrame.UntypedSeries {
+  func toLoadImage() -> DataFrame.UntypedSeries {
     return DataFrame.UntypedSeries(.image(property))
   }
 }
@@ -386,17 +403,29 @@ public extension DataFrame.TypedSeries where Element == String {
 private extension DataFrame {
   private func add(toLoadImage property: ColumnProperty, name: String) {
     var inputIndex: Int32 = Int32(property.index)
-    let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+    let pathIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
       guard let data = data else { return }
+      let inputData = input[0]!
       for i in 0..<Int(row_size) {
-        // (data + i).initialize(to: Unmanaged.passRetained(value).toOpaque())
+        var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
+        let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
+          let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count)
+          string.initialize(from: $0.baseAddress!, count: $0.count)
+          let container = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: 1)
+          container.initialize(to: string)
+          return container
+        }
+        (data + i).initialize(to: utf8)
       }
-    }, 0, { data, _ in
-      guard let data = data else { return }
-      Unmanaged<AnyObject>.fromOpaque(data).release()
+    }, 0, { container, _ in
+      guard let container = container else { return }
+      let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
+      string.deallocate()
+      container.deallocate()
     }, &inputIndex, 1, nil, nil)
-    // columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0)
+    columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 

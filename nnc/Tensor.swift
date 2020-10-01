@@ -163,15 +163,22 @@ extension UInt8: TensorNumeric {
 public final class _AnyTensor {
   let _tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
   fileprivate let original: Any?
+  private let selfOwned: Bool
 
-  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil) {
+  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true) {
     self.original = original
+    self.selfOwned = selfOwned
     _tensor = tensor
   }
 
   deinit {
     guard original == nil else { return }
+    guard selfOwned else { return }
     ccv_nnc_tensor_free(_tensor)
+  }
+
+  var dataType: DataType {
+    DataType.from(cTensorParams: _tensor.pointee.info)
   }
 }
 
@@ -210,7 +217,7 @@ public extension AnyTensor {
   }
 }
 
-public struct Tensor <Element: TensorNumeric>: AnyTensor {
+public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
   private var _tensor: _AnyTensor
 
@@ -291,6 +298,44 @@ public struct Tensor <Element: TensorNumeric>: AnyTensor {
         offset += indices[i]
       }
       (pointer + offset).pointee = v
+    }
+  }
+
+}
+
+extension _AnyTensor {
+
+  func toAnyTensor() -> AnyTensor {
+    switch dataType {
+    case .Float64:
+      return Tensor<Float64>(self)
+    case .Int64:
+      return Tensor<Int64>(self)
+    case .Float32:
+      return Tensor<Float32>(self)
+    case .Int32:
+      return Tensor<Int32>(self)
+    case .Float16:
+      return Tensor<Float16>(self)
+    case .UInt8:
+      return Tensor<UInt8>(self)
+    }
+  }
+
+  func toTensor<Element>(_ type: Element.Type) -> Element {
+    switch dataType {
+    case .Float64:
+      return unsafeBitCast(Tensor<Float64>(self), to: Element.self)
+    case .Int64:
+      return unsafeBitCast(Tensor<Int64>(self), to: Element.self)
+    case .Float32:
+      return unsafeBitCast(Tensor<Float32>(self), to: Element.self)
+    case .Int32:
+      return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
+    case .Float16:
+      return unsafeBitCast(Tensor<Float16>(self), to: Element.self)
+    case .UInt8:
+      return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
     }
   }
 
