@@ -114,6 +114,10 @@ public final class DataFrame {
           self.add(from: sequence, name: index)
         case .image(let property):
           self.add(toLoadImage: property, name: index)
+        case .map(let property, let mapper):
+          self.add(map: mapper, property: property, name: index)
+        case .multimap(let properties, let mapper):
+          self.add(multimap: mapper, properties: properties, name: index)
       }
     }
   }
@@ -144,6 +148,8 @@ fileprivate enum UntypedSeriesRole {
   case scalar(AnyObject)
   case sequence(DataFrame.Wrapped<[AnyObject]>)
   case image(DataFrame.ColumnProperty)
+  case map(DataFrame.ColumnProperty, (AnyObject) -> AnyObject)
+  case multimap([DataFrame.ColumnProperty], ([AnyObject]) -> AnyObject)
 }
 
 public extension DataFrame {
@@ -402,7 +408,7 @@ public extension DataFrame.TypedSeries where Element == String {
 
 private extension DataFrame {
   private func add(toLoadImage property: ColumnProperty, name: String) {
-    var inputIndex: Int32 = Int32(property.index)
+    var inputIndex = Int32(property.index)
     let pathIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
       guard let data = data else { return }
@@ -430,16 +436,142 @@ private extension DataFrame {
 }
 
 public extension DataFrame.UntypedSeries {
-  func map(_ name: String) {
+  func map<T, U>(_ mapper: @escaping (T) -> U) -> DataFrame.UntypedSeries {
+    let wrappedMapper = { (obj: AnyObject) -> AnyObject in
+      return mapper(obj as! T) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.map(property!, wrappedMapper))
   }
 }
 
 public extension DataFrame.TypedSeries {
-  func map(_ name: String) {
+  func map<U>(_ mapper: @escaping (Element) -> U) -> DataFrame.UntypedSeries {
+    let wrappedMapper = { (obj: AnyObject) -> AnyObject in
+      return mapper(obj as! Element) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.map(property, wrappedMapper))
+  }
+}
+
+private extension DataFrame {
+  private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, name: String) {
+    var inputIndex = Int32(property.index)
+    let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+      guard let input = input else { return }
+      guard let data = data else { return }
+      let inputData = input[0]!
+      let mapper = Unmanaged<Wrapped<(AnyObject) -> AnyObject>>.fromOpaque(context!).takeUnretainedValue().value
+      for i in 0..<Int(row_size) {
+        let object = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue()
+        let output = mapper(object)
+        (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
+      }
+    }, 0, { object, _ in
+      guard let object = object else { return }
+      Unmanaged<AnyObject>.fromOpaque(object).release()
+    }, &inputIndex, 1, Unmanaged.passRetained(DataFrame.Wrapped(map)).toOpaque(), { mapper in
+      Unmanaged<AnyObject>.fromOpaque(mapper!).release()
+    })
+    columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
   }
 }
 
 public extension DataFrame.ManyUntypedSeries {
-  func map(_ name: String) {
+  func map<C0, C1, U>(_ mapper: @escaping (C0, C1) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 2)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, U>(_ mapper: @escaping (C0, C1, C2) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 3)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, U>(_ mapper: @escaping (C0, C1, C2, C3) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 4)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, C4, U>(_ mapper: @escaping (C0, C1, C2, C3, C4) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 5)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, C4, C5, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 6)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, C4, C5, C6, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 7)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, C4, C5, C6, C7, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 8)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6, objs[7] as! C7) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, C4, C5, C6, C7, C8, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7, C8) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 9)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6, objs[7] as! C7, objs[8] as! C8) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+  func map<C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7, C8, C9) -> U) -> DataFrame.UntypedSeries {
+    assert(properties.count == 10)
+    let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
+      return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6, objs[7] as! C7, objs[8] as! C8, objs[9] as! C9) as AnyObject
+    }
+    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+  }
+}
+
+private extension DataFrame {
+  private final class WrappedManyMapper {
+    let count: Int
+    let map: ([AnyObject]) -> AnyObject
+    init(count: Int, map: @escaping ([AnyObject]) -> AnyObject) {
+      self.count = count
+      self.map = map
+    }
+  }
+  private func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], name: String) {
+    let inputIndex = properties.map { Int32($0.index) }
+    let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+      guard let input = input else { return }
+      guard let data = data else { return }
+      let wrappedManyMapper = Unmanaged<WrappedManyMapper>.fromOpaque(context!).takeUnretainedValue()
+      for i in 0..<Int(row_size) {
+        var objects = [AnyObject]()
+        for j in 0..<wrappedManyMapper.count {
+          let object = Unmanaged<AnyObject>.fromOpaque(input[j]![i]!).takeUnretainedValue()
+          objects.append(object)
+        }
+        let output = wrappedManyMapper.map(objects)
+        (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
+      }
+    }, 0, { object, _ in
+      guard let object = object else { return }
+      Unmanaged<AnyObject>.fromOpaque(object).release()
+    }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(count: properties.count, map: multimap)).toOpaque(), { mapper in
+      Unmanaged<WrappedManyMapper>.fromOpaque(mapper!).release()
+    })
+    columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
   }
 }

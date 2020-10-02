@@ -1,18 +1,26 @@
 import nnc
 
-let dataframe = DataFrame(from: ["/home/liu/workspace/ccv/samples/chessbox.png", "/home/liu/workspace/ccv/samples/dex.png"])
-dataframe["image"] = dataframe["main"].toLoadImage()
-for i in dataframe["main", "image"] {
-  print(i)
+let df = DataFrame(from: [1, 2, 3, 4, 5])
+
+df["+1"] = df["main"].map { (i: Int) -> Int in
+  i + 1
 }
 
-enum MyStruct {
-  case value(Float32)
-  case string(String)
+df["2"] = .from([1, 1, 1, 1, 1])
+
+df["++"] = df["main", "+1"].map { (i: Int, j: Int) -> Int in
+  i + j
+}
+df["3"] = .from([1, 1, 1, 1, 1])
+df["4"] = .from([1, 1, 1, 1, 1])
+df["5"] = .from([1, 1, 1, 1, 1])
+df["6"] = .from([1, 1, 1, 1, 1])
+df["9"] = .from([1, 1, 1, 1, 1])
+df["10"] = .from([1, 1, 1, 1, 1])
+df["z"] = df["main", "+1", "++", "2", "3", "4", "5", "6", "9", "10"].map { (c0: Int, c1: Int, c2: Int, c3: Int, c4: Int, c5: Int, c6: Int, c7: Int, c8: Int, c9: Int) -> Int in
+  return c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9
 }
 
-let df = DataFrame(from: [MyStruct.value(1.0), nil, MyStruct.string("theirs")])
-
-for i in df["main"] {
+for i in df["main", "+1", "++", "z"] {
   print(i)
 }
