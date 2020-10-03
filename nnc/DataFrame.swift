@@ -114,10 +114,10 @@ public final class DataFrame {
           self.add(from: sequence, name: index)
         case .image(let property):
           self.add(toLoadImage: property, name: index)
-        case .map(let property, let mapper):
-          self.add(map: mapper, property: property, name: index)
-        case .multimap(let properties, let mapper):
-          self.add(multimap: mapper, properties: properties, name: index)
+        case .map(let property, let mapper, let outputType):
+          self.add(map: mapper, property: property, outputType: outputType, name: index)
+        case .multimap(let properties, let mapper, let outputType):
+          self.add(multimap: mapper, properties: properties, outputType: outputType, name: index)
       }
     }
   }
@@ -148,8 +148,8 @@ fileprivate enum UntypedSeriesRole {
   case scalar(AnyObject)
   case sequence(DataFrame.Wrapped<[AnyObject]>)
   case image(DataFrame.ColumnProperty)
-  case map(DataFrame.ColumnProperty, (AnyObject) -> AnyObject)
-  case multimap([DataFrame.ColumnProperty], ([AnyObject]) -> AnyObject)
+  case map(DataFrame.ColumnProperty, (AnyObject) -> AnyObject, DataFrame.ColumnProperty.PropertyType)
+  case multimap([DataFrame.ColumnProperty], ([AnyObject]) -> AnyObject, DataFrame.ColumnProperty.PropertyType)
 }
 
 public extension DataFrame {
@@ -442,7 +442,13 @@ public extension DataFrame.UntypedSeries {
     let wrappedMapper = { (obj: AnyObject) -> AnyObject in
       return mapper(obj as! T) as AnyObject
     }
-    return DataFrame.UntypedSeries(.map(property!, wrappedMapper))
+    // Use only return type for whether this is a tensor or not.
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      // Special handling if this is a tensor, for C-interop, we will unwrap the underlying tensor.
+      return DataFrame.UntypedSeries(.map(property!, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.map(property!, wrappedMapper, .object))
+    }
   }
 }
 
@@ -451,7 +457,13 @@ public extension DataFrame.TypedSeries {
     let wrappedMapper = { (obj: AnyObject) -> AnyObject in
       return mapper(obj as! Element) as AnyObject
     }
-    return DataFrame.UntypedSeries(.map(property, wrappedMapper))
+    // Use only return type for whether this is a tensor or not.
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      // Special handling if this is a tensor, for C-interop, we will unwrap the underlying tensor.
+      return DataFrame.UntypedSeries(.map(property, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.map(property, wrappedMapper, .object))
+    }
   }
 }
 
@@ -459,12 +471,21 @@ private extension DataFrame {
   private final class WrappedMapper {
     let property: ColumnProperty
     let map: (AnyObject) -> AnyObject
-    init(property: ColumnProperty, map: @escaping (AnyObject) -> AnyObject) {
+    let outputType: ColumnProperty.PropertyType
+    var tensors: [OpaquePointer: _AnyTensor]?
+    init(property: ColumnProperty, map: @escaping (AnyObject) -> AnyObject, outputType: ColumnProperty.PropertyType) {
       self.property = property
       self.map = map
+      self.outputType = outputType
+      switch outputType {
+      case .object:
+        tensors = nil
+      case .tensor:
+        tensors = [OpaquePointer: _AnyTensor]()
+      }
     }
   }
-  private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, name: String) {
+  private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, outputType: ColumnProperty.PropertyType, name: String) {
     var inputIndex = Int32(property.index)
     let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
@@ -480,15 +501,28 @@ private extension DataFrame {
           object = _AnyTensor(inputData[i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false).toAnyTensor() as AnyObject
         }
         let output = wrappedMapper.map(object)
-        (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
+        switch wrappedMapper.outputType {
+        case .object:
+          (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
+        case .tensor:
+          let tensor = output as! AnyTensor
+          wrappedMapper.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
+          (data + i).initialize(to: tensor.underlying._tensor)
+        }
       }
-    }, 0, { object, _ in
+    }, 0, { object, context in
       guard let object = object else { return }
-      Unmanaged<AnyObject>.fromOpaque(object).release()
-    }, &inputIndex, 1, Unmanaged.passRetained(WrappedMapper(property: property, map: map)).toOpaque(), { mapper in
+      let wrappedMapper = Unmanaged<WrappedMapper>.fromOpaque(context!).takeUnretainedValue()
+      switch wrappedMapper.outputType {
+      case .object:
+        Unmanaged<AnyObject>.fromOpaque(object).release()
+      case .tensor:
+        wrappedMapper.tensors![OpaquePointer(object)] = nil
+      }
+    }, &inputIndex, 1, Unmanaged.passRetained(WrappedMapper(property: property, map: map, outputType: outputType)).toOpaque(), { mapper in
       Unmanaged<WrappedMapper>.fromOpaque(mapper!).release()
     })
-    columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    columnProperties[name] = ColumnProperty(index: Int(index), type: outputType)
   }
 }
 
@@ -498,63 +532,99 @@ public extension DataFrame.ManyUntypedSeries {
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, U>(_ mapper: @escaping (C0, C1, C2) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 3)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, U>(_ mapper: @escaping (C0, C1, C2, C3) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 4)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, C4, U>(_ mapper: @escaping (C0, C1, C2, C3, C4) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 5)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, C4, C5, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 6)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, C4, C5, C6, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 7)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, C4, C5, C6, C7, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 8)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6, objs[7] as! C7) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, C4, C5, C6, C7, C8, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7, C8) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 9)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6, objs[7] as! C7, objs[8] as! C8) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
   func map<C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7, C8, C9) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 10)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
       return mapper(objs[0] as! C0, objs[1] as! C1, objs[2] as! C2, objs[3] as! C3, objs[4] as! C4, objs[5] as! C5, objs[6] as! C6, objs[7] as! C7, objs[8] as! C8, objs[9] as! C9) as AnyObject
     }
-    return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper))
+    if U.self is AnyTensor.Type || U.self == AnyTensor.self {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .tensor))
+    } else {
+      return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
+    }
   }
 }
 
@@ -562,12 +632,21 @@ private extension DataFrame {
   private final class WrappedManyMapper {
     let properties: [ColumnProperty]
     let map: ([AnyObject]) -> AnyObject
-    init(properties: [ColumnProperty], map: @escaping ([AnyObject]) -> AnyObject) {
+    let outputType: ColumnProperty.PropertyType
+    var tensors: [OpaquePointer: _AnyTensor]?
+    init(properties: [ColumnProperty], map: @escaping ([AnyObject]) -> AnyObject, outputType: ColumnProperty.PropertyType) {
       self.properties = properties
       self.map = map
+      self.outputType = outputType
+      switch outputType {
+      case .object:
+        tensors = nil
+      case .tensor:
+        tensors = [OpaquePointer: _AnyTensor]()
+      }
     }
   }
-  private func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], name: String) {
+  private func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], outputType: ColumnProperty.PropertyType, name: String) {
     let inputIndex = properties.map { Int32($0.index) }
     let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
@@ -586,14 +665,27 @@ private extension DataFrame {
           objects.append(object)
         }
         let output = wrappedManyMapper.map(objects)
-        (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
+        switch wrappedManyMapper.outputType {
+        case .object:
+          (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
+        case .tensor:
+          let tensor = output as! AnyTensor
+          wrappedManyMapper.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
+          (data + i).initialize(to: tensor.underlying._tensor)
+        }
       }
-    }, 0, { object, _ in
+    }, 0, { object, context in
       guard let object = object else { return }
-      Unmanaged<AnyObject>.fromOpaque(object).release()
-    }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(properties: properties, map: multimap)).toOpaque(), { mapper in
+      let wrappedManyMapper = Unmanaged<WrappedManyMapper>.fromOpaque(context!).takeUnretainedValue()
+      switch wrappedManyMapper.outputType {
+      case .object:
+        Unmanaged<AnyObject>.fromOpaque(object).release()
+      case .tensor:
+        wrappedManyMapper.tensors![OpaquePointer(object)] = nil
+      }
+    }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(properties: properties, map: multimap, outputType: outputType)).toOpaque(), { mapper in
       Unmanaged<WrappedManyMapper>.fromOpaque(mapper!).release()
     })
-    columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    columnProperties[name] = ColumnProperty(index: Int(index), type: outputType)
   }
 }
