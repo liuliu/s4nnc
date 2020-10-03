@@ -112,6 +112,32 @@ final class DataFrameTests: XCTestCase {
     XCTAssertEqual(newArray, [13, 17, 21, 25, 29])
   }
 
+  func testFromTensor() throws {
+    let df = DataFrame(from: [1, 2])
+    var tensor = Tensor<Float32>(.CPU, .C(1))
+    tensor[0] = 1.2
+    df["image"] = .from(tensor)
+    var newArray = [Float32]()
+    for i in df["image", Tensor<Float32>.self] {
+      newArray.append(i[0])
+    }
+    XCTAssertEqual(newArray, [1.2, 1.2])
+  }
+
+  func testFromTensorArray() throws {
+    let df = DataFrame(from: [1, 2])
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.2
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    df["image"] = .from([tensor0, tensor1])
+    var newArray = [Float32]()
+    for i in df["image", Tensor<Float32>.self] {
+      newArray.append(i[0])
+    }
+    XCTAssertEqual(newArray, [1.2, 2.2])
+  }
+
   static var allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -119,6 +145,8 @@ final class DataFrameTests: XCTestCase {
     ("testStruct", testStruct),
     ("testEnum", testEnum),
     ("testMap", testMap),
-    ("testMultiMap", testMultiMap)
+    ("testMultiMap", testMultiMap),
+    ("testFromTensor", testFromTensor),
+    ("testFromTensorArray", testFromTensorArray)
   ]
 }

@@ -345,16 +345,30 @@ public extension DataFrame.UntypedSeries {
 
 private extension DataFrame {
   private func add(from scalar: AnyObject, name: String) {
-    let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
-      guard let data = data else { return }
-      for i in 0..<Int(row_size) {
-        (data + i).initialize(to: context)
-      }
-    }, 0, nil, Unmanaged.passRetained(scalar).toOpaque(), { context in
-      guard let context = context else { return }
-      Unmanaged<AnyObject>.fromOpaque(context).release()
-    })
-    columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    if scalar is AnyTensor {
+      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+        guard let data = data else { return }
+        let tensor = Unmanaged<AnyObject>.fromOpaque(context!).takeUnretainedValue() as! AnyTensor
+        for i in 0..<Int(row_size) {
+          (data + i).initialize(to: tensor.underlying._tensor)
+        }
+      }, 0, nil, Unmanaged.passRetained(scalar).toOpaque(), { context in
+        guard let context = context else { return }
+        Unmanaged<AnyObject>.fromOpaque(context).release()
+      })
+      columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
+    } else {
+      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+        guard let data = data else { return }
+        for i in 0..<Int(row_size) {
+          (data + i).initialize(to: context)
+        }
+      }, 0, nil, Unmanaged.passRetained(scalar).toOpaque(), { context in
+        guard let context = context else { return }
+        Unmanaged<AnyObject>.fromOpaque(context).release()
+      })
+      columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    }
   }
 }
 
@@ -369,23 +383,43 @@ public extension DataFrame.UntypedSeries {
 private extension DataFrame {
   private func add(from sequence: Wrapped<[AnyObject]>, name: String) {
     assert(sequence.value.count == count)
-    let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
-      guard let row_idxs = row_idxs else { return }
-      guard let data = data else { return }
-      let underlying = Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context!).takeUnretainedValue()
-      for i in 0..<Int(row_size) {
-        let idx = Int((row_idxs + i).pointee)
-        let value = underlying.value[idx]
-        (data + i).initialize(to: Unmanaged.passRetained(value).toOpaque())
-      }
-    }, 0, { data, _ in
-      guard let data = data else { return }
-      Unmanaged<AnyObject>.fromOpaque(data).release()
-    }, Unmanaged.passRetained(sequence).toOpaque(), { context in
-      guard let context = context else { return }
-      Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
-    })
-    columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    if sequence.value.count > 0 && sequence.value[0] is AnyTensor {
+      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+        guard let row_idxs = row_idxs else { return }
+        guard let data = data else { return }
+        let underlying = Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context!).takeUnretainedValue()
+        for i in 0..<Int(row_size) {
+          let idx = Int((row_idxs + i).pointee)
+          let tensor = underlying.value[idx] as! AnyTensor
+          (data + i).initialize(to: tensor.underlying._tensor)
+        }
+      }, 0, { data, _ in
+        guard let data = data else { return }
+        Unmanaged<AnyObject>.fromOpaque(data).release()
+      }, Unmanaged.passRetained(sequence).toOpaque(), { context in
+        guard let context = context else { return }
+        Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
+      })
+      columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
+    } else {
+      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+        guard let row_idxs = row_idxs else { return }
+        guard let data = data else { return }
+        let underlying = Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context!).takeUnretainedValue()
+        for i in 0..<Int(row_size) {
+          let idx = Int((row_idxs + i).pointee)
+          let value = underlying.value[idx]
+          (data + i).initialize(to: Unmanaged.passRetained(value).toOpaque())
+        }
+      }, 0, { data, _ in
+        guard let data = data else { return }
+        Unmanaged<AnyObject>.fromOpaque(data).release()
+      }, Unmanaged.passRetained(sequence).toOpaque(), { context in
+        guard let context = context else { return }
+        Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
+      })
+      columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
+    }
   }
 }
 
