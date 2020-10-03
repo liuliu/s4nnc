@@ -416,8 +416,10 @@ private extension DataFrame {
       for i in 0..<Int(row_size) {
         var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
         let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
-          let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count)
+          let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count + 1)
           string.initialize(from: $0.baseAddress!, count: $0.count)
+          // null-terminated
+          (string + $0.count).initialize(to: 0)
           let container = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: 1)
           container.initialize(to: string)
           return container
@@ -454,23 +456,37 @@ public extension DataFrame.TypedSeries {
 }
 
 private extension DataFrame {
+  private final class WrappedMapper {
+    let property: ColumnProperty
+    let map: (AnyObject) -> AnyObject
+    init(property: ColumnProperty, map: @escaping (AnyObject) -> AnyObject) {
+      self.property = property
+      self.map = map
+    }
+  }
   private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, name: String) {
     var inputIndex = Int32(property.index)
     let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
       guard let data = data else { return }
       let inputData = input[0]!
-      let mapper = Unmanaged<Wrapped<(AnyObject) -> AnyObject>>.fromOpaque(context!).takeUnretainedValue().value
+      let wrappedMapper = Unmanaged<WrappedMapper>.fromOpaque(context!).takeUnretainedValue()
       for i in 0..<Int(row_size) {
-        let object = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue()
-        let output = mapper(object)
+        let object: AnyObject
+        switch wrappedMapper.property.type {
+        case .object:
+          object = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue()
+        case .tensor:
+          object = _AnyTensor(inputData[i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false).toAnyTensor() as AnyObject
+        }
+        let output = wrappedMapper.map(object)
         (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
       }
     }, 0, { object, _ in
       guard let object = object else { return }
       Unmanaged<AnyObject>.fromOpaque(object).release()
-    }, &inputIndex, 1, Unmanaged.passRetained(DataFrame.Wrapped(map)).toOpaque(), { mapper in
-      Unmanaged<AnyObject>.fromOpaque(mapper!).release()
+    }, &inputIndex, 1, Unmanaged.passRetained(WrappedMapper(property: property, map: map)).toOpaque(), { mapper in
+      Unmanaged<WrappedMapper>.fromOpaque(mapper!).release()
     })
     columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
   }
@@ -544,10 +560,10 @@ public extension DataFrame.ManyUntypedSeries {
 
 private extension DataFrame {
   private final class WrappedManyMapper {
-    let count: Int
+    let properties: [ColumnProperty]
     let map: ([AnyObject]) -> AnyObject
-    init(count: Int, map: @escaping ([AnyObject]) -> AnyObject) {
-      self.count = count
+    init(properties: [ColumnProperty], map: @escaping ([AnyObject]) -> AnyObject) {
+      self.properties = properties
       self.map = map
     }
   }
@@ -559,8 +575,14 @@ private extension DataFrame {
       let wrappedManyMapper = Unmanaged<WrappedManyMapper>.fromOpaque(context!).takeUnretainedValue()
       for i in 0..<Int(row_size) {
         var objects = [AnyObject]()
-        for j in 0..<wrappedManyMapper.count {
-          let object = Unmanaged<AnyObject>.fromOpaque(input[j]![i]!).takeUnretainedValue()
+        for (j, property) in wrappedManyMapper.properties.enumerated() {
+          let object: AnyObject
+          switch property.type {
+          case .object:
+            object = Unmanaged<AnyObject>.fromOpaque(input[j]![i]!).takeUnretainedValue()
+          case .tensor:
+            object = _AnyTensor(input[j]![i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false).toAnyTensor() as AnyObject
+          }
           objects.append(object)
         }
         let output = wrappedManyMapper.map(objects)
@@ -569,7 +591,7 @@ private extension DataFrame {
     }, 0, { object, _ in
       guard let object = object else { return }
       Unmanaged<AnyObject>.fromOpaque(object).release()
-    }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(count: properties.count, map: multimap)).toOpaque(), { mapper in
+    }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(properties: properties, map: multimap)).toOpaque(), { mapper in
       Unmanaged<WrappedManyMapper>.fromOpaque(mapper!).release()
     })
     columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
