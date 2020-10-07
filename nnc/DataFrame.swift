@@ -52,7 +52,7 @@ public final class DataFrame {
   private let _dataframe: OpaquePointer
   private var columnProperties: [String: ColumnProperty]
 
-  public init<S: Sequence>(from sequence: S, name: String = "main") {
+  public init<S: Sequence>(from sequence: S, name: String = "0") {
     underlying = Wrapped(Array(sequence) as [AnyObject])
     var column_data = ccv_cnnp_column_data_t()
     column_data.data_enum = { _, row_idxs, row_size, data, context, _ in
@@ -355,7 +355,7 @@ private extension DataFrame {
       }, 0, nil, Unmanaged.passRetained(scalar).toOpaque(), { context in
         guard let context = context else { return }
         Unmanaged<AnyObject>.fromOpaque(context).release()
-      })
+      }, name)
       columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
     } else {
       let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
@@ -366,7 +366,7 @@ private extension DataFrame {
       }, 0, nil, Unmanaged.passRetained(scalar).toOpaque(), { context in
         guard let context = context else { return }
         Unmanaged<AnyObject>.fromOpaque(context).release()
-      })
+      }, name)
       columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
     }
   }
@@ -399,7 +399,7 @@ private extension DataFrame {
       }, Unmanaged.passRetained(sequence).toOpaque(), { context in
         guard let context = context else { return }
         Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
-      })
+      }, name)
       columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
     } else {
       let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
@@ -417,7 +417,7 @@ private extension DataFrame {
       }, Unmanaged.passRetained(sequence).toOpaque(), { context in
         guard let context = context else { return }
         Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
-      })
+      }, name)
       columnProperties[name] = ColumnProperty(index: Int(index), type: .object)
     }
   }
@@ -465,8 +465,8 @@ private extension DataFrame {
       let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
       string.deallocate()
       container.deallocate()
-    }, &inputIndex, 1, nil, nil)
-    let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0)
+    }, &inputIndex, 1, nil, nil, nil)
+    let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0, name)
     columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
   }
 }
@@ -555,7 +555,7 @@ private extension DataFrame {
       }
     }, &inputIndex, 1, Unmanaged.passRetained(WrappedMapper(property: property, map: map, outputType: outputType)).toOpaque(), { mapper in
       Unmanaged<WrappedMapper>.fromOpaque(mapper!).release()
-    })
+    }, name)
     columnProperties[name] = ColumnProperty(index: Int(index), type: outputType)
   }
 }
@@ -719,7 +719,7 @@ private extension DataFrame {
       }
     }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(properties: properties, map: multimap, outputType: outputType)).toOpaque(), { mapper in
       Unmanaged<WrappedManyMapper>.fromOpaque(mapper!).release()
-    })
+    }, name)
     columnProperties[name] = ColumnProperty(index: Int(index), type: outputType)
   }
 }
