@@ -48,12 +48,12 @@ public final class DataFrame {
     var type: PropertyType
   }
 
-  private let underlying: Wrapped<[AnyObject]>
+  private let _underlying: Wrapped<[AnyObject]>?
   private let _dataframe: OpaquePointer
   private var columnProperties: [String: ColumnProperty]
 
   public init<S: Sequence>(from sequence: S, name: String = "0") {
-    underlying = Wrapped(Array(sequence) as [AnyObject])
+    let underlying = Wrapped(Array(sequence) as [AnyObject])
     var column_data = ccv_cnnp_column_data_t()
     column_data.data_enum = { _, row_idxs, row_size, data, context, _ in
       guard let row_idxs = row_idxs else { return }
@@ -75,7 +75,57 @@ public final class DataFrame {
     }
     column_data.context = Unmanaged.passRetained(underlying).toOpaque()
     _dataframe = ccv_cnnp_dataframe_new(&column_data, 1, Int32(underlying.value.count))!
+    _underlying = underlying
     columnProperties = [name: ColumnProperty(index: 0, type: .object)]
+  }
+
+  public init?(fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",", quotation: String = "\"") {
+    var columnSize: Int32 = 0
+    let fileHandle = fopen(filePath, "r")
+    assert(delimiter.count == 1)
+    assert(quotation.count == 1)
+    var _delimiter = delimiter
+    let delim = _delimiter.withUTF8 { $0.withMemoryRebound(to: CChar.self) { $0[0] } }
+    var _quotation = quotation
+    let quote = _quotation.withUTF8 { $0.withMemoryRebound(to: CChar.self) { $0[0] } }
+    let dataframe_ = ccv_cnnp_dataframe_from_csv_new(fileHandle, Int32(CCV_CNNP_DATAFRAME_CSV_FILE), 0, delim, quote, (automaticUseHeader ? 1 : 0), &columnSize)
+    guard let dataframe = dataframe_ else {
+      return nil
+    }
+    guard columnSize > 0 else {
+      ccv_cnnp_dataframe_free(dataframe)
+      return nil
+    }
+    _dataframe = dataframe
+    columnProperties = [String: ColumnProperty]()
+    for i in 0..<columnSize {
+      var inputIndex: Int32 = Int32(i)
+      let stringIndex = ccv_cnnp_dataframe_map(dataframe, { input, _, row_size, data, context, _ in
+        guard let input = input else { return }
+        guard let data = data else { return }
+        let inputData = input[0]!
+        for i in 0..<Int(row_size) {
+          guard let str = inputData[i].map({ String(cString: $0.assumingMemoryBound(to: Int8.self)) }) else {
+            continue
+          }
+          let obj = str as AnyObject
+          let utf8 = Unmanaged<AnyObject>.passRetained(obj).toOpaque()
+          (data + i).initialize(to: utf8)
+        }
+      }, 0, { obj, _ in
+        guard let obj = obj else { return }
+        Unmanaged<AnyObject>.fromOpaque(obj).release()
+      }, &inputIndex, 1, nil, nil, nil)
+      let columnName: String
+      if automaticUseHeader {
+        let cString = ccv_cnnp_dataframe_column_name(dataframe, Int32(i))
+        columnName = cString.map { String(cString: $0) } ?? "\(i)"
+      } else {
+        columnName = "\(i)"
+      }
+      columnProperties[columnName] = ColumnProperty(index: Int(stringIndex), type: .object)
+    }
+    _underlying = nil
   }
 
   public func shuffle() {

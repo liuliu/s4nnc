@@ -1,5 +1,12 @@
 import nnc
 
+let df = DataFrame(fromCSV: "/home/liu/workspace/paratext/tests/hepatitis.csv")!
+
+for i in df["AGE"] {
+  print(i)
+}
+
+/*
 let df = DataFrame(from: [1, 2])
 var tensor = Tensor<Float32>(.CPU, .C(1))
 tensor[0] = 1.2
@@ -8,7 +15,6 @@ for i in df["0", "image"] {
   print((i[1] as! Tensor<Float32>)[0])
 }
 
-/*
 let df = DataFrame(from: ["/home/liu/workspace/ccv/samples/basmati.png", "/home/liu/workspace/ccv/samples/dex.png", "/home/liu/workspace/ccv/samples/blackbox.png"])
 df["image"] = df["0"].toLoadImage()
 
