@@ -138,6 +138,41 @@ final class DataFrameTests: XCTestCase {
     XCTAssertEqual(newArray, [1.2, 2.2])
   }
 
+  func testReadCSV() throws {
+    let df = DataFrame(fromCSV: "test/scaled_data.csv")!
+    var newArray = [String]()
+    for i in df["V0001", String.self] {
+      newArray.append(i)
+    }
+    let truthArray: [String] = [
+      "0.0239389181223648",
+      "0.128521802419456",
+      "0.157117194502824",
+      "0.255931328978371",
+      "0.160808946156887",
+      "0.129455089453963",
+      "0.0944587345381377",
+      "0.0619675688122819",
+      "0.125194372114953",
+      "0.114054752304399",
+      "0.0331194635169463",
+      "0.0796469310314676",
+      "0.0971290536167178",
+      "0.0576220663889997",
+      "0.134768058679109",
+      "0.0655047474218985",
+      "0.189655655632105",
+      "-0.019471558855501",
+      "-0.0161545694780594",
+      "0.131137326326646",
+      "0.160254357051892",
+      "0.0506895539858365",
+      "-0.01033458071889",
+      "-0.12347980825132"
+    ]
+    XCTAssertEqual(newArray, truthArray)
+  }
+
   static var allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -147,6 +182,7 @@ final class DataFrameTests: XCTestCase {
     ("testMap", testMap),
     ("testMultiMap", testMultiMap),
     ("testFromTensor", testFromTensor),
-    ("testFromTensorArray", testFromTensorArray)
+    ("testFromTensorArray", testFromTensorArray),
+    ("testReadCSV", testReadCSV)
   ]
 }

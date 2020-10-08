@@ -10,5 +10,8 @@ swift_test(
 	],
 	deps = [
 		"//nnc:nnc"
+	],
+	data = [
+		"scaled_data.csv"
 	]
 )

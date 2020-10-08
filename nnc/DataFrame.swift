@@ -86,6 +86,7 @@ public final class DataFrame {
   public init?(fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",", quotation: String = "\"") {
     var columnSize: Int32 = 0
     let fileHandle = fopen(filePath, "r")
+    guard fileHandle != nil else { return nil }
     assert(delimiter.count == 1)
     assert(quotation.count == 1)
     var _delimiter = delimiter
@@ -93,6 +94,7 @@ public final class DataFrame {
     var _quotation = quotation
     let quote = _quotation.withUTF8 { $0.withMemoryRebound(to: CChar.self) { $0[0] } }
     let dataframe_ = ccv_cnnp_dataframe_from_csv_new(fileHandle, Int32(CCV_CNNP_DATAFRAME_CSV_FILE), 0, delim, quote, (automaticUseHeader ? 1 : 0), &columnSize)
+    fclose(fileHandle)
     guard let dataframe = dataframe_ else {
       return nil
     }
