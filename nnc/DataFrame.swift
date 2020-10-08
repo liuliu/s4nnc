@@ -52,6 +52,10 @@ public final class DataFrame {
   private let _dataframe: OpaquePointer
   private var columnProperties: [String: ColumnProperty]
 
+  public var columns: [String] {
+    return Array(columnProperties.keys)
+  }
+
   public init<S: Sequence>(from sequence: S, name: String = "0") {
     let underlying = Wrapped(Array(sequence) as [AnyObject])
     var column_data = ccv_cnnp_column_data_t()

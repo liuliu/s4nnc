@@ -2,9 +2,7 @@ import nnc
 
 let df = DataFrame(fromCSV: "/home/liu/workspace/paratext/tests/hepatitis.csv")!
 
-for i in df["AGE"] {
-  print(i)
-}
+print(df.columns)
 
 /*
 let df = DataFrame(from: [1, 2])
