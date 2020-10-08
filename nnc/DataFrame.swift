@@ -138,29 +138,43 @@ public final class DataFrame {
     ccv_cnnp_dataframe_shuffle(_dataframe)
   }
 
-  public subscript(firstIndex: String, indices: String...) -> ManyUntypedSeries {
-    get {
-      var properties = [ColumnProperty]()
-      properties.append(columnProperties[firstIndex]!)
-      for index in indices {
-        properties.append(columnProperties[index]!)
-      }
-      let i: [Int32] = properties.map { Int32($0.index) }
-      let iter = ccv_cnnp_dataframe_iter_new(_dataframe, i, Int32(i.count))!
-      let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
-      return ManyUntypedSeries(iter, count: Int(rowCount), properties: properties)
+  public subscript(firstIndex: String, secondIndex: String, indices: String...) -> ManyUntypedSeries {
+    var properties = [ColumnProperty]()
+    properties.append(columnProperties[firstIndex]!)
+    properties.append(columnProperties[secondIndex]!)
+    for index in indices {
+      properties.append(columnProperties[index]!)
     }
+    let i: [Int32] = properties.map { Int32($0.index) }
+    let iter = ccv_cnnp_dataframe_iter_new(_dataframe, i, Int32(i.count))!
+    let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
+    return ManyUntypedSeries(iter, count: Int(rowCount), properties: properties)
   }
 
-  public subscript(index: String) -> UntypedSeries {
+  public subscript<S: Sequence>(indices: S) -> ManyUntypedSeries where S.Element == String {
+    let properties = indices.map { columnProperties[$0]! }
+    assert(properties.count > 0)
+    let i: [Int32] = properties.map { Int32($0.index) }
+    let iter = ccv_cnnp_dataframe_iter_new(_dataframe, i, Int32(i.count))!
+    let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
+    return ManyUntypedSeries(iter, count: Int(rowCount), properties: properties)
+  }
+
+  public subscript(index: String) -> UntypedSeries? {
     get {
-      let columnProperty = columnProperties[index]!
+      guard let columnProperty = columnProperties[index] else {
+        return nil
+      }
       var i: Int32 = Int32(columnProperty.index)
       let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
       let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
       return UntypedSeries(iter, count: Int(rowCount), name: index, property: columnProperty)
     }
     set (v) {
+      guard let v = v else {
+        columnProperties[index] = nil
+        return
+      }
       switch (v.role) {
         case .opaque(_):
           columnProperties[index] = columnProperties[v.name!]!
@@ -179,13 +193,11 @@ public final class DataFrame {
   }
 
   public subscript<Element>(index: String, type: Element.Type) -> TypedSeries<Element> {
-    get {
-      let columnProperty = columnProperties[index]!
-      var i: Int32 = Int32(columnProperty.index)
-      let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
-      let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
-      return TypedSeries(iter, count: Int(rowCount), property: columnProperty)
-    }
+    let columnProperty = columnProperties[index]!
+    var i: Int32 = Int32(columnProperty.index)
+    let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
+    let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
+    return TypedSeries(iter, count: Int(rowCount), property: columnProperty)
   }
 
   public var count: Int {

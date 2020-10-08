@@ -12,7 +12,7 @@ final class DataFrameTests: XCTestCase {
       newArray.append(i)
     }
     XCTAssertEqual(newArray, [1, 2, 3, 4])
-    for i in df["0"] {
+    for i in df["0"]! {
       newArray.append(i as! Int)
     }
     XCTAssertEqual(newArray, [1, 2, 3, 4, 1, 2, 3, 4])
@@ -23,6 +23,16 @@ final class DataFrameTests: XCTestCase {
     df["1"] = .from(10)
     var newArray = [[Int]]()
     for i in df["0", "1"] {
+      newArray.append(i as! [Int])
+    }
+    XCTAssertEqual(newArray, [[1, 10], [2, 10], [3, 10], [4, 10]])
+  }
+
+  func testAddScalarWithSequenceIndices() throws {
+    let df = DataFrame(from: [1, 2, 3, 4])
+    df["1"] = .from(10)
+    var newArray = [[Int]]()
+    for i in df[["0", "1"]] {
       newArray.append(i as! [Int])
     }
     XCTAssertEqual(newArray, [[1, 10], [2, 10], [3, 10], [4, 10]])
@@ -48,7 +58,7 @@ final class DataFrameTests: XCTestCase {
     let df = DataFrame(from: [MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2")])
     var newArray = [MyStruct?]()
 
-    for i in df["0"] {
+    for i in df["0"]! {
       let s = i as? MyStruct
       newArray.append(s)
     }
@@ -64,7 +74,7 @@ final class DataFrameTests: XCTestCase {
     let df = DataFrame(from: [MyEnum.value(1.0), MyEnum.string("1.2")])
     var newArray = [MyEnum]()
 
-    for i in df["0"] {
+    for i in df["0"]! {
       let s = i as! MyEnum
       newArray.append(s)
     }
@@ -73,7 +83,7 @@ final class DataFrameTests: XCTestCase {
 
   func testMap() throws {
     let df = DataFrame(from: [1, 2, 3, 4, 5])
-    df["+1"] = df["0"].map { (i: Int) -> Int in
+    df["+1"] = df["0"]!.map { (i: Int) -> Int in
       i + 1
     }
     var newArray = [Int]()
@@ -86,7 +96,7 @@ final class DataFrameTests: XCTestCase {
   func testMultiMap() throws {
     let df = DataFrame(from: [1, 2, 3, 4, 5])
 
-    df["+1"] = df["0"].map { (i: Int) -> Int in
+    df["+1"] = df["0"]!.map { (i: Int) -> Int in
       i + 1
     }
 
@@ -176,6 +186,7 @@ final class DataFrameTests: XCTestCase {
   static var allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
+    ("testAddScalarWithSequenceIndices", testAddScalarWithSequenceIndices),
     ("testRename", testRename),
     ("testStruct", testStruct),
     ("testEnum", testEnum),
