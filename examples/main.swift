@@ -1,5 +1,12 @@
 import nnc
 
+let df = DataFrame(fromCSV: "/home/liu/workspace/paratext/tests/hepatitis-chinese.csv")!
+
+let columns = df.columns
+for i in df[columns] {
+  print(i as! [String])
+}
+
 /*
 let df = DataFrame(from: [1, 2])
 var tensor = Tensor<Float32>(.CPU, .C(1))
