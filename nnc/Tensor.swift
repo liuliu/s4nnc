@@ -180,6 +180,51 @@ public final class _AnyTensor {
   var dataType: DataType {
     DataType.from(cTensorParams: _tensor.pointee.info)
   }
+
+  func copy() -> _AnyTensor {
+    var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = _tensor
+    var output = ccv_nnc_tensor_new(nil, _tensor.pointee.info, 0)
+    ccv_nnc_cmd_exec(ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, ccv_nnc_cmd_param_t(), 0),
+      ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
+    return _AnyTensor(output!)
+  }
+
+  var increments: [Int] {
+    let type = Int(_tensor.pointee.type)
+    guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
+      return fromCDimensions(_tensor.pointee.info.dim)
+    }
+    let inc = UnsafeMutableRawPointer(_tensor).bindMemory(to: ccv_nnc_tensor_view_t.self, capacity: 1).pointee.inc
+    return fromCDimensions(inc)
+  }
+
+  subscript<Element: TensorNumeric>(indices: [Int], type: Element.Type) -> Element {
+    get {
+      let increments = self.increments
+      assert(increments.count == indices.count)
+      let count = increments.reduce(1, *)
+      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      var offset = 0
+      for (i, increment) in increments.enumerated() {
+        offset *= increment
+        offset += indices[i]
+      }
+      return (pointer + offset).pointee
+    }
+    set(v) {
+      let increments = self.increments
+      assert(increments.count == indices.count)
+      let count = increments.reduce(1, *)
+      // We need to deal with GPU memory.
+      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      var offset = 0
+      for (i, increment) in increments.enumerated() {
+        offset *= increment
+        offset += indices[i]
+      }
+      (pointer + offset).pointee = v
+    }
+  }
 }
 
 public protocol AnyTensor {
@@ -265,39 +310,14 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
   public subscript(indices: Int...) -> Element {
     get {
-      assert(increments.count == indices.count)
-      let increments = self.increments
-      let count = increments.reduce(1, *)
-      let tensor = _tensor._tensor
-      let pointer = tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
-      var offset = 0
-      for (i, increment) in increments.enumerated() {
-        offset *= increment
-        offset += indices[i]
-      }
-      return (pointer + offset).pointee
+      return _tensor[indices, Element.self]
     }
     set(v) {
-      assert(increments.count == indices.count)
-      let increments = self.increments
-      let count = increments.reduce(1, *)
       if !isKnownUniquelyReferenced(&_tensor) {
         // Make a copy (copy-on-write).
-        var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = _tensor._tensor
-        var output = ccv_nnc_tensor_new(nil, _tensor._tensor.pointee.info, 0)
-        ccv_nnc_cmd_exec(ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, ccv_nnc_cmd_param_t(), 0),
-          ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
-        _tensor = _AnyTensor(output!)
+        _tensor = _tensor.copy()
       }
-      // We need to deal with GPU memory.
-      let tensor = _tensor._tensor
-      let pointer = tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
-      var offset = 0
-      for (i, increment) in increments.enumerated() {
-        offset *= increment
-        offset += indices[i]
-      }
-      (pointer + offset).pointee = v
+      _tensor[indices, Element.self] = v
     }
   }
 

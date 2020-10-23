@@ -38,7 +38,7 @@ public extension ModelBuilder {
     assert(inputs.count > 0)
     let graph = inputs[0].graph
     for input in inputs {
-      assert(ObjectIdentifier(input.graph) == ObjectIdentifier(graph))
+      assert(input.graph === graph)
     }
     let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0._tensor }
     self.inputs = inputs

@@ -24,7 +24,7 @@ public extension Collection where Element: DynamicGraph.AnyTensor {
     precondition(self.count > 0)
     let graph = self.first!.graph
     for f in self {
-      assert(ObjectIdentifier(f.graph) == ObjectIdentifier(graph))
+      assert(f.graph === graph)
     }
     let _graph = graph._graph
     let _inputs: [ccv_nnc_tensor_variable_t?] = tensors.map { $0._tensor }

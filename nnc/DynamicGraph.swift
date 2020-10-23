@@ -39,6 +39,9 @@ public final class DynamicGraph {
     private var _rawValue: nnc._AnyTensor? = nil
 
     public var rawValue: nnc.Tensor<Element> {
+      if let rawValue = _rawValue {
+        return nnc.Tensor<Element>(rawValue)
+      }
       let _graph = graph._graph
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
       let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
@@ -49,6 +52,29 @@ public final class DynamicGraph {
     // If we did type conversion, we need to hold a reference to its parent.
     public convenience init(_ tensor: AnyTensor) {
       self.init(tensor.underlying)
+    }
+
+    public subscript(indices: Int...) -> Element {
+      get {
+        if let rawValue = _rawValue {
+          return rawValue[indices, Element.self]
+        }
+        let _graph = graph._graph
+        let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
+        let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
+        _rawValue = rawValue
+        return rawValue[indices, Element.self]
+      }
+      set(v) {
+        if let rawValue = _rawValue {
+          rawValue[indices, Element.self] = v
+        }
+        let _graph = graph._graph
+        let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
+        let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
+        _rawValue = rawValue
+        rawValue[indices, Element.self] = v
+      }
     }
   }
 
@@ -65,7 +91,7 @@ public final class DynamicGraph {
 }
 
 public func ==(lhs: DynamicGraph.AnyTensor, rhs: DynamicGraph.AnyTensor) -> Bool {
-  return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+  return lhs === rhs
 }
 
 extension DynamicGraph.AnyTensor: Hashable {

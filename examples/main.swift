@@ -1,29 +1,15 @@
 import nnc
 
-let df = DataFrame(fromCSV: "/home/liu/workspace/paratext/tests/hepatitis-chinese.csv")!
+let graph = DynamicGraph()
 
-let columns = df.columns
-for i in df[columns] {
-  print(i as! [String])
-}
+let a: DynamicGraph.Tensor<Float> = graph.variable(.CPU, .C(1))
+let b: DynamicGraph.Tensor<Float> = graph.variable(.CPU, .C(1))
 
-/*
-let df = DataFrame(from: [1, 2])
-var tensor = Tensor<Float32>(.CPU, .C(1))
-tensor[0] = 1.2
-df["image"] = .from([tensor, tensor])
-for i in df["0", "image"] {
-  print((i[1] as! Tensor<Float32>)[0])
-}
+a[0] = 1.2
+b[0] = 2.2
 
-let df = DataFrame(from: ["/home/liu/workspace/ccv/samples/basmati.png", "/home/liu/workspace/ccv/samples/dex.png", "/home/liu/workspace/ccv/samples/blackbox.png"])
-df["image"] = df["0"].toLoadImage()
-
-df["+1"] = df["0", "image"].map { (file: String, image: AnyTensor) -> AnyTensor in
-  return Tensor<Float32>(.CPU, .C(1))
-}
-
-for i in df["0", "+1"] {
-  print(i)
-}
-*/
+let gpu_a = a.toGPU()
+let gpu_b = b.toGPU()
+let c = gpu_a .* gpu_b
+let cpu_c = c.toCPU()
+print(cpu_c[0])
