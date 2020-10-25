@@ -9,6 +9,7 @@ swift_library(
 		"DynamicGraph.swift",
 		"DataFrame.swift",
 		"Functional.swift",
+		"Hint.swift",
 		"Model.swift",
 		"ModelAddons.swift",
 		"ModelBuilder.swift",

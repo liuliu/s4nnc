@@ -394,6 +394,33 @@ func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, 
   }
 }
 
+func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
+  guard let dimensions = dimensions else {
+    return [0, 0, 0, 0, 0, 0, 0, 0]
+  }
+  assert(dimensions.count <= CCV_NNC_MAX_DIM_ALLOC)
+  switch dimensions.count {
+    case 1:
+      return [Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0]
+    case 2:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0]
+    case 3:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0]
+    case 4:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), 0, 0, 0, 0]
+    case 5:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), 0, 0, 0]
+    case 6:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), 0, 0]
+    case 7:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0]
+    case 8:
+      return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7])]
+    default:
+    return [0, 0, 0, 0, 0, 0, 0, 0]
+  }
+}
+
 func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)) -> [Int] {
     if dim.0 == 0 {
       return []

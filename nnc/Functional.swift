@@ -52,6 +52,16 @@ public extension Functional {
     let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])
   }
+
+  // Scalar-matrix multiplication
+  static func scalmul<Element>(left: Float, right: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
+    var params = ccv_nnc_cmd_param_t()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.blas.a = (left, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_SCALAR_MUL_FORWARD, nil, params, 0)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [right], outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Tensor<Element>(outputs[0])
+  }
 }
 
 public extension DynamicGraph.Tensor {
