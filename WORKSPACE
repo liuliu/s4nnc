@@ -1,4 +1,4 @@
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
 git_repository(
 	name = "ccv",
@@ -51,3 +51,11 @@ apple_support_dependencies()
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
+
+new_git_repository(
+	name = "PythonKit",
+	remote = "https://github.com/pvieito/PythonKit.git",
+	commit = "669eeae6e6f98b6f56c1f675f8baceeb5b2b0920",
+	shallow_since = "1603358082 +0200",
+	build_file = "PythonKit.BUILD"
+)

@@ -4,6 +4,7 @@ swift_binary(
 	name = "main",
 	srcs = ["main.swift"],
 	deps = [
-		"//nnc:nnc"
+		"//nnc:nnc",
+		"@PythonKit//:PythonKit"
 	]
 )
