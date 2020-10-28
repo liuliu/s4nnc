@@ -33,6 +33,12 @@ public final class DynamicGraph {
     fileprivate init(_ underlying: _AnyTensor) {
       self.underlying = underlying
     }
+
+    public var dimensions: [Int] {
+        let _graph = graph._graph
+      let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
+      return fromCDimensions(info.dim)
+    }
   }
 
   public final class Tensor<Element: TensorNumeric>: AnyTensor {

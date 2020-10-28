@@ -1,4 +1,5 @@
 import nnc
+import PythonKit
 
 func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model
 {
@@ -66,6 +67,22 @@ func ClassicTransformer(layers: Int, k: Int, h: Int, b: Int, t: Int, ff: Int, dr
   out = Flatten()(out)
   out = Dense(count: 1)(out)
   return Model([x, mask], [out])
+}
+
+struct TransformerParameter {
+  var ff: Int
+  var layers: Int
+  var h: Int
+  var dropout: Float
+}
+
+let parameters = TransformerParameter(ff: 8, layers: 6, h: 10, dropout: 0.5)
+
+let dynamicClassicTransformer: ModelBuilder = ModelBuilder { inputs in
+  let b = inputs[0].dimensions[0]
+  let t = inputs[0].dimensions[1]
+  let k = inputs[0].dimensions[2]
+  return ClassicTransformer(layers: parameters.layers, k: k, h: parameters.h, b: b, t: t, ff: parameters.ff * k, dropout: parameters.dropout)
 }
 
 let graph = DynamicGraph()
