@@ -94,3 +94,9 @@ bazel-*
 .bazelrc
 clang.bazelrc
 .cache
+
+*.[oda]
+*.~
+*.swp
+*.gcno
+*.out

@@ -76,7 +76,7 @@ struct TransformerParameter {
   var dropout: Float
 }
 
-let parameters = TransformerParameter(ff: 8, layers: 6, h: 10, dropout: 0.5)
+let parameters = TransformerParameter(ff: 4, layers: 2, h: 8, dropout: 0.1)
 
 let dynamicClassicTransformer: ModelBuilder = ModelBuilder { inputs in
   let b = inputs[0].dimensions[0]
