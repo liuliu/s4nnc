@@ -36,8 +36,8 @@ ccv_setting(
 git_repository(
 	name = "dflat",
 	remote = "https://github.com/liuliu/dflat.git",
-	commit = "88aec220642bb5e416074bc8b8a4e5c8b86a61c2",
-	shallow_since = "1604112303 -0400"
+	commit = "3dc11274e8c466dd28ee35cdd04e84ddf7d420bc",
+	shallow_since = "1604185591 -0400"
 )
 
 load("@dflat//:deps.bzl", "dflat_deps")
