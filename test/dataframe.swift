@@ -183,7 +183,7 @@ final class DataFrameTests: XCTestCase {
     XCTAssertEqual(newArray, truthArray)
   }
 
-  static var allTests = [
+  static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
     ("testAddScalarWithSequenceIndices", testAddScalarWithSequenceIndices),

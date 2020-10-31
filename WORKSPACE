@@ -34,6 +34,17 @@ ccv_setting(
 )
 
 git_repository(
+	name = "dflat",
+	remote = "https://github.com/liuliu/dflat.git",
+	commit = "5a04f8930652ec876e101eff49a7b7827154fc8f",
+	shallow_since = "1604109299 -0400"
+)
+
+load("@dflat//:deps.bzl", "dflat_deps")
+
+dflat_deps()
+
+git_repository(
 	name = "build_bazel_rules_swift",
 	remote = "https://github.com/bazelbuild/rules_swift.git",
 	commit = "6ae82f57ebefa13df5ce1daf7a2fd3080e41df55",

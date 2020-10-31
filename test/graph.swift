@@ -15,7 +15,7 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[1, 1], 2.2 * 3.3)
   }
 
-  static var allTests = [
+  static let allTests = [
     ("testGEMM", testGEMM),
   ]
 }

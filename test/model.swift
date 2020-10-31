@@ -46,7 +46,7 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(b5.rawValue[1], 2.2 * 3.3)
   }
 
-  static var allTests = [
+  static let allTests = [
     ("testModel", testModel),
     ("testModelBuilder", testModelBuilder)
   ]
