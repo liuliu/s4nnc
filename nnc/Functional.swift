@@ -41,6 +41,14 @@ public extension Functional {
     return DynamicGraph.Tensor<Element>(outputs[0])
   }
 
+  // Element-wise log
+  static func log<Element>(_ one: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
+    let params = ccv_nnc_cmd_param_t()
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWLOG_FORWARD, nil, params, 0)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [one], outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Tensor<Element>(outputs[0])
+  }
+
   // Matrix multiplication
   static func matmul<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, leftTranspose: (Int, Int) = (0, 0), rightTranspose: (Int, Int) = (0, 0), streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
     var params = ccv_nnc_cmd_param_t()

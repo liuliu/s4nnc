@@ -6,7 +6,8 @@ swift_test(
 		"dataframe.swift",
 		"graph.swift",
 		"main.swift",
-		"model.swift"
+		"model.swift",
+		"optimizer.swift"
 	],
 	deps = [
 		"//nnc:nnc"

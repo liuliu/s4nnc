@@ -2,9 +2,10 @@
 import XCTest
 
 XCTMain([
-  testCase(ModelTests.allTests),
+  testCase(DataFrameTests.allTests),
   testCase(GraphTests.allTests),
-  testCase(DataFrameTests.allTests)
+  testCase(ModelTests.allTests),
+  testCase(OptimizerTests.allTests)
 ])
 
 #endif

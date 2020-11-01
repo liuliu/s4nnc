@@ -17,6 +17,10 @@ public extension DynamicGraph.AnyTensor {
     ccv_nnc_dynamic_graph_backward(_graph, &f, 1, nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
     _outputs.deallocate()
   }
+
+  func backward(to tensor: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil) {
+    backward(to: [tensor], streamContext: streamContext)
+  }
 }
 
 public extension Collection where Element: DynamicGraph.AnyTensor {
@@ -40,5 +44,9 @@ public extension Collection where Element: DynamicGraph.AnyTensor {
     let f: [ccv_nnc_tensor_variable_t?] = self.map { $0._tensor }
     ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
     _outputs.deallocate()
+  }
+
+  func backward(to tensor: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil) {
+    backward(to: [tensor], streamContext: streamContext)
   }
 }
