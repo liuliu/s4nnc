@@ -87,10 +87,7 @@ let dynamicClassicTransformer: ModelBuilder = ModelBuilder { inputs in
 
 let graph = DynamicGraph()
 
-let a: DynamicGraph.Tensor<Float> = graph.variable(.CPU, .C(1))
-let b: DynamicGraph.Tensor<Float> = graph.variable(.CPU, .C(1))
-
-a[0] = 1.2
-b[0] = 2.2
-let c = 2.2 * a .* (b * 3.3)
-print(c[0])
+let trainList = "/fast/Data/IMDB_Movie_Reviews/aclImdb/train.txt"
+let testList = "/fast/Data/IMDB_Movie_Reviews/aclImdb/test.txt"
+let vocabFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/imdb.vocab"
+let baseDir = "/fast/Data/IMDB_Movie_Reviews/aclImdb"

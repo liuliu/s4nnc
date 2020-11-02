@@ -1,8 +1,17 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary")
 
 swift_binary(
-	name = "main",
-	srcs = ["main.swift"],
+	name = "imdb",
+	srcs = ["imdb/main.swift"],
+	deps = [
+		"//nnc:nnc",
+		"@PythonKit//:PythonKit"
+	]
+)
+
+swift_binary(
+	name = "pandas",
+	srcs = ["pandas/main.swift"],
 	deps = [
 		"//nnc:nnc",
 		"@PythonKit//:PythonKit"
