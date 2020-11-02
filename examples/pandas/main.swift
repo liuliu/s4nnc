@@ -1,12 +1,8 @@
 import nnc
 import PythonKit
 
-let graph = DynamicGraph()
-
-let a: DynamicGraph.Tensor<Float> = graph.variable(.CPU, .C(1))
-let b: DynamicGraph.Tensor<Float> = graph.variable(.CPU, .C(1))
-
-a[0] = 1.2
-b[0] = 2.2
-let c = 2.2 * a .* (b * 3.3)
-print(c[0])
+let sys = Python.import("sys")
+let result: PythonObject = (sys.version_info.major == 3)
+if result == true {
+  print(sys.version_info)
+}

@@ -65,8 +65,8 @@ protobuf_deps()
 
 new_git_repository(
 	name = "PythonKit",
-	remote = "https://github.com/pvieito/PythonKit.git",
-	commit = "669eeae6e6f98b6f56c1f675f8baceeb5b2b0920",
-	shallow_since = "1603358082 +0200",
+	remote = "https://github.com/liuliu/PythonKit.git",
+	commit = "e1a58f0e3138827f65a66085ab4bcbbbcbe64862",
+	shallow_since = "1604330956 -0500",
 	build_file = "PythonKit.BUILD"
 )

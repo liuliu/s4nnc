@@ -91,3 +91,4 @@ let trainList = "/fast/Data/IMDB_Movie_Reviews/aclImdb/train.txt"
 let testList = "/fast/Data/IMDB_Movie_Reviews/aclImdb/test.txt"
 let vocabFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/imdb.vocab"
 let baseDir = "/fast/Data/IMDB_Movie_Reviews/aclImdb"
+
