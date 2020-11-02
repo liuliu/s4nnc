@@ -1,6 +1,16 @@
 infix operator .*: MultiplicationPrecedence
+infix operator .+: AdditionPrecedence
 
-// Element-wise multiplication
+// Element-wise addition
+public func .+<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+  return Functional.sum(left: left, right: right)
+}
+
+public func .+(left: Model.IO, right: Model.IO) -> Model.IO {
+  return Sum()(left, right)
+}
+
+// Broadcast element-wise multiplication
 public func .*<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
   return Functional.mul(left: left, right: right)
 }
@@ -9,7 +19,7 @@ public func .*(left: Model.IO, right: Model.IO) -> Model.IO {
   return Mul()(left, right)
 }
 
-// Element-wise addition
+// Broadcast element-wise addition
 public func +<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
   return Functional.add(left: left, right: right)
 }
@@ -18,7 +28,7 @@ public func +(left: Model.IO, right: Model.IO) -> Model.IO {
   return Add()(left, right)
 }
 
-// Element-wise subtraction.
+// Broadcast element-wise subtraction.
 public func -<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
   return Functional.add(left: left, right: right, rightScalar: -1)
 }
