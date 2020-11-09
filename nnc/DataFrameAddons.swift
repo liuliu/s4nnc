@@ -196,49 +196,29 @@ public extension DataFrame.TypedSeries where Element == Int {
 // MARK - Copy to GPU.
 
 extension DataFrame {
-  static func addToGPU(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _: AnyObject?) -> ColumnProperty {
+  static func addToOneGPU(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
     var inputIndex = Int32(property.index)
-    let pathIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
-      guard let input = input else { return }
-      guard let data = data else { return }
-      let inputData = input[0]!
-      for i in 0..<Int(row_size) {
-        var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
-        let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
-          let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count + 1)
-          string.initialize(from: $0.baseAddress!, count: $0.count)
-          // null-terminated
-          (string + $0.count).initialize(to: 0)
-          let container = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: 1)
-          container.initialize(to: string)
-          return container
-        }
-        (data + i).initialize(to: utf8)
-      }
-    }, 0, { container, _ in
-      guard let container = container else { return }
-      let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
-      string.deallocate()
-      container.deallocate()
-    }, &inputIndex, 1, nil, nil, nil)
-    let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0, name)
+    let tupleIndex = ccv_cnnp_dataframe_make_tuple(_dataframe, &inputIndex, 1, nil)
+    let ordinal = params! as! Int
+    let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(_dataframe, tupleIndex, 0, 1, Int32(ordinal), nil)
+    let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, copyIndex, 0, name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 
 public extension DataFrame.UntypedSeries {
-  func toGPU() -> DataFrame.UntypedSeries {
+  func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToGPU, nil))
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneGPU, ordinal as AnyObject))
   }
 }
 
 public extension DataFrame.TypedSeries where Element: AnyTensor {
-  func toGPU() -> DataFrame.UntypedSeries {
+  func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToGPU, nil))
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneGPU, ordinal as AnyObject))
   }
 }

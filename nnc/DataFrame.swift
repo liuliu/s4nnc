@@ -58,12 +58,14 @@ public final class DataFrame {
   }
 
   init(dataframe: OpaquePointer, underlying: AnyObject?, columnProperties: [String: ColumnProperty]) {
+    ccv_nnc_init()
     _dataframe = dataframe
     _underlying = underlying
     self.columnProperties = columnProperties
   }
 
   public init<S: Sequence>(from sequence: S, name: String = "0") {
+    ccv_nnc_init()
     let underlying = Wrapped(Array(sequence) as [AnyObject])
     var column_data = ccv_cnnp_column_data_t()
     let propertyType: ColumnProperty.PropertyType

@@ -244,6 +244,28 @@ final class DataFrameTests: XCTestCase {
     }
   }
 
+  func testToGPU() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    df["main_gpu"] = df["main"]!.toGPU()
+    var i: Int = 0
+    for tensor in df["main_gpu", Tensor<Float32>.self] {
+      let cpu = tensor.toCPU()
+      switch i {
+      case 0:
+        XCTAssertEqual(1.1, cpu[0])
+      case 1:
+        XCTAssertEqual(2.2, cpu[0])
+      default:
+        break
+      }
+      i += 1
+    }
+  }
+
   static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -259,6 +281,7 @@ final class DataFrameTests: XCTestCase {
     ("testBatching", testBatching),
     ("testTypedBatching", testTypedBatching),
     ("testMultiBatching", testMultiBatching),
-    ("testOneHot", testOneHot)
+    ("testOneHot", testOneHot),
+    ("testToGPU", testToGPU)
   ]
 }

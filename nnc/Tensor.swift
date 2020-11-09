@@ -352,7 +352,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     }
   }
 
-  func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
+  public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(nil,
       toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, dimensions: dimensions),
       0)
@@ -365,7 +365,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     return Self(_AnyTensor(_output!))
   }
 
-  func toCPU(streamContext: StreamContext? = nil) -> Self {
+  public func toCPU(streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(nil,
       toCTensorParams(.CPU, dataType: dataType, format: format, dimensions: dimensions),
       0)
