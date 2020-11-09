@@ -79,7 +79,7 @@ extension DataFrame {
     precondition(property.type == .tensor)
     self.init(dataframe: dataframe, properties: [property], size: size)
   }
-  public convenience init(batchOf: DataFrame.TypedSeries<AnyTensor>, size: Int) {
+  public convenience init<T: AnyTensor>(batchOf: DataFrame.TypedSeries<T>, size: Int) {
     let property = batchOf.property
     precondition(property.type == .tensor)
     self.init(dataframe: batchOf.dataframe, properties: [property], size: size)
@@ -91,39 +91,12 @@ extension DataFrame {
     }
     self.init(dataframe: batchOf.dataframe, properties: properties, size: size)
   }
-  public convenience init?(batchOf: DataFrame.UntypedSeries?, size: Int) {
-    guard let batchOf = batchOf else { return nil }
-    self.init(batchOf: batchOf, size: size)
-  }
-  public convenience init?(batchOf: DataFrame.TypedSeries<AnyTensor>?, size: Int) {
-    guard let batchOf = batchOf else { return nil }
-    self.init(batchOf: batchOf, size: size)
-  }
-  public convenience init?(batchOf: DataFrame.ManyUntypedSeries?, size: Int) {
-    guard let batchOf = batchOf else { return nil }
-    self.init(batchOf: batchOf, size: size)
-  }
 }
 
 // MARK - Load image.
 
-public extension DataFrame.UntypedSeries {
-  func toLoadImage() -> DataFrame.UntypedSeries {
-    guard let property = property else {
-      fatalError("Can only load from series from DataFrame")
-    }
-    return DataFrame.UntypedSeries(.image(property))
-  }
-}
-
-public extension DataFrame.TypedSeries where Element == String {
-  func toLoadImage() -> DataFrame.UntypedSeries {
-    return DataFrame.UntypedSeries(.image(property))
-  }
-}
-
 extension DataFrame {
-  func add(toLoadImage property: ColumnProperty, name: String) {
+  static func addToLoadImage(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _: AnyObject?) -> ColumnProperty {
     var inputIndex = Int32(property.index)
     let pathIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
@@ -149,6 +122,123 @@ extension DataFrame {
       container.deallocate()
     }, &inputIndex, 1, nil, nil, nil)
     let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0, name)
-    columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.UntypedSeries {
+  func toLoadImage() -> DataFrame.UntypedSeries {
+    guard let property = property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .object)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToLoadImage, nil))
+  }
+}
+
+public extension DataFrame.TypedSeries where Element == String {
+  func toLoadImage() -> DataFrame.UntypedSeries {
+    precondition(property.type == .object)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToLoadImage, nil))
+  }
+}
+
+// MARK - One-hot.
+
+final class OneHotParams {
+  let dataType: DataType
+  let count: Int
+  let onval: Float
+  let offval: Float
+  init(dataType: DataType, count: Int, onval: Float, offval:Float) {
+    self.dataType = dataType
+    self.count = count
+    self.onval = onval
+    self.offval = offval
+  }
+}
+
+extension DataFrame {
+  static func addToOneHot(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+    var inputIndex = Int32(property.index)
+    let oneHotParams = params! as! OneHotParams
+    let intIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+      guard let input = input else { return }
+      guard let data = data else { return }
+      let inputData = input[0]!
+      for i in 0..<Int(row_size) {
+        let int = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! Int
+        var int32: Int32 = Int32(int)
+        (data + i).initialize(to: &int32)
+      }
+    }, 0, nil, &inputIndex, 1, nil, nil, nil)
+    let index = ccv_cnnp_dataframe_one_hot(_dataframe, intIndex, 0, Int32(oneHotParams.count), oneHotParams.onval, oneHotParams.offval, oneHotParams.dataType.toC, Int32(CCV_TENSOR_FORMAT_NCHW), name)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.UntypedSeries {
+  func toOneHot<Element: TensorNumeric>(_ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0) -> DataFrame.UntypedSeries {
+    guard let property = property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .object)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneHot, OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
+  }
+}
+
+public extension DataFrame.TypedSeries where Element == Int {
+  func toOneHot<Element: TensorNumeric>(_ dataType: Element.Type, count: Int, onval: Float = 0, offval: Float = 1) -> DataFrame.UntypedSeries {
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneHot, OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
+  }
+}
+
+// MARK - Copy to GPU.
+
+extension DataFrame {
+  static func addToGPU(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _: AnyObject?) -> ColumnProperty {
+    var inputIndex = Int32(property.index)
+    let pathIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+      guard let input = input else { return }
+      guard let data = data else { return }
+      let inputData = input[0]!
+      for i in 0..<Int(row_size) {
+        var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
+        let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
+          let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count + 1)
+          string.initialize(from: $0.baseAddress!, count: $0.count)
+          // null-terminated
+          (string + $0.count).initialize(to: 0)
+          let container = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: 1)
+          container.initialize(to: string)
+          return container
+        }
+        (data + i).initialize(to: utf8)
+      }
+    }, 0, { container, _ in
+      guard let container = container else { return }
+      let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
+      string.deallocate()
+      container.deallocate()
+    }, &inputIndex, 1, nil, nil, nil)
+    let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0, name)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.UntypedSeries {
+  func toGPU() -> DataFrame.UntypedSeries {
+    guard let property = property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToGPU, nil))
+  }
+}
+
+public extension DataFrame.TypedSeries where Element: AnyTensor {
+  func toGPU() -> DataFrame.UntypedSeries {
+    precondition(property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToGPU, nil))
   }
 }

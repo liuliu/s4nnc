@@ -157,12 +157,12 @@ public final class DataFrame {
           self.add(from: scalar, name: index)
         case .sequence(let sequence):
           self.add(from: sequence, name: index)
-        case .image(let property):
-          self.add(toLoadImage: property, name: index)
         case .map(let property, let mapper, let outputType):
           self.add(map: mapper, property: property, outputType: outputType, name: index)
         case .multimap(let properties, let mapper, let outputType):
           self.add(multimap: mapper, properties: properties, outputType: outputType, name: index)
+        case .native(let property, let transformer, let context):
+          columnProperties[index] = transformer(_dataframe, property, index, context)
       }
     }
   }
@@ -190,9 +190,9 @@ enum UntypedSeriesAction {
   // setter
   case scalar(AnyObject)
   case sequence(DataFrame.Wrapped<[AnyObject]>)
-  case image(DataFrame.ColumnProperty)
   case map(DataFrame.ColumnProperty, (AnyObject) -> AnyObject, DataFrame.ColumnProperty.PropertyType)
   case multimap([DataFrame.ColumnProperty], ([AnyObject]) -> AnyObject, DataFrame.ColumnProperty.PropertyType)
+  case native(DataFrame.ColumnProperty, (OpaquePointer, DataFrame.ColumnProperty, String, AnyObject?) -> DataFrame.ColumnProperty, AnyObject?)
 }
 
 public extension DataFrame {

@@ -95,13 +95,13 @@ public extension DynamicGraph.Tensor {
 }
 
 public extension DynamicGraph.Tensor {
-  func toGPU(_ index: Int = 0, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
+  func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
     var params = ccv_nnc_cmd_param_t()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
     var _input: ccv_nnc_tensor_variable_t? = self._tensor
     let rawInput = self.rawValue
-    let output: DynamicGraph.Tensor<Element> = graph.variable(.GPU(index), format: rawInput.format, dimensions: rawInput.dimensions)
+    let output: DynamicGraph.Tensor<Element> = graph.variable(.GPU(ordinal), format: rawInput.format, dimensions: rawInput.dimensions)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
     let _graph = graph._graph
     let _streamContext = streamContext?._stream

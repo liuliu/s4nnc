@@ -33,6 +33,17 @@ public enum TensorFormat {
         fatalError("unspecified format")
     }
   }
+
+  var toC: Int32 {
+    switch self {
+      case .NHWC:
+        return Int32(CCV_TENSOR_FORMAT_NHWC)
+      case .NCHW:
+        return Int32(CCV_TENSOR_FORMAT_NCHW)
+      case .CHWN:
+        return Int32(CCV_TENSOR_FORMAT_CHWN)
+    }
+  }
 }
 
 public enum TensorDimensionFormat {
@@ -128,6 +139,23 @@ public enum DataType {
         return .UInt8
       default:
         fatalError("unspecified datatype")
+    }
+  }
+
+  var toC: Swift.Int32 {
+    switch self {
+      case .Float64:
+        return Swift.Int32(CCV_64F)
+      case .Int64:
+        return Swift.Int32(CCV_64S)
+      case .Float32:
+        return Swift.Int32(CCV_32F)
+      case .Int32:
+        return Swift.Int32(CCV_32S)
+      case .Float16:
+        return Swift.Int32(CCV_16F)
+      case .UInt8:
+        return Swift.Int32(CCV_8U)
     }
   }
 }
@@ -313,12 +341,41 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       return _tensor[indices, Element.self]
     }
     set(v) {
+      guard case .CPU = kind else {
+        fatalError("cannot modify non-CPU tensor")
+      }
       if !isKnownUniquelyReferenced(&_tensor) {
         // Make a copy (copy-on-write).
         _tensor = _tensor.copy()
       }
       _tensor[indices, Element.self] = v
     }
+  }
+
+  func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
+    var _output = ccv_nnc_tensor_new(nil,
+      toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, dimensions: dimensions),
+      0)
+    var params = ccv_nnc_cmd_param_t()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    let _streamContext = streamContext?._stream
+    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
+    ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
+    return Self(_AnyTensor(_output!))
+  }
+
+  func toCPU(streamContext: StreamContext? = nil) -> Self {
+    var _output = ccv_nnc_tensor_new(nil,
+      toCTensorParams(.CPU, dataType: dataType, format: format, dimensions: dimensions),
+      0)
+    var params = ccv_nnc_cmd_param_t()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    let _streamContext = streamContext?._stream
+    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
+    ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
+    return Self(_AnyTensor(_output!))
   }
 
 }
@@ -451,28 +508,8 @@ func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorForma
     case .GPU(let ordinal):
       params.type = Int32(CCV_TENSOR_GPU_MEMORY | (ordinal << 8))
   }
-  switch dataType {
-    case .Float64:
-      params.datatype = Int32(CCV_64F)
-    case .Int64:
-      params.datatype = Int32(CCV_64S)
-    case .Float32:
-      params.datatype = Int32(CCV_32F)
-    case .Int32:
-      params.datatype = Int32(CCV_32S)
-    case .Float16:
-      params.datatype = Int32(CCV_16F)
-    case .UInt8:
-      params.datatype = Int32(CCV_8U)
-  }
-  switch format {
-    case .NHWC:
-      params.format = Int32(CCV_TENSOR_FORMAT_NHWC)
-    case .NCHW:
-      params.format = Int32(CCV_TENSOR_FORMAT_NCHW)
-    case .CHWN:
-      params.format = Int32(CCV_TENSOR_FORMAT_CHWN)
-  }
+  params.datatype = dataType.toC
+  params.format = format.toC
   params.dim = toCDimensions(dimensions)
   return params
 }

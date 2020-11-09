@@ -189,10 +189,58 @@ final class DataFrameTests: XCTestCase {
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
     tensor1[0] = 2.2
     let df = DataFrame(from: [tensor0, tensor1], name: "main")
-    let batched = DataFrame(batchOf: df["main"], size: 2)!
+    let batched = DataFrame(batchOf: df["main"]!, size: 2)
     for tensor in batched["main", Tensor<Float32>.self] {
       XCTAssertEqual(1.1, tensor[0, 0])
       XCTAssertEqual(2.2, tensor[1, 0])
+    }
+  }
+
+  func testTypedBatching() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    let batched = DataFrame(batchOf: df["main", Tensor<Float32>.self], size: 2)
+    for tensor in batched["main", Tensor<Float32>.self] {
+      XCTAssertEqual(1.1, tensor[0, 0])
+      XCTAssertEqual(2.2, tensor[1, 0])
+    }
+  }
+
+  func testMultiBatching() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    df["1"] = df["main", Tensor<Float32>.self].map { input -> Tensor<Float32> in
+      var output = Tensor<Float32>(.CPU, .C(1))
+      output[0] = input[0] + 1
+      return output
+    }
+    let batched = DataFrame(batchOf: df["main", "1"], size: 2)
+    for tensor in batched["main", Tensor<Float32>.self] {
+      XCTAssertEqual(1.1, tensor[0, 0])
+      XCTAssertEqual(2.2, tensor[1, 0])
+    }
+    for tensor in batched["1", Tensor<Float32>.self] {
+      XCTAssertEqual(1.1 + 1, tensor[0, 0])
+      XCTAssertEqual(2.2 + 1, tensor[1, 0])
+    }
+  }
+
+  func testOneHot() throws {
+    let df = DataFrame(from: [0, 1, 2], name: "main")
+    df["oneHot"] = df["main"]!.toOneHot(Float32.self, count: 3)
+    var i: Int = 0
+    for tensor in df["oneHot", Tensor<Float32>.self] {
+      XCTAssertEqual(1, tensor[i])
+      for j in 0..<3 where j != i {
+        XCTAssertEqual(0, tensor[j])
+      }
+      i += 1
     }
   }
 
@@ -208,6 +256,9 @@ final class DataFrameTests: XCTestCase {
     ("testFromTensor", testFromTensor),
     ("testFromTensorArray", testFromTensorArray),
     ("testReadCSV", testReadCSV),
-    ("testBatching", testBatching)
+    ("testBatching", testBatching),
+    ("testTypedBatching", testTypedBatching),
+    ("testMultiBatching", testMultiBatching),
+    ("testOneHot", testOneHot)
   ]
 }
