@@ -87,7 +87,7 @@ public final class DynamicGraph {
   let _graph: OpaquePointer
 
   public init() {
-    ccv_nnc_init()
+    CmdParamsFactory.factory.sink()
     _graph = ccv_nnc_dynamic_graph_new()
   }
 

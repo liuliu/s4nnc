@@ -24,7 +24,7 @@ public enum Functional {
 public extension Functional {
   // Element-wise addition
   static func sum<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, scalar: Float32 = 1, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    let params = ccv_nnc_cmd_param_t()
+    let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_EWSUM_FORWARD, nil, params, 0)
     let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])
@@ -32,7 +32,7 @@ public extension Functional {
 
   // Broadcast element-wise multiplication
   static func mul<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, scalar: Float32 = 1, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (scalar, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MUL_FORWARD, nil, params, 0)
@@ -42,7 +42,7 @@ public extension Functional {
 
   // Broadcast element-wise addition
   static func add<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, leftScalar: Float32 = 1, rightScalar: Float32 = 1, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (leftScalar, rightScalar, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
@@ -52,7 +52,7 @@ public extension Functional {
 
   // Element-wise log
   static func log<Element>(_ one: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    let params = ccv_nnc_cmd_param_t()
+    let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_EWLOG_FORWARD, nil, params, 0)
     let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [one], outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])
@@ -60,7 +60,7 @@ public extension Functional {
 
   // Matrix multiplication
   static func matmul<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>, leftTranspose: (Int, Int) = (0, 0), rightTranspose: (Int, Int) = (0, 0), streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (1, 1, 0)
     params.blas.transpose_a = (Int32(leftTranspose.0), Int32(leftTranspose.1))
@@ -72,7 +72,7 @@ public extension Functional {
 
   // Scalar-matrix multiplication
   static func scalmul<Element>(left: Float, right: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (left, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALAR_MUL_FORWARD, nil, params, 0)
@@ -84,7 +84,7 @@ public extension Functional {
 public extension DynamicGraph.Tensor {
 
   func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.transpose.axis = (Int32(axisA), Int32(axisB))
     let cmd = ccv_nnc_cmd(CCV_NNC_TRANSPOSE_FORWARD, nil, params, 0)
@@ -96,7 +96,7 @@ public extension DynamicGraph.Tensor {
 
 public extension DynamicGraph.Tensor {
   func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
     var _input: ccv_nnc_tensor_variable_t? = self._tensor
@@ -110,7 +110,7 @@ public extension DynamicGraph.Tensor {
   }
 
   func toCPU(streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
     var _input: ccv_nnc_tensor_variable_t? = self._tensor

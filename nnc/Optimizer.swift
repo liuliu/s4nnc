@@ -64,7 +64,7 @@ public struct SGDOptimizer: Optimizer {
 
   private var savedAux = [DynamicGraph.AnyTensor]()
   private var minimizer: ccv_nnc_cmd_t {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.sgd.nesterov = nesterov ? 1 : 0
     params.sgd.rate = rate
     params.sgd.scale = scale
@@ -112,7 +112,7 @@ public struct AdamOptimizer: Optimizer {
 
   private var savedAux = [DynamicGraph.AnyTensor]()
   private var minimizer: ccv_nnc_cmd_t {
-    var params = ccv_nnc_cmd_param_t()
+    var params = CmdParamsFactory.factory.newParams()
     params.adam.step = Int32(step)
     params.adam.rate = rate
     params.adam.beta1 = beta1

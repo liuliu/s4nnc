@@ -1,5 +1,17 @@
 import C_nnc
 
+final class CmdParamsFactory {
+  static let factory = CmdParamsFactory()
+  init() {
+    ccv_nnc_init()
+  }
+  func newParams() -> ccv_nnc_cmd_param_t {
+    return ccv_nnc_cmd_param_t()
+  }
+  func sink() {
+  }
+}
+
 public enum DeviceKind {
   case CPU
   case GPU(Int)
@@ -212,7 +224,7 @@ public final class _AnyTensor {
   func copy() -> _AnyTensor {
     var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = _tensor
     var output = ccv_nnc_tensor_new(nil, _tensor.pointee.info, 0)
-    ccv_nnc_cmd_exec(ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, ccv_nnc_cmd_param_t(), 0),
+    ccv_nnc_cmd_exec(ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
       ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
     return _AnyTensor(output!)
   }
@@ -356,9 +368,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     var _output = ccv_nnc_tensor_new(nil,
       toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, dimensions: dimensions),
       0)
-    var params = ccv_nnc_cmd_param_t()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
-    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
     let _streamContext = streamContext?._stream
     var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
     ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
@@ -369,9 +379,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     var _output = ccv_nnc_tensor_new(nil,
       toCTensorParams(.CPU, dataType: dataType, format: format, dimensions: dimensions),
       0)
-    var params = ccv_nnc_cmd_param_t()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
-    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
     let _streamContext = streamContext?._stream
     var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
     ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
