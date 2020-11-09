@@ -183,6 +183,19 @@ final class DataFrameTests: XCTestCase {
     XCTAssertEqual(newArray, truthArray)
   }
 
+  func testBatching() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    let batched = DataFrame(batchOf: df["main"], size: 2)!
+    for tensor in batched["main", Tensor<Float32>.self] {
+      XCTAssertEqual(1.1, tensor[0, 0])
+      XCTAssertEqual(2.2, tensor[1, 0])
+    }
+  }
+
   static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -194,6 +207,7 @@ final class DataFrameTests: XCTestCase {
     ("testMultiMap", testMultiMap),
     ("testFromTensor", testFromTensor),
     ("testFromTensorArray", testFromTensorArray),
-    ("testReadCSV", testReadCSV)
+    ("testReadCSV", testReadCSV),
+    ("testBatching", testBatching)
   ]
 }

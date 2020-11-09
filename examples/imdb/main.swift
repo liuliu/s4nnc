@@ -1,5 +1,5 @@
 import nnc
-import PythonKit
+import Foundation
 
 func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model
 {
@@ -87,8 +87,90 @@ let dynamicClassicTransformer: ModelBuilder = ModelBuilder { inputs in
 
 let graph = DynamicGraph()
 
-let trainList = "/fast/Data/IMDB_Movie_Reviews/aclImdb/train.txt"
-let testList = "/fast/Data/IMDB_Movie_Reviews/aclImdb/test.txt"
+let trainListFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/train.txt"
+let testListFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/test.txt"
 let vocabFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/imdb.vocab"
 let baseDir = "/fast/Data/IMDB_Movie_Reviews/aclImdb"
+
+let vocabContent = try! String(contentsOfFile: vocabFile, encoding: .utf8)
+let vocabList = vocabContent.split(separator: "\n")
+
+var dict = [String: Int]()
+for (i, word) in vocabList.enumerated() {
+  let lowercasedWord = word.lowercased()
+  dict[lowercasedWord] = i
+}
+
+let unknownFlag = Int32(vocabList.count)
+let endFlag = Int32(vocabList.count + 1)
+let padFlag = Int32(vocabList.count + 2)
+let maxLength = 512
+
+struct ImdbText {
+  var tensor: Tensor<Int32>
+  var mask: Tensor<Int32>
+  var c: Int
+}
+
+func dataFromDisk(filePath trainListFile: String) -> DataFrame {
+  let trainListContent = try! String(contentsOfFile: trainListFile, encoding: .utf8)
+  let trainList = trainListContent.split(separator: "\n")
+  var trainData = [ImdbText]()
+  for trainFile in trainList {
+    let parts = trainFile.split(separator: " ")
+    let c = Int(parts[0])!
+    let filePath = parts[1...].joined(separator: " ")
+    let trainText = try! String(contentsOfFile: "\(baseDir)/\(filePath)", encoding: .utf8)
+    let lowercasedTrainText = trainText.lowercased()
+    let separators: Set<Character> = [" ", ".", ",", "<", ">", "/", "~", "`", "@", "#", "$", "%", "^", "&", "*", "+", "\\", "\""]
+    let tokens = lowercasedTrainText.split(whereSeparator: { character in
+      return separators.contains(character)
+    })
+    var tensor = Tensor<Int32>(.CPU, .C(maxLength))
+    for (i, token) in tokens.enumerated() where i < maxLength {
+      tensor[i] = dict[String(token)].map { Int32($0) } ?? unknownFlag
+    }
+    if tokens.count < maxLength {
+      for i in tokens.count..<maxLength {
+        tensor[i] = i == tokens.count ? endFlag : padFlag
+      }
+    }
+    var mask = Tensor<Int32>(.CPU, .C(1))
+    mask[0] = Int32(min(tokens.count + 1, maxLength))
+    let imdbText = ImdbText(tensor: tensor, mask: mask, c: c)
+    trainData.append(imdbText)
+  }
+  return DataFrame(from: trainData, name: "main")
+}
+
+let trainData = dataFromDisk(filePath: trainListFile)
+let testData = dataFromDisk(filePath: testListFile)
+trainData["tensor"] = trainData["main", ImdbText.self].map(\.tensor)
+trainData["mask"] = trainData["main", ImdbText.self].map(\.mask)
+trainData["oneHot"] = trainData["main", ImdbText.self].map { imdbText -> Tensor<Float> in
+  let c = imdbText.c
+  var tensor = Tensor<Float>(.CPU, .C(2))
+  if c == 1 {
+    tensor[0] = 0
+    tensor[1] = 1
+  } else {
+    tensor[0] = 1
+    tensor[1] = 0
+  }
+  return tensor
+}
+testData["tensor"] = testData["main", ImdbText.self].map(\.tensor)
+testData["mask"] = testData["main", ImdbText.self].map(\.mask)
+testData["oneHot"] = testData["main", ImdbText.self].map { imdbText -> Tensor<Float> in
+  let c = imdbText.c
+  var tensor = Tensor<Float>(.CPU, .C(2))
+  if c == 1 {
+    tensor[0] = 0
+    tensor[1] = 1
+  } else {
+    tensor[0] = 1
+    tensor[1] = 0
+  }
+  return tensor
+}
 

@@ -8,6 +8,7 @@ swift_library(
 		"Tensor.swift",
 		"DynamicGraph.swift",
 		"DataFrame.swift",
+		"DataFrameAddons.swift",
 		"Functional.swift",
 		"Hint.swift",
 		"Loss.swift",

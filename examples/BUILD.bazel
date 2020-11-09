@@ -4,8 +4,15 @@ swift_binary(
 	name = "imdb",
 	srcs = ["imdb/main.swift"],
 	deps = [
-		"//nnc:nnc",
-		"@PythonKit//:PythonKit"
+		"//nnc:nnc"
+	]
+)
+
+swift_binary(
+	name = "cifar-10",
+	srcs = ["cifar-10/main.swift"],
+	deps = [
+		"//nnc:nnc"
 	]
 )
 
