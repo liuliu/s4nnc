@@ -33,6 +33,9 @@ extension DataFrame {
           guard let str = inputData[i].map({ String(cString: $0.assumingMemoryBound(to: Int8.self)) }) else {
             continue
           }
+          if let opaque = data[i] {
+            Unmanaged<AnyObject>.fromOpaque(opaque).release()
+          }
           let obj = str as AnyObject
           let utf8 = Unmanaged<AnyObject>.passRetained(obj).toOpaque()
           (data + i).initialize(to: utf8)
@@ -104,6 +107,11 @@ extension DataFrame {
       let inputData = input[0]!
       for i in 0..<Int(row_size) {
         var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
+        if let container = data[i] {
+          let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
+          string.deallocate()
+          container.deallocate()
+        }
         let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
           let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count + 1)
           string.initialize(from: $0.baseAddress!, count: $0.count)
@@ -168,9 +176,13 @@ extension DataFrame {
       let inputData = input[0]!
       for i in 0..<Int(row_size) {
         let int = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! Int
-        let container = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
-        container.initialize(to: Int32(int))
-        (data + i).initialize(to: container)
+        if let container = data[i] {
+          container.assumingMemoryBound(to: Int32.self).initialize(to: Int32(int))
+        } else {
+          let container = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
+          container.initialize(to: Int32(int))
+          (data + i).initialize(to: container)
+        }
       }
     }, 0, { container, _ in
       guard let container = container else { return }

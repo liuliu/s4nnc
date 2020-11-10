@@ -89,6 +89,9 @@ public final class DataFrame {
         for i in 0..<Int(row_size) {
           let idx = Int((row_idxs + i).pointee)
           let value = underlying.value[idx]
+          if let opaque = data[i] {
+            Unmanaged<AnyObject>.fromOpaque(opaque).release()
+          }
           (data + i).initialize(to: Unmanaged.passRetained(value).toOpaque())
         }
       }
@@ -463,6 +466,9 @@ private extension DataFrame {
         for i in 0..<Int(row_size) {
           let idx = Int((row_idxs + i).pointee)
           let value = underlying.value[idx]
+          if let opaque = data[i] {
+            Unmanaged<AnyObject>.fromOpaque(opaque).release()
+          }
           (data + i).initialize(to: Unmanaged.passRetained(value).toOpaque())
         }
       }, 0, { data, _ in
@@ -543,6 +549,9 @@ private extension DataFrame {
         let output = wrappedMapper.map(object)
         switch wrappedMapper.outputType {
         case .object:
+          if let opaque = data[i] {
+            Unmanaged<AnyObject>.fromOpaque(opaque).release()
+          }
           (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
         case .tensor:
           let tensor = output as! AnyTensor
@@ -707,6 +716,9 @@ private extension DataFrame {
         let output = wrappedManyMapper.map(objects)
         switch wrappedManyMapper.outputType {
         case .object:
+          if let opaque = data[i] {
+            Unmanaged<AnyObject>.fromOpaque(opaque).release()
+          }
           (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
         case .tensor:
           let tensor = output as! AnyTensor
