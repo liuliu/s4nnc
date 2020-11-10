@@ -244,6 +244,24 @@ final class DataFrameTests: XCTestCase {
     }
   }
 
+  func testStructAndIntWrap() throws {
+    struct Holder {
+      var str: String
+      var val: Int
+    }
+    let df = DataFrame(from: [Holder(str: "abc", val: 1), Holder(str: "happy", val: 2)], name: "main")
+    df["c"] = df["main", Holder.self].map(\.val)
+    df["oneHot"] = df["c", Int.self].toOneHot(Float32.self, count: 3)
+    var i: Int = 1
+    for tensor in df["oneHot", Tensor<Float32>.self] {
+      XCTAssertEqual(1, tensor[i])
+      for j in 0..<3 where j != i {
+        XCTAssertEqual(0, tensor[j])
+      }
+      i += 1
+    }
+  }
+
   func testToGPU() throws {
     var tensor0 = Tensor<Float32>(.CPU, .C(1))
     tensor0[0] = 1.1
@@ -381,6 +399,7 @@ final class DataFrameTests: XCTestCase {
     ("testTypedBatching", testTypedBatching),
     ("testMultiBatching", testMultiBatching),
     ("testOneHot", testOneHot),
+    ("testStructAndIntWrap", testStructAndIntWrap),
     ("testToGPU", testToGPU),
     ("testToManyGPU", testToManyGPU),
     ("testOneSquared", testOneSquared),

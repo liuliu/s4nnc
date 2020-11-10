@@ -204,7 +204,7 @@ public extension DataFrame.UntypedSeries {
 }
 
 public extension DataFrame.TypedSeries where Element == Int {
-  func toOneHot<Element: TensorNumeric>(_ dataType: Element.Type, count: Int, onval: Float = 0, offval: Float = 1) -> DataFrame.UntypedSeries {
+  func toOneHot<Element: TensorNumeric>(_ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0) -> DataFrame.UntypedSeries {
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneHot, OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
   }
 }

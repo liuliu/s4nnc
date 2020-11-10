@@ -151,7 +151,7 @@ let testData = dataFromDisk(filePath: testListFile)
 trainData["tensor"] = trainData["main", ImdbText.self].map(\.tensor)
 trainData["mask"] = trainData["main", ImdbText.self].map(\.mask)
 trainData["c"] = trainData["main", ImdbText.self].map(\.c)
-trainData["oneHot"] = trainData["main", Int.self].toOneHot(Float32.self, count: 2)
+trainData["oneHot"] = trainData["c", Int.self].toOneHot(Float32.self, count: 2)
 testData["tensor"] = testData["main", ImdbText.self].map(\.tensor)
 testData["mask"] = testData["main", ImdbText.self].map(\.mask)
 testData["c"] = testData["main", ImdbText.self].map(\.c)
@@ -199,7 +199,6 @@ for (i, batch) in batchedTrainData["tensorGPU", "oneHotGPU", "squaredMaskGPU"].e
   adamOptimizer.step()
   break
 }
-
 
 // let batchedTestData = DataFrame(batchOf: testData["tensor", "mask", "oneHot"], size: batchSize)
 // atchedTestData["squaredMask"] = batchedTestData["mask"].toOneSquared(maxLength: maxLength, variableLength: false)

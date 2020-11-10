@@ -41,7 +41,6 @@ final class ModelTests: XCTestCase {
     let b3 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2], .C(2)))
     let b4 = dynamicGraph.constant(Tensor<Float32>([2.2, 3.3], .C(2)))
     let b5 = DynamicGraph.Tensor<Float32>(builder([b3, b4])[0])
-    print(b5.rawValue)
     XCTAssertEqual(b5.rawValue[0], 1.2 * 2.2)
     XCTAssertEqual(b5.rawValue[1], 2.2 * 3.3)
   }
