@@ -261,6 +261,11 @@ public extension DataFrame.ManyUntypedSeriesToGPU {
     let property = DataFrame.ColumnProperty(index: index, type: .tensor)
     return DataFrame.UntypedSeries(.native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
   }
+  subscript(tupleIndex: Int) -> DataFrame.UntypedSeries {
+    precondition(tupleIndex < namedIndex.count)
+    let property = DataFrame.ColumnProperty(index: index, type: .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
+  }
 }
 
 public extension DataFrame.ManyUntypedSeries {
