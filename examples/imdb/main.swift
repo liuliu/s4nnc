@@ -65,7 +65,7 @@ func ClassicTransformer(layers: Int, k: Int, h: Int, b: Int, t: Int, ff: Int, dr
   out = out.transpose(0, 1).transpose(1, 2).reshape([b, k, t, 1])
   out = AveragePool()(out)
   out = Flatten()(out)
-  out = Dense(count: 1)(out)
+  out = Dense(count: 2)(out)
   return Model([x, mask], [out])
 }
 
@@ -107,7 +107,7 @@ let padFlag = Int32(vocabList.count + 2)
 let maxLength = 512
 let vocabSize = vocabList.count + 3
 let embeddingSize = 128
-let batchSize = 128
+let batchSize = 64
 
 struct ImdbText {
   var tensor: Tensor<Int32>
@@ -197,7 +197,6 @@ for (i, batch) in batchedTrainData["tensorGPU", "oneHotGPU", "squaredMaskGPU"].e
   let loss = softmaxLoss(outputs[0], target: target)
   loss.backward(to: [vocabVec, seqVec])
   adamOptimizer.step()
-  break
 }
 
 // let batchedTestData = DataFrame(batchOf: testData["tensor", "mask", "oneHot"], size: batchSize)

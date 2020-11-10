@@ -96,6 +96,40 @@ public final class DynamicGraph {
   }
 }
 
+public extension DynamicGraph {
+  enum LogLevel {
+    case none
+    case verbose
+    case info
+    case error
+  }
+  var logLevel: LogLevel {
+    get {
+      let cliLevels = ccv_cli_get_output_levels()
+      if (cliLevels & 1) != 0 {
+        return .verbose
+      } else if (cliLevels & 2) != 0 {
+        return .info
+      } else if (cliLevels & 4) != 0 {
+        return .error
+      }
+      return .none
+    }
+    set(v) {
+      switch v {
+      case .none:
+        ccv_cli_set_output_levels(0)
+      case .verbose:
+        ccv_cli_set_output_levels(ccv_cli_output_level_and_above(Int32(CCV_CLI_VERBOSE)))
+      case .info:
+        ccv_cli_set_output_levels(ccv_cli_output_level_and_above(Int32(CCV_CLI_INFO)))
+      case .error:
+        ccv_cli_set_output_levels(ccv_cli_output_level_and_above(Int32(CCV_CLI_ERROR)))
+      }
+    }
+  }
+}
+
 public func ==(lhs: DynamicGraph.AnyTensor, rhs: DynamicGraph.AnyTensor) -> Bool {
   return lhs === rhs
 }
