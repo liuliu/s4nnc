@@ -266,6 +266,87 @@ final class DataFrameTests: XCTestCase {
     }
   }
 
+  func testToManyGPU() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    df["1"] = df["main", Tensor<Float32>.self].map { input -> Tensor<Float32> in
+      var output = Tensor<Float32>(.CPU, .C(1))
+      output[0] = input[0] + 1
+      return output
+    }
+    let holder = df["main", "1"].toGPU()
+    df["main_gpu"] = holder["main"]
+    df["1_gpu"] = holder["1"]
+    var i: Int = 0
+    for tensor in df["main_gpu", Tensor<Float32>.self] {
+      let cpu = tensor.toCPU()
+      switch i {
+      case 0:
+        XCTAssertEqual(1.1, cpu[0])
+      case 1:
+        XCTAssertEqual(2.2, cpu[0])
+      default:
+        break
+      }
+      i += 1
+    }
+    i = 0
+    for tensor in df["1_gpu", Tensor<Float32>.self] {
+      let cpu = tensor.toCPU()
+      switch i {
+      case 0:
+        XCTAssertEqual(1.1 + 1, cpu[0])
+      case 1:
+        XCTAssertEqual(2.2 + 1, cpu[0])
+      default:
+        break
+      }
+      i += 1
+    }
+  }
+
+  func testOneSquared() throws {
+    var tensor0 = Tensor<Int32>(.CPU, .NC(2, 1))
+    tensor0[0, 0] = 1
+    tensor0[1, 0] = 2
+    let df = DataFrame(from: [tensor0], name: "main")
+    df["squared"] = df["main"]!.toOneSquared(maxLength: 3)
+    df["squared_max"] = df["main"]!.toOneSquared(maxLength: 3, variableLength: false)
+    for tensor in df["squared", Tensor<Int32>.self] {
+      XCTAssertEqual(1, tensor[0, 0, 0])
+      XCTAssertEqual(0, tensor[0, 0, 1])
+      XCTAssertEqual(0, tensor[0, 1, 0])
+      XCTAssertEqual(0, tensor[0, 1, 1])
+      XCTAssertEqual(1, tensor[1, 0, 0])
+      XCTAssertEqual(1, tensor[1, 0, 1])
+      XCTAssertEqual(1, tensor[1, 1, 0])
+      XCTAssertEqual(1, tensor[1, 1, 1])
+    }
+    for tensor in df["squared_max", Tensor<Int32>.self] {
+      XCTAssertEqual(1, tensor[0, 0, 0])
+      XCTAssertEqual(0, tensor[0, 0, 1])
+      XCTAssertEqual(0, tensor[0, 0, 2])
+      XCTAssertEqual(0, tensor[0, 1, 0])
+      XCTAssertEqual(0, tensor[0, 1, 1])
+      XCTAssertEqual(0, tensor[0, 1, 2])
+      XCTAssertEqual(0, tensor[0, 2, 0])
+      XCTAssertEqual(0, tensor[0, 2, 1])
+      XCTAssertEqual(0, tensor[0, 2, 2])
+      XCTAssertEqual(1, tensor[1, 0, 0])
+      XCTAssertEqual(1, tensor[1, 0, 1])
+      XCTAssertEqual(0, tensor[1, 0, 2])
+      XCTAssertEqual(1, tensor[1, 1, 0])
+      XCTAssertEqual(1, tensor[1, 1, 1])
+      XCTAssertEqual(0, tensor[1, 1, 2])
+      XCTAssertEqual(0, tensor[1, 2, 0])
+      XCTAssertEqual(0, tensor[1, 2, 1])
+      XCTAssertEqual(0, tensor[1, 2, 2])
+    }
+  }
+
   static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -282,6 +363,8 @@ final class DataFrameTests: XCTestCase {
     ("testTypedBatching", testTypedBatching),
     ("testMultiBatching", testMultiBatching),
     ("testOneHot", testOneHot),
-    ("testToGPU", testToGPU)
+    ("testToGPU", testToGPU),
+    ("testToManyGPU", testToManyGPU),
+    ("testOneSquared", testOneSquared)
   ]
 }

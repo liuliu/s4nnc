@@ -238,3 +238,83 @@ public extension DataFrame.TypedSeries where Element: AnyTensor {
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneGPU, ordinal as AnyObject))
   }
 }
+
+public extension DataFrame {
+  struct ManyUntypedSeriesToGPU {
+    var index: Int
+    var namedIndex: [String: Int]
+  }
+}
+
+extension DataFrame {
+  static func extractTensorTuple(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+    let inputIndex = Int32(property.index)
+    let tupleIndex = params! as! Int
+    let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, inputIndex, Int32(tupleIndex), name)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.ManyUntypedSeriesToGPU {
+  subscript(name: String) -> DataFrame.UntypedSeries {
+    let tupleIndex = namedIndex[name]!
+    let property = DataFrame.ColumnProperty(index: index, type: .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
+  }
+}
+
+public extension DataFrame.ManyUntypedSeries {
+  func toGPU(_ ordinal: Int = 0) -> DataFrame.ManyUntypedSeriesToGPU {
+    for property in properties {
+      precondition(property.type == .tensor)
+    }
+    let inputIndex = properties.map { Int32($0.index) }
+    let _dataframe = dataframe._dataframe
+    let tupleIndex = ccv_cnnp_dataframe_make_tuple(_dataframe, inputIndex, Int32(inputIndex.count), nil)
+    let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(_dataframe, tupleIndex, 0, Int32(inputIndex.count), Int32(ordinal), nil)
+    var namedIndex = [String: Int]()
+    for (i, property) in properties.enumerated() {
+      let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
+      namedIndex[String(cString: name)] = i
+    }
+    return DataFrame.ManyUntypedSeriesToGPU(index: Int(copyIndex), namedIndex: namedIndex)
+  }
+}
+
+// MARK - One Squared
+
+final class OneSquaredParams {
+  let variableLength: Bool
+  let maxLength: Int
+  init(variableLength: Bool, maxLength: Int) {
+    self.variableLength = variableLength
+    self.maxLength = maxLength
+  }
+}
+
+extension DataFrame {
+  static func addToOneSquared(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+    var inputIndex = Int32(property.index)
+    let oneSquareParams = params! as! OneSquaredParams
+    let tupleIndex = ccv_cnnp_dataframe_one_squared(_dataframe, &inputIndex, 1, oneSquareParams.variableLength ? 1 : 0, Int32(oneSquareParams.maxLength), nil)
+    let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, tupleIndex, 0, name)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.UntypedSeries {
+  func toOneSquared(maxLength: Int, variableLength: Bool = true) -> DataFrame.UntypedSeries {
+    guard let property = property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneSquared, OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
+  }
+}
+
+public extension DataFrame.TypedSeries where Element: AnyTensor {
+  func toOneSquared(maxLength: Int, variableLength: Bool = true) -> DataFrame.UntypedSeries {
+    precondition(property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneSquared, OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
+  }
+}
