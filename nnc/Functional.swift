@@ -82,7 +82,6 @@ public extension Functional {
 }
 
 public extension DynamicGraph.Tensor {
-
   func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
@@ -91,7 +90,19 @@ public extension DynamicGraph.Tensor {
     let outputs = Functional.exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [self], outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])
   }
+}
 
+public extension DynamicGraph.Tensor {
+  func rand(_ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil) {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.blas.a = (lowerBound, upperBound, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
+    let _graph = graph._graph
+    let _streamContext = streamContext?._stream
+    var _output: ccv_nnc_tensor_variable_t? = _tensor
+    ccv_nnc_dynamic_graph_exec(_graph, cmd, ccv_nnc_no_hint, 0, nil, 0, &_output, 1, 0, _streamContext)
+  }
 }
 
 public extension DynamicGraph.Tensor {

@@ -205,3 +205,12 @@ public extension DynamicGraph {
   }
 
 }
+
+public extension DynamicGraph {
+  func withNoGrad<Result>(_ closure: () throws -> Result) rethrows -> Result {
+    ccv_nnc_dynamic_graph_set_no_grad(_graph, 0)
+    let result = try closure()
+    ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
+    return result
+  }
+}

@@ -105,6 +105,9 @@ let unknownFlag = Int32(vocabList.count)
 let endFlag = Int32(vocabList.count + 1)
 let padFlag = Int32(vocabList.count + 2)
 let maxLength = 512
+let vocabSize = vocabList.count + 3
+let embeddingSize = 128
+let batchSize = 128
 
 struct ImdbText {
   var tensor: Tensor<Int32>
@@ -147,30 +150,34 @@ let trainData = dataFromDisk(filePath: trainListFile)
 let testData = dataFromDisk(filePath: testListFile)
 trainData["tensor"] = trainData["main", ImdbText.self].map(\.tensor)
 trainData["mask"] = trainData["main", ImdbText.self].map(\.mask)
-trainData["oneHot"] = trainData["main", ImdbText.self].map { imdbText -> Tensor<Float> in
-  let c = imdbText.c
-  var tensor = Tensor<Float>(.CPU, .C(2))
-  if c == 1 {
-    tensor[0] = 0
-    tensor[1] = 1
-  } else {
-    tensor[0] = 1
-    tensor[1] = 0
-  }
-  return tensor
-}
+trainData["c"] = trainData["main", ImdbText.self].map(\.c)
+trainData["oneHot"] = trainData["main", Int.self].toOneHot(Float32.self, count: 2)
 testData["tensor"] = testData["main", ImdbText.self].map(\.tensor)
 testData["mask"] = testData["main", ImdbText.self].map(\.mask)
-testData["oneHot"] = testData["main", ImdbText.self].map { imdbText -> Tensor<Float> in
-  let c = imdbText.c
-  var tensor = Tensor<Float>(.CPU, .C(2))
-  if c == 1 {
-    tensor[0] = 0
-    tensor[1] = 1
-  } else {
-    tensor[0] = 1
-    tensor[1] = 0
+testData["c"] = testData["main", ImdbText.self].map(\.c)
+testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
+
+let batchedTrainData = DataFrame(batchOf: trainData["tensor", "mask", "oneHot"], size: batchSize)
+batchedTrainData["squaredMask"] = batchedTrainData["mask"]!.toOneSquared(maxLength: maxLength, variableLength: false)
+let toGPUTrain = batchedTrainData["tensor", "oneHot", "squaredMask"].toGPU()
+batchedTrainData["tensorGPU"] = toGPUTrain["tensor"]
+batchedTrainData["oneHotGPU"] = toGPUTrain["oneHot"]
+batchedTrainData["squaredMaskGPU"] = toGPUTrain["squaredMask"]
+
+let vocabVec: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(vocabSize, embeddingSize))
+let seqVec: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(maxLength, embeddingSize))
+vocabVec.rand(-1, 1)
+seqVec.rand(-1, 1)
+let seqIndicesCPU: DynamicGraph.Tensor<Int32> = graph.variable(.CPU, .C(batchSize * maxLength))
+for i in 0..<batchSize {
+  for j in 0..<maxLength {
+    seqIndicesCPU[i * maxLength + j] = Int32(j)
   }
-  return tensor
+}
+let seqIndicesGPU = graph.withNoGrad {
+  return seqIndicesCPU.toGPU()
 }
 
+
+// let batchedTestData = DataFrame(batchOf: testData["tensor", "mask", "oneHot"], size: batchSize)
+// atchedTestData["squaredMask"] = batchedTestData["mask"].toOneSquared(maxLength: maxLength, variableLength: false)
