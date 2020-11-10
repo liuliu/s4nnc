@@ -108,7 +108,7 @@ extension DynamicGraph.AnyTensor: Hashable {
 
 public extension DynamicGraph.Tensor {
 
-  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> DynamicGraph.Tensor<Element> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> Self {
     let _graph = graph._graph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     let device = DeviceKind.from(cTensorParams: cTensorParams)
@@ -120,10 +120,10 @@ public extension DynamicGraph.Tensor {
           toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
       }
     }
-    return DynamicGraph.Tensor<Element>(graph: underlying.graph, tensor: _alias)
+    return Self(graph: underlying.graph, tensor: _alias)
   }
 
-  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> DynamicGraph.Tensor<Element> {
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> Self {
     return reshape(format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset, increments: increments)
   }
 

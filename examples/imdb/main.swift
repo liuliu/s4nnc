@@ -78,7 +78,7 @@ struct TransformerParameter {
 
 let parameters = TransformerParameter(ff: 4, layers: 2, h: 8, dropout: 0.1)
 
-let dynamicClassicTransformer: ModelBuilder = ModelBuilder { inputs in
+let transformer: ModelBuilder = ModelBuilder { inputs in
   let b = inputs[0].dimensions[0]
   let t = inputs[0].dimensions[1]
   let k = inputs[0].dimensions[2]
@@ -168,14 +168,36 @@ let vocabVec: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(vocabSi
 let seqVec: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(maxLength, embeddingSize))
 vocabVec.rand(-1, 1)
 seqVec.rand(-1, 1)
-let seqIndicesCPU: DynamicGraph.Tensor<Int32> = graph.variable(.CPU, .C(batchSize * maxLength))
+var seqIndicesCPU = Tensor<Int32>(.CPU, .C(batchSize * maxLength))
 for i in 0..<batchSize {
   for j in 0..<maxLength {
     seqIndicesCPU[i * maxLength + j] = Int32(j)
   }
 }
-let seqIndicesGPU = graph.withNoGrad {
-  return seqIndicesCPU.toGPU()
+let seqIndicesGPU = seqIndicesCPU.toGPU()
+let seqIndices = graph.constant(seqIndicesGPU)
+batchedTrainData.shuffle()
+var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
+adamOptimizer.parameters = [vocabVec, seqVec]
+for (i, batch) in batchedTrainData["tensorGPU", "oneHotGPU", "squaredMaskGPU"].enumerated() {
+  adamOptimizer.step = i + 1
+  adamOptimizer.rate = 0.0001 * min(Float(i) / (10000.0 / Float(batchSize)), 1)
+  let tensorGPU = batch[0] as! Tensor<Int32>
+  let oneHotGPU = batch[1] as! Tensor<Float32>
+  let squaredMaskGPU = batch[2] as! Tensor<Int32>
+  let wordIndices = graph.variable(tensorGPU.reshape(.C(batchSize * maxLength)))
+  let wordVec = Functional.indexSelect(input: vocabVec, index: wordIndices)
+  let posVec = Functional.indexSelect(input: seqVec, index: seqIndices)
+  let selectVec = wordVec + posVec
+  let inputVec = selectVec.reshape(.CHW(batchSize, maxLength, embeddingSize))
+  let masked = graph.constant(squaredMaskGPU.reshape(.CHW(batchSize, maxLength, maxLength)))
+  let outputs = transformer([inputVec, masked])
+  let softmaxLoss = SoftmaxCrossEntropyLoss()
+  let target = graph.variable(oneHotGPU)
+  let loss = softmaxLoss(outputs[0], target: target)
+  loss.backward(to: [vocabVec, seqVec])
+  adamOptimizer.step()
+  break
 }
 
 

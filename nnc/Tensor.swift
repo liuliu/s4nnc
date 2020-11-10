@@ -364,7 +364,11 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     }
   }
 
-  public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
+}
+
+public extension Tensor {
+
+  func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(nil,
       toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, dimensions: dimensions),
       0)
@@ -375,7 +379,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     return Self(_AnyTensor(_output!))
   }
 
-  public func toCPU(streamContext: StreamContext? = nil) -> Self {
+  func toCPU(streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(nil,
       toCTensorParams(.CPU, dataType: dataType, format: format, dimensions: dimensions),
       0)
@@ -384,6 +388,32 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
     ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
     return Self(_AnyTensor(_output!))
+  }
+
+}
+
+public extension Tensor {
+
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> Self {
+    let cTensorParams = _tensor._tensor.pointee.info
+    let device = DeviceKind.from(cTensorParams: cTensorParams)
+    guard let offset = offset, let increments = increments else {
+      let newt = ccv_nnc_tensor_new(_tensor._tensor.pointee.data.ptr, toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions), 0)!
+      return Self(_AnyTensor(newt, original: _tensor))
+    }
+    var cOffset = toCDimensions(offset)
+    var cIncrements = toCDimensions(increments)
+    let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
+      withUnsafePointer(to: &cIncrements.0) { cIncrements in
+        ccv_nnc_tensor_view_new(_tensor._tensor, toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset, cIncrements)!
+      }
+    }
+    let anyTensor = newt.withMemoryRebound(to: ccv_nnc_tensor_t.self, capacity: 1) { _AnyTensor($0, original: _tensor) }
+    return Self(anyTensor)
+  }
+
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> Self {
+    return reshape(format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset, increments: increments)
   }
 
 }
