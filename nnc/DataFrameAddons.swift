@@ -168,10 +168,14 @@ extension DataFrame {
       let inputData = input[0]!
       for i in 0..<Int(row_size) {
         let int = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! Int
-        var int32: Int32 = Int32(int)
-        (data + i).initialize(to: &int32)
+        let container = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
+        container.initialize(to: Int32(int))
+        (data + i).initialize(to: container)
       }
-    }, 0, nil, &inputIndex, 1, nil, nil, nil)
+    }, 0, { container, _ in
+      guard let container = container else { return }
+      container.deallocate()
+    }, &inputIndex, 1, nil, nil, nil)
     let index = ccv_cnnp_dataframe_one_hot(_dataframe, intIndex, 0, Int32(oneHotParams.count), oneHotParams.onval, oneHotParams.offval, oneHotParams.dataType.toC, Int32(CCV_TENSOR_FORMAT_NCHW), name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
