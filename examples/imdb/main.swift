@@ -222,6 +222,10 @@ for epoch in 0..<10 {
     let softmaxLoss = SoftmaxCrossEntropyLoss()
     let target = graph.variable(oneHotGPU)
     let loss = softmaxLoss(outputs[0], target: target)
+    loss.backward(to: [vocabVec, seqVec])
+    if (i + 1) % 2 == 0 {
+      adamOptimizer.step()
+    }
     let oneHot = oneHotGPU.toCPU()
     let output = DynamicGraph.Tensor<Float32>(outputs[0]).toCPU()
     var correct = 0
@@ -233,8 +237,6 @@ for epoch in 0..<10 {
       }
     }
     let accuracy = Double(correct) / Double(batchSize)
-    loss.backward(to: [vocabVec, seqVec])
-    adamOptimizer.step()
     overallAccuracy = overallAccuracy * 0.975 + accuracy * 0.025
     if adamOptimizer.step % 50  == 0 {
       print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")

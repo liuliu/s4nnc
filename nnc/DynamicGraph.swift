@@ -42,7 +42,7 @@ public final class DynamicGraph {
   }
 
   public final class Tensor<Element: TensorNumeric>: AnyTensor {
-    private var _rawValue: nnc._AnyTensor? = nil
+    private weak var _rawValue: nnc._AnyTensor? = nil
 
     public var rawValue: nnc.Tensor<Element> {
       if let rawValue = _rawValue {
@@ -127,6 +127,18 @@ public extension DynamicGraph {
         ccv_cli_set_output_levels(ccv_cli_output_level_and_above(Int32(CCV_CLI_ERROR)))
       }
     }
+  }
+}
+
+public extension DynamicGraph {
+  struct Statistics {
+    var variables: Int
+    var computations: Int
+  }
+  var statistics: Statistics {
+    let variables = ccv_nnc_dynamic_graph_bookkeeping_count(_graph, Int32(CCV_NNC_SYMBOL_TENSOR))
+    let computations = ccv_nnc_dynamic_graph_bookkeeping_count(_graph, Int32(CCV_NNC_SYMBOL_GRAPH_EXEC))
+    return Statistics(variables: Int(variables), computations: Int(computations))
   }
 }
 
@@ -242,9 +254,9 @@ public extension DynamicGraph {
 
 public extension DynamicGraph {
   func withNoGrad<Result>(_ closure: () throws -> Result) rethrows -> Result {
-    ccv_nnc_dynamic_graph_set_no_grad(_graph, 0)
-    let result = try closure()
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
+    let result = try closure()
+    ccv_nnc_dynamic_graph_set_no_grad(_graph, 0)
     return result
   }
 }

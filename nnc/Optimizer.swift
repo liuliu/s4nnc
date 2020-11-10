@@ -38,6 +38,9 @@ extension Optimizer {
     ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, _gradients, parameterSize, _parameters, parameterSize, _savedAux, 0, _streamContext)
     _parameters.deallocate()
     _savedAux.deallocate()
+    for parameter in parameters {
+      parameter.grad = nil
+    }
   }
 }
 
