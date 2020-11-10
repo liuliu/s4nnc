@@ -347,6 +347,24 @@ final class DataFrameTests: XCTestCase {
     }
   }
 
+  func testTruncate() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .NC(1, 3))
+    tensor0[0, 0] = 1.1
+    tensor0[0, 1] = 2.1
+    tensor0[0, 2] = 1.2
+    var tensor1 = Tensor<Int32>(.CPU, .C(1))
+    tensor1[0] = 2
+    let df = DataFrame(from: [tensor0], name: "main")
+    df["len"] = .from([tensor1])
+    df["truncated"] = df["main"]!.toTruncate(df["len"]!)
+    for tensor in df["truncated", Tensor<Float32>.self] {
+      XCTAssertEqual(1.1, tensor[0, 0])
+      XCTAssertEqual(2.1, tensor[0, 1])
+      XCTAssertEqual(1, tensor.dimensions[0])
+      XCTAssertEqual(2, tensor.dimensions[1])
+    }
+  }
+
   static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -365,6 +383,7 @@ final class DataFrameTests: XCTestCase {
     ("testOneHot", testOneHot),
     ("testToGPU", testToGPU),
     ("testToManyGPU", testToManyGPU),
-    ("testOneSquared", testOneSquared)
+    ("testOneSquared", testOneSquared),
+    ("testTruncate", testTruncate)
   ]
 }

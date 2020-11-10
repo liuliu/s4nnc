@@ -318,3 +318,53 @@ public extension DataFrame.TypedSeries where Element: AnyTensor {
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneSquared, OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
   }
 }
+
+// MARK - Truncate
+
+extension DataFrame {
+  static func addToTruncate(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+    let otherProperty = (params! as! Wrapped<ColumnProperty>).value
+    var inputIndex = Int32(property.index)
+    var truncateIndex = Int32(otherProperty.index)
+    let tupleIndex = ccv_cnnp_dataframe_truncate(_dataframe, &inputIndex, 1, &truncateIndex, 1, nil)
+    let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, tupleIndex, 0, name)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.UntypedSeries {
+  func toTruncate(_ other: DataFrame.UntypedSeries) -> DataFrame.UntypedSeries {
+    guard let property = property,
+      let otherProperty = other.property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .tensor)
+    precondition(otherProperty.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
+  }
+
+  func toTruncate<Element: AnyTensor>(_ other: DataFrame.TypedSeries<Element>) -> DataFrame.UntypedSeries {
+    guard let property = property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .tensor)
+    precondition(other.property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
+  }
+}
+
+public extension DataFrame.TypedSeries where Element: AnyTensor {
+  func toTruncate(_ other: DataFrame.UntypedSeries) -> DataFrame.UntypedSeries {
+    guard let otherProperty = other.property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .tensor)
+    precondition(otherProperty.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
+  }
+  func toTruncate<OtherElement: AnyTensor>(_ other: DataFrame.TypedSeries<OtherElement>) -> DataFrame.UntypedSeries {
+    precondition(property.type == .tensor)
+    precondition(other.property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
+  }
+}
