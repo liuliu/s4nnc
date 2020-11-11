@@ -5,14 +5,28 @@ import C_nnc
  * to represent either a collection of tensors from multiple GPUs or one tensor.
  * It has a typed version DynamicGraph.TensorGroup to enforce type constraint.
  */
-public protocol DynamicGraph_AnyTensorGroup {
-  associatedtype AnyTensor
+
+public protocol DynamicGraph_AnyTensorConvertible {
+}
+
+public protocol DynamicGraph_AnyTensor {
+  static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor
+}
+
+public protocol DynamicGraph_AnyTensorGroup: DynamicGraph_AnyTensorConvertible {
+  associatedtype AnyTensor: DynamicGraph_AnyTensor
   static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor]
   static func evaluate(model: Model, inputs: [AnyTensor], streamContext: StreamContext?) -> [AnyTensor]
 }
 
 public extension DynamicGraph {
   typealias AnyTensorGroup = DynamicGraph_AnyTensorGroup
+}
+
+extension DynamicGraph.AnyTensor: DynamicGraph_AnyTensor {
+  public static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor {
+    fatalError("This will not be needed.")
+  }
 }
 
 extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
@@ -58,7 +72,13 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
   }
 }
 
-extension Array: DynamicGraph.AnyTensorGroup where Element: DynamicGraph.AnyTensor {
+extension Array: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
+  public static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor {
+    fatalError("This will not be needed.")
+  }
+}
+
+extension Array: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible where Element: DynamicGraph.AnyTensor {
   public typealias AnyTensor = [DynamicGraph.AnyTensor]
   public static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
     assert(inputs.count > 0)
@@ -154,7 +174,13 @@ public enum Functional {
     return T.exec(cmd: cmd, hint: hint, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
   }
   static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
-    return exec(T.self, cmd: cmd, hint: hint, inputs: inputs as! [T.AnyTensor], outputSize: outputSize, streamContext: streamContext)
+    let tensorInputs: [T.AnyTensor]
+    if let upcastTensorInputs = inputs as? [T.AnyTensor] {
+      tensorInputs = upcastTensorInputs
+    } else {
+      tensorInputs = inputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+    }
+    return exec(T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputSize: outputSize, streamContext: streamContext)
   }
 }
 
@@ -164,6 +190,12 @@ public extension Model {
     return T.evaluate(model: self, inputs: inputs, streamContext: streamContext)
   }
   func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_ inputs: [T], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
-    return self(T.self, inputs as! [T.AnyTensor], streamContext: streamContext)
+    let tensorInputs: [T.AnyTensor]
+    if let upcastTensorInputs = inputs as? [T.AnyTensor] {
+      tensorInputs = upcastTensorInputs
+    } else {
+      tensorInputs = inputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+    }
+    return self(T.self, tensorInputs, streamContext: streamContext)
   }
 }
