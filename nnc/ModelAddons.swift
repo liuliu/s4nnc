@@ -5,9 +5,9 @@ public final class Sum: Model {
     super.init(ccv_cnnp_sum(name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ inputs: DynamicGraph.Tensor<Element>...) -> DynamicGraph.Tensor<Element> {
-    let outputs = self(inputs)
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ inputs: T..., streamContext: StreamContext? = nil) -> T {
+    let outputs = self(inputs, streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -16,9 +16,9 @@ public final class Add: Model {
     super.init(ccv_cnnp_add(leftScalar, rightScalar, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ left: DynamicGraph.Tensor<Element>, _ right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([left, right])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ left: T, _ right: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([left, right], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -27,9 +27,9 @@ public final class Mul: Model {
     super.init(ccv_cnnp_mul(scalar, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ left: DynamicGraph.Tensor<Element>, _ right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([left, right])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ left: T, _ right: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([left, right], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -40,9 +40,9 @@ public final class Matmul: Model {
     super.init(ccv_cnnp_matmul(a, b, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ left: DynamicGraph.Tensor<Element>, _ right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([left, right])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ left: T, _ right: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([left, right], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -51,9 +51,9 @@ public final class Dense: Model {
     super.init(ccv_cnnp_dense(Int32(count), noBias ? 1 : 0, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -84,9 +84,9 @@ public final class RELU: Model {
     super.init(ccv_cnnp_relu(name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -95,9 +95,9 @@ public final class Softmax: Model {
     super.init(ccv_cnnp_softmax(name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -106,9 +106,9 @@ public final class Sigmoid: Model {
     super.init(ccv_cnnp_sigmoid(name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -117,9 +117,9 @@ public final class Swish: Model {
     super.init(ccv_cnnp_swish(name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -128,9 +128,9 @@ public final class Transpose: Model {
     super.init(ccv_cnnp_transpose(Int32(axisA), Int32(axisB), name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -145,9 +145,9 @@ public final class MaskedFill: Model {
     super.init(ccv_cnnp_masked_fill(equalTo, fillWith, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ left: DynamicGraph.Tensor<Element>, _ right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([left, right])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(_ left: T, _ right: U, streamContext: StreamContext? = nil) -> T {
+    let outputs = self(T.self, [left, right] as! [T.AnyTensor], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -156,9 +156,9 @@ public final class Dropout: Model {
     super.init(ccv_cnnp_dropout(probability, entirety ? 1 : 0, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -167,9 +167,9 @@ public final class Scalmul: Model {
     super.init(ccv_cnnp_scalar_mul(a, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -178,9 +178,9 @@ public final class BatchNorm: Model {
     super.init(ccv_cnnp_batch_norm(momentum, epsilon, name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -190,9 +190,9 @@ public final class LayerNorm: Model {
     super.init(ccv_cnnp_layer_norm(epsilon, axis32, Int32(axis.count), name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -201,9 +201,9 @@ public final class Flatten: Model {
     super.init(ccv_cnnp_flatten(name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -213,9 +213,9 @@ public final class Convolution: Model {
     super.init(ccv_cnnp_convolution(Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -225,9 +225,9 @@ public final class MaxPool: Model {
     super.init(ccv_cnnp_max_pool(kdim, hint.toCHint(), name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }
 
@@ -237,8 +237,8 @@ public final class AveragePool: Model {
     super.init(ccv_cnnp_average_pool(kdim, hint.toCHint(), name))
   }
 
-  public func callAsFunction<Element: TensorNumeric>(_ input: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
-    let outputs = self([input])
-    return DynamicGraph.Tensor<Element>(outputs[0])
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
+    let outputs = self([input], streamContext: streamContext)
+    return T(outputs[0])
   }
 }

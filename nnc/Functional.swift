@@ -93,13 +93,19 @@ extension Array: DynamicGraph.TensorGroup where Element: _DynamicGraph_TensorGro
 }
 
 public enum Functional {
+  internal static func exec<T: DynamicGraph.AnyTensorGroup>(_: T.Type, cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T.AnyTensor], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    return T.exec(cmd: cmd, hint: hint, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
+  }
   static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
-    return T.exec(cmd: cmd, hint: hint, inputs: inputs as! [T.AnyTensor], outputSize: outputSize, streamContext: streamContext)
+    return exec(T.self, cmd: cmd, hint: hint, inputs: inputs as! [T.AnyTensor], outputSize: outputSize, streamContext: streamContext)
   }
 }
 
 public extension Model {
+  internal func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_: T.Type, _ inputs: [T.AnyTensor], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    return T.evaluate(model: self, inputs: inputs, streamContext: streamContext)
+  }
   func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_ inputs: [T], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
-    return T.evaluate(model: self, inputs: inputs as! [T.AnyTensor], streamContext: streamContext)
+    return self(T.self, inputs as! [T.AnyTensor], streamContext: streamContext)
   }
 }
