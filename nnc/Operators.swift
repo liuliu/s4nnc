@@ -2,7 +2,7 @@ infix operator .*: MultiplicationPrecedence
 infix operator .+: AdditionPrecedence
 
 // Element-wise addition
-public func .+<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+public func .+<T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.sum(left: left, right: right)
 }
 
@@ -11,7 +11,7 @@ public func .+(left: Model.IO, right: Model.IO) -> Model.IO {
 }
 
 // Broadcast element-wise multiplication
-public func .*<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+public func .*<T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.mul(left: left, right: right)
 }
 
@@ -20,7 +20,7 @@ public func .*(left: Model.IO, right: Model.IO) -> Model.IO {
 }
 
 // Broadcast element-wise addition
-public func +<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+public func +<T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.add(left: left, right: right)
 }
 
@@ -29,7 +29,7 @@ public func +(left: Model.IO, right: Model.IO) -> Model.IO {
 }
 
 // Broadcast element-wise subtraction.
-public func -<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+public func -<T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.add(left: left, right: right, rightScalar: -1)
 }
 
@@ -38,7 +38,7 @@ public func -(left: Model.IO, right: Model.IO) -> Model.IO {
 }
 
 // Matrix multiplication
-public func *<Element>(left: DynamicGraph.Tensor<Element>, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+public func *<T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.matmul(left: left, right: right)
 }
 
@@ -47,11 +47,11 @@ public func *(left: Model.IO, right: Model.IO) -> Model.IO {
 }
 
 // Scalar-matrix multiplication
-public func *<Element>(left: Float, right: DynamicGraph.Tensor<Element>) -> DynamicGraph.Tensor<Element> {
+public func *<T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
   return Functional.scalmul(left: left, right: right)
 }
 
-public func *<Element>(left: DynamicGraph.Tensor<Element>, right: Float) -> DynamicGraph.Tensor<Element> {
+public func *<T: DynamicGraph.TensorGroup>(left: T, right: Float) -> T {
   return Functional.scalmul(left: right, right: left)
 }
 

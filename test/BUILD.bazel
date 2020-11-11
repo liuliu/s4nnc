@@ -5,6 +5,7 @@ swift_test(
 	srcs = [
 		"dataframe.swift",
 		"graph.swift",
+		"loss.swift",
 		"main.swift",
 		"model.swift",
 		"optimizer.swift"

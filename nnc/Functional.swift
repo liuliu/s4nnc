@@ -1,7 +1,8 @@
 import C_nnc
 
 public protocol DynamicGraph_AnyTensorGroup {
-  static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [DynamicGraph_AnyTensorGroup], outputSize: Int32, streamContext: StreamContext?) -> [DynamicGraph_AnyTensorGroup]
+  associatedtype AnyTensor
+  static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor]
 }
 
 public extension DynamicGraph {
@@ -9,14 +10,14 @@ public extension DynamicGraph {
 }
 
 extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
-  public static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [DynamicGraph_AnyTensorGroup], outputSize: Int32, streamContext: StreamContext?) -> [DynamicGraph_AnyTensorGroup] {
+  public typealias AnyTensor = DynamicGraph.AnyTensor
+  public static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
     assert(inputs.count > 0)
-    let tensorInputs = inputs as! [DynamicGraph.AnyTensor]
-    let graph = tensorInputs[0].graph
-    for input in tensorInputs {
+    let graph = inputs[0].graph
+    for input in inputs {
       assert(input.graph === graph)
     }
-    let _inputs: [ccv_nnc_tensor_variable_t?] = tensorInputs.map { $0._tensor }
+    let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0._tensor }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize))
     let outputs: [DynamicGraph.AnyTensor] = (0..<outputSize).map { _ in graph.variable() }
     for (i, variable) in outputs.enumerated() {
@@ -31,14 +32,15 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
 }
 
 extension Array: DynamicGraph.AnyTensorGroup where Element: DynamicGraph.AnyTensor {
-  public static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [DynamicGraph_AnyTensorGroup], outputSize: Int32, streamContext: StreamContext?) -> [DynamicGraph_AnyTensorGroup] {
+  public typealias AnyTensor = [DynamicGraph.AnyTensor]
+  public static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
     return []
   }
 }
 
 public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   associatedtype Element: TensorNumeric
-  init(_: DynamicGraph_AnyTensorGroup)
+  init(_: AnyTensor)
 }
 
 public extension DynamicGraph {
@@ -47,7 +49,7 @@ public extension DynamicGraph {
 
 public protocol _DynamicGraph_TensorGroup {
   associatedtype _Element: TensorNumeric
-  init(_: DynamicGraph_AnyTensorGroup)
+  init(_: DynamicGraph.AnyTensor)
 }
 
 extension DynamicGraph.Tensor: _DynamicGraph_TensorGroup {
@@ -56,27 +58,18 @@ extension DynamicGraph.Tensor: _DynamicGraph_TensorGroup {
 
 extension DynamicGraph.Tensor: DynamicGraph.TensorGroup {
   public typealias Element = Element
-  public convenience init(_ obj: DynamicGraph.AnyTensorGroup) {
-    guard obj is DynamicGraph.AnyTensor else {
-      fatalError("Cannot convert from anything other than AnyTensor")
-    }
-    self.init(obj as! DynamicGraph.AnyTensor)
-  }
 }
 
 extension Array: DynamicGraph.TensorGroup where Element: _DynamicGraph_TensorGroup, Element: DynamicGraph.AnyTensor {
   public typealias Element = Element._Element
-  public init(_ obj: DynamicGraph.AnyTensorGroup) {
-    guard obj is [DynamicGraph.AnyTensor] else {
-      fatalError("Cannot convert from anything other than array of AnyTensor")
-    }
-    self.init((obj as! [DynamicGraph.AnyTensor]).map { Element($0) })
+  public init(_ obj: AnyTensor) {
+    self.init(obj.map { Element($0) })
   }
 }
 
 public enum Functional {
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T], outputSize: Int32, streamContext: StreamContext? = nil) -> [DynamicGraph.AnyTensorGroup] {
-    return T.exec(cmd: cmd, hint: hint, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    return T.exec(cmd: cmd, hint: hint, inputs: inputs as! [T.AnyTensor], outputSize: outputSize, streamContext: streamContext)
   }
 }
 
