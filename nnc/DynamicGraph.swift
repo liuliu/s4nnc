@@ -42,6 +42,7 @@ public final class DynamicGraph {
   }
 
   public final class Tensor<Element: TensorNumeric>: AnyTensor {
+    // This is to help speed up, there is no need to have only one rawValue.
     private weak var _rawValue: nnc._AnyTensor? = nil
 
     public var rawValue: nnc.Tensor<Element> {
