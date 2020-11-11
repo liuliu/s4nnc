@@ -100,3 +100,6 @@ clang.bazelrc
 *.swp
 *.gcno
 *.out
+
+.ipynb_checkpoints
+.ibzlnb

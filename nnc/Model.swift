@@ -74,25 +74,3 @@ public final class Input: Model.IO {
     super.init(_io)
   }
 }
-
-public extension Model {
-  func callAsFunction(_ inputs: [DynamicGraph.AnyTensor], streamContext: StreamContext? = nil) -> [DynamicGraph.AnyTensor] {
-    assert(inputs.count > 0)
-    let graph = inputs[0].graph
-    for input in inputs {
-      assert(input.graph === graph)
-    }
-    let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0._tensor }
-    let outputSize = ccv_cnnp_model_output_size(_model)
-    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize))
-    let outputs: [DynamicGraph.AnyTensor] = (0..<outputSize).map { _ in graph.variable() }
-    for (i, variable) in outputs.enumerated() {
-      (_outputs + i).initialize(to: variable._tensor)
-    }
-    let _graph = graph._graph
-    let _streamContext = streamContext?._stream
-    ccv_nnc_dynamic_graph_evaluate(_graph, _model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs, outputSize, nil, _streamContext)
-    _outputs.deallocate()
-    return outputs
-  }
-}
