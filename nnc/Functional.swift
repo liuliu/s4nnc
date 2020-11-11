@@ -66,8 +66,6 @@ extension Array: DynamicGraph.AnyTensorGroup where Element: DynamicGraph.AnyTens
     let parallel = inputs[0].count
     let inputSize = inputs.count
     var _inputs = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * inputSize)
-    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize) * parallel)
-    let outputs: [[DynamicGraph.AnyTensor]] = (0..<outputSize).map { _ in (0..<parallel).map { _ in graph.variable() } }
     for (i, input) in inputs.enumerated() {
       assert(input.count == parallel)
       for (j, tensor) in input.enumerated() {
@@ -75,6 +73,8 @@ extension Array: DynamicGraph.AnyTensorGroup where Element: DynamicGraph.AnyTens
         _inputs[j * inputSize + i] = tensor._tensor
       }
     }
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize) * parallel)
+    let outputs: [[DynamicGraph.AnyTensor]] = (0..<outputSize).map { _ in (0..<parallel).map { _ in graph.variable() } }
     for (i, output) in outputs.enumerated() {
       for (j, tensor) in output.enumerated() {
         (_outputs + j * Int(outputSize) + i).initialize(to: tensor._tensor)
@@ -88,7 +88,34 @@ extension Array: DynamicGraph.AnyTensorGroup where Element: DynamicGraph.AnyTens
   }
   public static func evaluate(model: Model, inputs: [AnyTensor], streamContext: StreamContext?) -> [AnyTensor] {
     assert(inputs.count > 0)
-    return []
+    assert(inputs.count > 0)
+    let graph = inputs[0][0].graph
+    let parallel = inputs[0].count
+    let inputSize = inputs.count
+    var _inputs = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * inputSize)
+    for (i, input) in inputs.enumerated() {
+      assert(input.count == parallel)
+      for (j, tensor) in input.enumerated() {
+        assert(tensor.graph === graph)
+        _inputs[j * inputSize + i] = tensor._tensor
+      }
+    }
+    let _model = model._model
+    ccv_cnnp_model_set_data_parallel(_model, Int32(parallel))
+    let outputSize = ccv_cnnp_model_output_size(_model)
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize) * parallel)
+    let outputs: [[DynamicGraph.AnyTensor]] = (0..<outputSize).map { _ in (0..<parallel).map { _ in graph.variable() } }
+    for (i, output) in outputs.enumerated() {
+      for (j, tensor) in output.enumerated() {
+        (_outputs + j * Int(outputSize) + i).initialize(to: tensor._tensor)
+      }
+    }
+    let _graph = graph._graph
+    let _streamContext = streamContext?._stream
+    let isTest = model.isTest
+    ccv_nnc_dynamic_graph_evaluate(_graph, _model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs, outputSize * Int32(parallel), nil, _streamContext)
+    _outputs.deallocate()
+    return outputs
   }
 }
 
