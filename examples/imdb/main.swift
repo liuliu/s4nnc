@@ -175,7 +175,7 @@ testData["mask"] = testData["main", ImdbText.self].map(\.mask)
 testData["c"] = testData["main", ImdbText.self].map(\.c)
 testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
 
-let deviceCount = 4
+let deviceCount = 1
 
 // Batching tensors together. 
 let batchedTrainData = DataFrame(batchOf: trainData["tensor", "mask", "oneHot"], size: batchSize, repeating: deviceCount)
@@ -192,6 +192,7 @@ for i in 0..<deviceCount {
 /**
  * The Training Loop
  */
+/*
 let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
 let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
 vocabVec[0].rand(-1, 1)
@@ -202,6 +203,11 @@ graph.withNoGrad {
     Functional.copy(from: seqVec[0], to: seqVec[i])
   }
 }
+*/
+let vocabVec: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(vocabSize, embeddingSize))
+let seqVec: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(maxLength, embeddingSize))
+vocabVec.rand(-1, 1)
+seqVec.rand(-1, 1)
 var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec]
 var overallAccuracy = 0.0
@@ -212,14 +218,14 @@ for epoch in 0..<10 {
     columns += ["tensorGPU_\(i)", "oneHotGPU_\(i)", "squaredMaskGPU_\(i)"]
   }
   for (i, batch) in batchedTrainData[columns].enumerated() {
-    print(graph.statistics)
     adamOptimizer.step = epoch * batchedTrainData.count + i + 1
-    adamOptimizer.rate = 0.0001 * min(Float(i) / (10000.0 / Float(batchSize)), 1)
-    let tensorGPU = (0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
-    let oneHotGPU = (0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
-    let squaredMaskGPU = (0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
-    let batchLength = tensorGPU[0].dimensions[1]
-    let wordIndices = graph.variable(tensorGPU.map { $0.reshape(.C(batchSize * batchLength)) })
+    adamOptimizer.rate = 0.0001 * min(Float(i) / (10000.0 / Float(batchSize)), 1) * Float(deviceCount)
+    let tensorGPU = batch[0] as! Tensor<Int32> //(0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
+    let oneHotGPU = batch[1] as! Tensor<Float32> //(0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
+    let squaredMaskGPU = batch[2] as! Tensor<Int32> //(0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
+    let batchLength = tensorGPU.dimensions[1]
+    // let wordIndices = graph.variable(tensorGPU.map { $0.reshape(.C(batchSize * batchLength)) })
+    let wordIndices = graph.variable(tensorGPU.reshape(.C(batchSize * batchLength)))
     let wordVec = Functional.indexSelect(input: vocabVec, index: wordIndices)
     var seqIndicesCPU = Tensor<Int32>(.CPU, .C(batchSize * batchLength))
     for i in 0..<batchSize {
@@ -227,24 +233,23 @@ for epoch in 0..<10 {
         seqIndicesCPU[i * batchLength + j] = Int32(j)
       }
     }
-    let seqIndicesGPU = (0..<deviceCount).map { seqIndicesCPU.toGPU($0) }
+    let seqIndicesGPU = seqIndicesCPU.toGPU(0) // (0..<deviceCount).map { seqIndicesCPU.toGPU($0) }
     let seqIndices = graph.constant(seqIndicesGPU)
     let posVec = Functional.indexSelect(input: seqVec, index: seqIndices)
     let selectVec = wordVec + posVec
     let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
-    let masked = graph.constant(squaredMaskGPU.map { $0.reshape(.CHW(batchSize, batchLength, batchLength)) })
+    // let masked = graph.constant(squaredMaskGPU.map { $0.reshape(.CHW(batchSize, batchLength, batchLength)) })
+    let masked = graph.constant(squaredMaskGPU.reshape(.CHW(batchSize, batchLength, batchLength)))
     let output = transformer(inputs: inputVec, masked)[0]
     let softmaxLoss = SoftmaxCrossEntropyLoss()
     let target = graph.variable(oneHotGPU)
     let loss = softmaxLoss(output, target: target)
     loss.backward(to: [vocabVec, seqVec])
-    if (i + 1) % 2 == 0 {
-      adamOptimizer.step()
-    }
+    adamOptimizer.step()
     var correct = 0
     for k in 0..<deviceCount {
-      let oneHot = oneHotGPU[k].toCPU()
-      let output = DynamicGraph.Tensor<Float32>(output[k]).toCPU()
+      let oneHot = oneHotGPU.toCPU()
+      let output = DynamicGraph.Tensor<Float32>(output).toCPU()
       for i in 0..<batchSize {
         let truth = oneHot[i, 1] > oneHot[i, 0]
         let prediction = output[i, 1] > output[i, 0]
@@ -253,8 +258,8 @@ for epoch in 0..<10 {
         }
       }
     }
-    let accuracy = Double(correct) / Double(batchSize)
-    overallAccuracy = overallAccuracy * 0.9 + accuracy * 0.1
+    let accuracy = Double(correct) / Double(batchSize * deviceCount)
+    overallAccuracy = overallAccuracy * 0.975 + accuracy * 0.025
     if adamOptimizer.step % 50  == 0 {
       print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")
     }
