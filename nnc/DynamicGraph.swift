@@ -230,6 +230,16 @@ public extension DynamicGraph {
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
+  func variable<Element: TensorNumeric>(_ tensors: [nnc.Tensor<Element>]) -> Group<Tensor<Element>> {
+    precondition(tensors.count > 0)
+    return Group(tensors.map { self.variable($0) })
+  }
+
+  func constant<Element: TensorNumeric>(_ tensors: [nnc.Tensor<Element>]) -> Group<Tensor<Element>> {
+    precondition(tensors.count > 0)
+    return Group(tensors.map { self.constant($0) })
+  }
+
   func variable<Element: TensorNumeric>(_ device: DeviceKind, format: TensorFormat, dimensions: [Int]) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph,
       toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
