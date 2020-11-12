@@ -13,10 +13,10 @@ let tv2g1 = tv2.toGPU(1)
 
 let model = Dense(count: 2)
 
-let tv1g = [tv1g0, tv1g1]
-let tv2g = [tv2g0, tv2g1]
+let tv1g = Group(tv1g0, tv1g1)
+let tv2g = Group(tv2g0, tv2g1)
 
-let rv = model([tv1g])
+let rv = model(tv1g)
 print(rv)
 
 /*

@@ -11,6 +11,7 @@ swift_library(
 		"DataFrameAddons.swift",
 		"Functional.swift",
 		"FunctionalAddons.swift",
+		"Group.swift",
 		"Hint.swift",
 		"Loss.swift",
 		"Model.swift",

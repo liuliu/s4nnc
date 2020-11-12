@@ -72,14 +72,25 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
   }
 }
 
-extension Array: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
+protocol DynamicGraph_GroupUnderlyingArrayAccessible {
+  var underlyingAny: [DynamicGraph.AnyTensor] { get }
+}
+
+extension DynamicGraph.Group: DynamicGraph_GroupUnderlyingArrayAccessible {
+  var underlyingAny: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
+}
+
+extension DynamicGraph.Group: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
   public static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor {
-    fatalError("This will not be needed.")
+    guard let convertible = convertible as? DynamicGraph_GroupUnderlyingArrayAccessible else {
+      fatalError("This will not be needed.")
+    }
+    return DynamicGraph.Group<DynamicGraph.AnyTensor>(underlyingArray: convertible.underlyingAny)
   }
 }
 
-extension Array: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible where Element: DynamicGraph.AnyTensor {
-  public typealias AnyTensor = [DynamicGraph.AnyTensor]
+extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible where Element: DynamicGraph.AnyTensor {
+  public typealias AnyTensor = DynamicGraph.Group<DynamicGraph.AnyTensor>
   public static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
     assert(inputs.count > 0)
     let graph = inputs[0][0].graph
@@ -94,7 +105,7 @@ extension Array: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible
       }
     }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize) * parallel)
-    let outputs: [[DynamicGraph.AnyTensor]] = (0..<outputSize).map { _ in (0..<parallel).map { _ in graph.variable() } }
+    let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>] = (0..<outputSize).map { _ in DynamicGraph.Group(underlyingArray: (0..<parallel).map { _ in graph.variable() }) }
     for (i, output) in outputs.enumerated() {
       for (j, tensor) in output.enumerated() {
         (_outputs + j * Int(outputSize) + i).initialize(to: tensor._tensor)
@@ -124,7 +135,7 @@ extension Array: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible
     ccv_cnnp_model_set_data_parallel(_model, Int32(parallel))
     let outputSize = ccv_cnnp_model_output_size(_model)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize) * parallel)
-    let outputs: [[DynamicGraph.AnyTensor]] = (0..<outputSize).map { _ in (0..<parallel).map { _ in graph.variable() } }
+    let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>] = (0..<outputSize).map { _ in DynamicGraph.Group(underlyingArray: (0..<parallel).map { _ in graph.variable() }) }
     for (i, output) in outputs.enumerated() {
       for (j, tensor) in output.enumerated() {
         (_outputs + j * Int(outputSize) + i).initialize(to: tensor._tensor)
@@ -140,7 +151,7 @@ extension Array: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible
 }
 
 public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
-  associatedtype Element: TensorNumeric
+  associatedtype ElementNumeric: TensorNumeric
   init(_: AnyTensor)
 }
 
@@ -158,14 +169,11 @@ extension DynamicGraph.Tensor: _DynamicGraph_TensorGroup {
 }
 
 extension DynamicGraph.Tensor: DynamicGraph.TensorGroup {
-  public typealias Element = Element
+  public typealias ElementNumeric = Element
 }
 
-extension Array: DynamicGraph.TensorGroup where Element: _DynamicGraph_TensorGroup, Element: DynamicGraph.AnyTensor {
-  public typealias Element = Element._Element
-  public init(_ obj: AnyTensor) {
-    self = obj.map { Element($0) }
-  }
+extension DynamicGraph.Group: DynamicGraph.TensorGroup where Element: _DynamicGraph_TensorGroup, Element: DynamicGraph.AnyTensor {
+  public typealias ElementNumeric = Element._Element
 }
 
 public enum Functional {

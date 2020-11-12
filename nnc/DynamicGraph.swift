@@ -34,6 +34,10 @@ public final class DynamicGraph {
       self.underlying = underlying
     }
 
+    public required init(_ tensor: AnyTensor) {
+      self.underlying = tensor.underlying
+    }
+
     public var dimensions: [Int] {
         let _graph = graph._graph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
@@ -57,10 +61,6 @@ public final class DynamicGraph {
     }
 
     // If we did type conversion, we need to hold a reference to its parent.
-    public convenience init(_ tensor: AnyTensor) {
-      self.init(tensor.underlying)
-    }
-
     public subscript(indices: Int...) -> Element {
       get {
         if let rawValue = _rawValue {
