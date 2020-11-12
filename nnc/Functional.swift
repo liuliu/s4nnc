@@ -72,20 +72,12 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
   }
 }
 
-protocol DynamicGraph_GroupUnderlyingArrayAccessible {
-  var underlyingAny: [DynamicGraph.AnyTensor] { get }
-}
-
-extension DynamicGraph.Group: DynamicGraph_GroupUnderlyingArrayAccessible {
-  var underlyingAny: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
-}
-
 extension DynamicGraph.Group: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
   public static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor {
-    guard let convertible = convertible as? DynamicGraph_GroupUnderlyingArrayAccessible else {
+    guard let convertible = convertible as? DynamicGraph.AnyGroup else {
       fatalError("This will not be needed.")
     }
-    return DynamicGraph.Group<DynamicGraph.AnyTensor>(underlyingArray: convertible.underlyingAny)
+    return DynamicGraph.Group<DynamicGraph.AnyTensor>(underlyingArray: convertible.underlying)
   }
 }
 

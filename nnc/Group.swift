@@ -1,5 +1,13 @@
+public protocol DynamicGraph_AnyGroup {
+  var underlying: [DynamicGraph.AnyTensor] { get }
+}
+
 extension DynamicGraph {
-  public struct Group<Element: DynamicGraph.AnyTensor>: RandomAccessCollection {
+
+  public typealias AnyGroup = DynamicGraph_AnyGroup
+
+  public struct Group<Element: DynamicGraph.AnyTensor>: RandomAccessCollection, DynamicGraph.AnyGroup {
+    public var underlying: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
     var underlyingArray: [Element]
 
     public typealias Element = Element
@@ -36,6 +44,7 @@ extension DynamicGraph {
       self.underlyingArray = underlyingArray
     }
   }
+
 }
 
 public typealias Group = DynamicGraph.Group
