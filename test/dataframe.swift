@@ -196,6 +196,44 @@ final class DataFrameTests: XCTestCase {
     }
   }
 
+  func testBatchingRepeating() throws {
+    var tensor00 = Tensor<Float32>(.CPU, .C(1))
+    tensor00[0] = 1.1
+    var tensor01 = Tensor<Float32>(.CPU, .C(1))
+    tensor01[0] = 2.2
+    var tensor02 = Tensor<Float32>(.CPU, .C(1))
+    tensor02[0] = 3.2
+    var tensor03 = Tensor<Float32>(.CPU, .C(1))
+    tensor03[0] = 4.2
+    let df = DataFrame(from: [tensor00, tensor01, tensor02, tensor03], name: "main")
+    var tensor10 = Tensor<Float32>(.CPU, .C(1))
+    tensor10[0] = 1.2
+    var tensor11 = Tensor<Float32>(.CPU, .C(1))
+    tensor11[0] = 2.3
+    var tensor12 = Tensor<Float32>(.CPU, .C(1))
+    tensor12[0] = 3.3
+    var tensor13 = Tensor<Float32>(.CPU, .C(1))
+    tensor13[0] = 4.3
+    df["1"] = .from([tensor10, tensor11, tensor12, tensor13])
+    let batched = DataFrame(batchOf: df["main", "1"], size: 2, repeating: 2)
+    for tensor in batched["main_0", Tensor<Float32>.self] {
+      XCTAssertEqual(1.1, tensor[0, 0])
+      XCTAssertEqual(2.2, tensor[1, 0])
+    }
+    for tensor in batched["main_1", Tensor<Float32>.self] {
+      XCTAssertEqual(3.2, tensor[0, 0])
+      XCTAssertEqual(4.2, tensor[1, 0])
+    }
+    for tensor in batched["1_0", Tensor<Float32>.self] {
+      XCTAssertEqual(1.2, tensor[0, 0])
+      XCTAssertEqual(2.3, tensor[1, 0])
+    }
+    for tensor in batched["1_1", Tensor<Float32>.self] {
+      XCTAssertEqual(3.3, tensor[0, 0])
+      XCTAssertEqual(4.3, tensor[1, 0])
+    }
+  }
+
   func testTypedBatching() throws {
     var tensor0 = Tensor<Float32>(.CPU, .C(1))
     tensor0[0] = 1.1
@@ -398,6 +436,7 @@ final class DataFrameTests: XCTestCase {
     ("testBatching", testBatching),
     ("testTypedBatching", testTypedBatching),
     ("testMultiBatching", testMultiBatching),
+    ("testBatchingRepeating", testBatchingRepeating),
     ("testOneHot", testOneHot),
     ("testStructAndIntWrap", testStructAndIntWrap),
     ("testToGPU", testToGPU),
