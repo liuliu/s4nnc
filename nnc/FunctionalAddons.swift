@@ -59,6 +59,13 @@ public extension Functional {
     return T(outputs[0])
   }
 
+  // Copy
+  static func copy<T: DynamicGraph.TensorGroup>(from: T, to: T, streamContext: StreamContext? = nil) {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [from], outputs: [to], streamContext: streamContext)
+  }
+
   static func indexSelect<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(input: T, index: U, streamContext: StreamContext? = nil) -> T {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
