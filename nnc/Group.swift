@@ -1,5 +1,11 @@
-public protocol DynamicGraph_AnyGroup {
+// Empty protocol for other places to recognize AnyTensor and AnyGroup with dynamic dispatch.
+public protocol DynamicGraph_Any {
+}
+public protocol DynamicGraph_AnyGroup: DynamicGraph_Any {
   var underlying: [DynamicGraph.AnyTensor] { get }
+}
+
+extension DynamicGraph.AnyTensor: DynamicGraph_Any {
 }
 
 extension DynamicGraph {
