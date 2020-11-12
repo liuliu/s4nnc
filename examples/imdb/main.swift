@@ -212,6 +212,7 @@ for epoch in 0..<10 {
     columns += ["tensorGPU_\(i)", "oneHotGPU_\(i)", "squaredMaskGPU_\(i)"]
   }
   for (i, batch) in batchedTrainData[columns].enumerated() {
+    print(graph.statistics)
     adamOptimizer.step = epoch * batchedTrainData.count + i + 1
     adamOptimizer.rate = 0.0001 * min(Float(i) / (10000.0 / Float(batchSize)), 1)
     let tensorGPU = (0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
@@ -232,28 +233,28 @@ for epoch in 0..<10 {
     let selectVec = wordVec + posVec
     let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
     let masked = graph.constant(squaredMaskGPU.map { $0.reshape(.CHW(batchSize, batchLength, batchLength)) })
-    let outputs = transformer(inputs: inputVec, masked)
+    let output = transformer(inputs: inputVec, masked)[0]
     let softmaxLoss = SoftmaxCrossEntropyLoss()
     let target = graph.variable(oneHotGPU)
-    let loss = softmaxLoss(outputs[0], target: target)
+    let loss = softmaxLoss(output, target: target)
     loss.backward(to: [vocabVec, seqVec])
     if (i + 1) % 2 == 0 {
       adamOptimizer.step()
     }
-    /*
-    let oneHot = oneHotGPU.toCPU()
-    let output = DynamicGraph.Tensor<Float32>(outputs[0]).toCPU()
     var correct = 0
-    for i in 0..<batchSize {
-      let truth = oneHot[i, 1] > oneHot[i, 0]
-      let prediction = output[i, 1] > output[i, 0]
-      if truth == prediction {
-        correct += 1
+    for k in 0..<deviceCount {
+      let oneHot = oneHotGPU[k].toCPU()
+      let output = DynamicGraph.Tensor<Float32>(output[k]).toCPU()
+      for i in 0..<batchSize {
+        let truth = oneHot[i, 1] > oneHot[i, 0]
+        let prediction = output[i, 1] > output[i, 0]
+        if truth == prediction {
+          correct += 1
+        }
       }
     }
     let accuracy = Double(correct) / Double(batchSize)
-    overallAccuracy = overallAccuracy * 0.975 + accuracy * 0.025
-    */
+    overallAccuracy = overallAccuracy * 0.9 + accuracy * 0.1
     if adamOptimizer.step % 50  == 0 {
       print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")
     }

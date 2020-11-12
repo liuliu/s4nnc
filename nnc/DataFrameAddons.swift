@@ -60,33 +60,33 @@ extension DataFrame {
 // MARK - Batching
 
 extension DataFrame {
-  convenience init(dataframe: DataFrame, properties: [ColumnProperty], size: Int, repeating: Int) {
+  convenience init(dataframe: DataFrame, properties: [ColumnProperty], size: Int, repeating: Int?) {
     let _dataframe = dataframe._dataframe
     let columnSize: Int32 = Int32(properties.count)
     let indices: [Int32] = properties.map { Int32($0.index) }
-    let batching = ccv_cnnp_dataframe_batching_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating), Int32(CCV_TENSOR_FORMAT_NCHW))!
+    let batching = ccv_cnnp_dataframe_batching_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1), Int32(CCV_TENSOR_FORMAT_NCHW))!
     var columnProperties = [String: ColumnProperty]()
-    if repeating == 1 {
+    if let repeating = repeating {
+      for i in 0..<repeating {
+        for (j, property) in properties.enumerated() {
+          // These must have names.
+          let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
+          let indexedName = "\(String(cString: name))_\(i)"
+          let index = ccv_cnnp_dataframe_extract_tuple(batching, 0, Int32(i * properties.count + j), indexedName)
+          columnProperties[indexedName] = ColumnProperty(index: Int(index), type: .tensor)
+        }
+      }
+    } else {
       for (i, property) in properties.enumerated() {
         // These must have names.
         let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
         let index = ccv_cnnp_dataframe_extract_tuple(batching, 0, Int32(i), name)
         columnProperties[String(cString: name)] = ColumnProperty(index: Int(index), type: .tensor)
       }
-    } else {
-      for i in 0..<repeating {
-        for (j, property) in properties.enumerated() {
-          // These must have names.
-          let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
-          let index = ccv_cnnp_dataframe_extract_tuple(batching, 0, Int32(i * properties.count + j), name)
-          columnProperties["\(String(cString: name))_\(i)"] = ColumnProperty(index: Int(index), type: .tensor)
-        }
-      }
     }
     self.init(dataframe: batching, underlying: dataframe, columnProperties: columnProperties)
   }
-  public convenience init(batchOf: DataFrame.UntypedSeries, size: Int, repeating: Int = 1) {
-    precondition(repeating > 0)
+  public convenience init(batchOf: DataFrame.UntypedSeries, size: Int, repeating: Int? = nil) {
     guard let property = batchOf.property,
           let dataframe = batchOf.dataframe else {
       fatalError("An UntypedSeries has to be referenced from existing dataframe. Cannot be a temporary one.")
@@ -94,12 +94,12 @@ extension DataFrame {
     precondition(property.type == .tensor)
     self.init(dataframe: dataframe, properties: [property], size: size, repeating: repeating)
   }
-  public convenience init<T: AnyTensor>(batchOf: DataFrame.TypedSeries<T>, size: Int, repeating: Int = 1) {
+  public convenience init<T: AnyTensor>(batchOf: DataFrame.TypedSeries<T>, size: Int, repeating: Int? = nil) {
     let property = batchOf.property
     precondition(property.type == .tensor)
     self.init(dataframe: batchOf.dataframe, properties: [property], size: size, repeating: repeating)
   }
-  public convenience init(batchOf: DataFrame.ManyUntypedSeries, size: Int, repeating: Int = 1) {
+  public convenience init(batchOf: DataFrame.ManyUntypedSeries, size: Int, repeating: Int? = nil) {
     let properties = batchOf.properties
     for property in properties {
       precondition(property.type == .tensor)
