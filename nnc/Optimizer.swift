@@ -104,7 +104,7 @@ extension Optimizer {
           }
         }
         let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
-        return (0..<(groupParameters.count * size)).map { _ in DynamicGraph.Group(underlyingArray: (0..<parallel).map { _ in graph.variable() }) }
+        return (0..<(groupParameters.count * size)).map { _ in DynamicGraph.Group((0..<parallel).map { _ in graph.variable() }) }
       default:
         fatalError("Cannot support the given type")
       }

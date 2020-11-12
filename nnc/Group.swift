@@ -46,7 +46,7 @@ extension DynamicGraph {
       }
     }
 
-    init(underlyingArray: [Element]) {
+    public init(_ underlyingArray: [Element]) {
       self.underlyingArray = underlyingArray
     }
   }
