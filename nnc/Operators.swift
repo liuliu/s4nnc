@@ -3,7 +3,7 @@ infix operator .+: AdditionPrecedence
 
 // Element-wise addition
 public func .+<T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
-  return Functional.sum(left: left, right: right)
+  return Functional.sum(left, right)
 }
 
 public func .+(left: Model.IO, right: Model.IO) -> Model.IO {

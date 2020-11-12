@@ -2,10 +2,11 @@ import C_nnc
 
 public extension Functional {
   // Element-wise addition
-  static func sum<T: DynamicGraph.TensorGroup>(left: T, right: T, scalar: Float32 = 1, streamContext: StreamContext? = nil) -> T {
+  static func sum<T: DynamicGraph.TensorGroup>(_ inputs: T..., streamContext: StreamContext? = nil) -> T {
+    precondition(inputs.count >= 2)
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_EWSUM_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: inputs[0], Array(inputs.suffix(from: 1)), outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
