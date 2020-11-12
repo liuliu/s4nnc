@@ -19,7 +19,7 @@ final class ModelTests: XCTestCase {
     let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .C(1)))
     let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .C(1)))
     let tv2 = dynamicGraph.variable(Tensor<Float32>([0.2], .C(1)))
-    let tv3 = DynamicGraph.Tensor<Float32>(muladd([tv0, tv1, tv2])[0])
+    let tv3 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0, tv1, tv2)[0])
     XCTAssertEqual(tv3.rawValue[0], 1.1 * 2.2 - 0.2)
   }
 
@@ -35,12 +35,12 @@ final class ModelTests: XCTestCase {
 
     let b0 = dynamicGraph.variable(Tensor<Float32>([1.2], .C(1)))
     let b1 = dynamicGraph.constant(Tensor<Float32>([2.2], .C(1)))
-    let b2 = DynamicGraph.Tensor<Float32>(builder([b0, b1])[0])
+    let b2 = DynamicGraph.Tensor<Float32>(builder(inputs: b0, b1)[0])
     XCTAssertEqual(b2.rawValue[0], 1.2 * 2.2)
 
     let b3 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2], .C(2)))
     let b4 = dynamicGraph.constant(Tensor<Float32>([2.2, 3.3], .C(2)))
-    let b5 = DynamicGraph.Tensor<Float32>(builder([b3, b4])[0])
+    let b5 = DynamicGraph.Tensor<Float32>(builder(inputs: b3, b4)[0])
     XCTAssertEqual(b5.rawValue[0], 1.2 * 2.2)
     XCTAssertEqual(b5.rawValue[1], 2.2 * 3.3)
   }

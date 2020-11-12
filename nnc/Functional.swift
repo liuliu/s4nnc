@@ -221,24 +221,37 @@ public enum Functional {
   internal static func exec<T: DynamicGraph.AnyTensorGroup>(_: T.Type, cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T.AnyTensor], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     return T.exec(cmd: cmd, hint: hint, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
   }
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
-    let tensorInputs: [T.AnyTensor]
-    if let upcastTensorInputs = inputs as? [T.AnyTensor] {
-      tensorInputs = upcastTensorInputs
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    var tensorInputs: [T.AnyTensor]
+    if let upcastFirstInput = firstInput as? T.AnyTensor {
+      tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = inputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorInputs = [T.AnyTensor.upcasting(convertible: firstInput) as! T.AnyTensor]
+    }
+    if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
+      tensorInputs += upcastTensorInputs
+    } else {
+      tensorInputs += restInputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
     }
     return exec(T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputSize: outputSize, streamContext: streamContext)
+  }
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: DynamicGraph_AnyTensorConvertible..., outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    exec(cmd: cmd, hint: hint, inputs: firstInput, restInputs, outputSize: outputSize, streamContext: streamContext)
   }
   internal static func exec<T: DynamicGraph.AnyTensorGroup>(_: T.Type, cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T.AnyTensor], outputs: [T.AnyTensor], streamContext: StreamContext? = nil) {
     T.exec(cmd: cmd, hint: hint, inputs: inputs, outputs: outputs, streamContext: streamContext)
   }
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T], outputs: [T], streamContext: StreamContext? = nil) {
-    let tensorInputs: [T.AnyTensor]
-    if let upcastTensorInputs = inputs as? [T.AnyTensor] {
-      tensorInputs = upcastTensorInputs
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], outputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) {
+    var tensorInputs: [T.AnyTensor]
+    if let upcastFirstInput = firstInput as? T.AnyTensor {
+      tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = inputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorInputs = [T.AnyTensor.upcasting(convertible: firstInput) as! T.AnyTensor]
+    }
+    if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
+      tensorInputs += upcastTensorInputs
+    } else {
+      tensorInputs += restInputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
     }
     let tensorOutputs: [T.AnyTensor]
     if let upcastTensorOutputs = outputs as? [T.AnyTensor] {
@@ -248,21 +261,33 @@ public enum Functional {
     }
     return exec(T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputs: tensorOutputs, streamContext: streamContext)
   }
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: DynamicGraph_AnyTensorConvertible..., outputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) {
+    exec(cmd: cmd, hint: hint, inputs: firstInput, restInputs, outputs: outputs, streamContext: streamContext)
+  }
 }
 
 public extension Model {
-  internal func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_: T.Type, _ inputs: [T.AnyTensor], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+  fileprivate func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_: T.Type, _ inputs: [T.AnyTensor], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     let outputSize = ccv_cnnp_model_output_size(_model)
     return T.evaluate(model: _model, isTest: isTest, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
   }
-  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_ inputs: [T], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
-    let tensorInputs: [T.AnyTensor]
-    if let upcastTensorInputs = inputs as? [T.AnyTensor] {
-      tensorInputs = upcastTensorInputs
+  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    var tensorInputs: [T.AnyTensor]
+    if let upcastFirstInput = firstInput as? T.AnyTensor {
+      tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = inputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorInputs = [T.AnyTensor.upcasting(convertible: firstInput) as! T.AnyTensor]
+    }
+    if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
+      tensorInputs += upcastTensorInputs
+    } else {
+      tensorInputs += restInputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
     }
     return self(T.self, tensorInputs, streamContext: streamContext)
+  }
+
+  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: DynamicGraph_AnyTensorConvertible..., streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+    self(inputs: firstInput, restInputs, streamContext: streamContext)
   }
 }
 
@@ -276,25 +301,38 @@ fileprivate extension AnyModelBuilder {
     self.inputs = nil
     return outputs
   }
-  func apply<U: DynamicGraph.AnyTensorGroup>(_ t: Any, _ inputs: [U], streamContext: StreamContext? = nil) -> [U.AnyTensor] {
-    let tensorInputs: [U.AnyTensor]
-    if let upcastTensorInputs = inputs as? [U.AnyTensor] {
-      tensorInputs = upcastTensorInputs
+}
+
+public extension ModelBuilder {
+  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(_ t: T, inputs firstInput: U, _ restInputs: DynamicGraph_AnyTensorConvertible..., streamContext: StreamContext? = nil) -> [U.AnyTensor] {
+    var tensorInputs: [U.AnyTensor]
+    if let upcastFirstInput = firstInput as? U.AnyTensor {
+      tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = inputs.map { U.AnyTensor.upcasting(convertible: $0) as! U.AnyTensor }
+      tensorInputs = [U.AnyTensor.upcasting(convertible: firstInput) as! U.AnyTensor]
+    }
+    if let upcastTensorInputs = restInputs as? [U.AnyTensor] {
+      tensorInputs += upcastTensorInputs
+    } else {
+      tensorInputs += restInputs.map { U.AnyTensor.upcasting(convertible: $0) as! U.AnyTensor }
     }
     return apply(ofType: U.self, t, tensorInputs, streamContext: streamContext)
   }
 }
 
-public extension ModelBuilder {
-  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(_ t: T, _ inputs: [U], streamContext: StreamContext? = nil) -> [U.AnyTensor] {
-    return apply(t, inputs, streamContext: streamContext)
-  }
-}
-
 public extension ModelBuilder where T == Void {
-  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(_ inputs: [U], streamContext: StreamContext? = nil) -> [U.AnyTensor] {
-    return self(Void(), inputs, streamContext: streamContext)
+  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(inputs firstInput: U, _ restInputs: DynamicGraph_AnyTensorConvertible..., streamContext: StreamContext? = nil) -> [U.AnyTensor] {
+    var tensorInputs: [U.AnyTensor]
+    if let upcastFirstInput = firstInput as? U.AnyTensor {
+      tensorInputs = [upcastFirstInput]
+    } else {
+      tensorInputs = [U.AnyTensor.upcasting(convertible: firstInput) as! U.AnyTensor]
+    }
+    if let upcastTensorInputs = restInputs as? [U.AnyTensor] {
+      tensorInputs += upcastTensorInputs
+    } else {
+      tensorInputs += restInputs.map { U.AnyTensor.upcasting(convertible: $0) as! U.AnyTensor }
+    }
+    return apply(ofType: U.self, Void(), tensorInputs, streamContext: streamContext)
   }
 }

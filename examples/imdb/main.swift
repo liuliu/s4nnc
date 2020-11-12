@@ -232,7 +232,7 @@ for epoch in 0..<10 {
     let selectVec = wordVec + posVec
     let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
     let masked = graph.constant(squaredMaskGPU.map { $0.reshape(.CHW(batchSize, batchLength, batchLength)) })
-    let outputs = transformer([inputVec, masked])
+    let outputs = transformer(inputs: inputVec, masked)
     let softmaxLoss = SoftmaxCrossEntropyLoss()
     let target = graph.variable(oneHotGPU)
     let loss = softmaxLoss(outputs[0], target: target)

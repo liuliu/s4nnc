@@ -6,7 +6,8 @@ public final class Sum: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ inputs: T..., streamContext: StreamContext? = nil) -> T {
-    let outputs = self(inputs, streamContext: streamContext)
+    precondition(inputs.count >= 2)
+    let outputs = self(inputs: inputs[0], Array(inputs.suffix(from: 1)), streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -17,7 +18,7 @@ public final class Add: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ left: T, _ right: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([left, right], streamContext: streamContext)
+    let outputs = self(inputs: left, right, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -28,7 +29,7 @@ public final class Mul: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ left: T, _ right: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([left, right], streamContext: streamContext)
+    let outputs = self(inputs: left, right, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -41,7 +42,7 @@ public final class Matmul: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ left: T, _ right: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([left, right], streamContext: streamContext)
+    let outputs = self(inputs: left, right, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -52,7 +53,7 @@ public final class Dense: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -85,7 +86,7 @@ public final class RELU: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -96,7 +97,7 @@ public final class Softmax: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -107,7 +108,7 @@ public final class Sigmoid: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -118,7 +119,7 @@ public final class Swish: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -129,7 +130,7 @@ public final class Transpose: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -146,7 +147,7 @@ public final class MaskedFill: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(_ left: T, _ right: U, streamContext: StreamContext? = nil) -> T {
-    let outputs = self(T.self, [left, right] as! [T.AnyTensor], streamContext: streamContext)
+    let outputs = self(inputs: left, right, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -157,7 +158,7 @@ public final class Dropout: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -168,7 +169,7 @@ public final class Scalmul: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -179,7 +180,7 @@ public final class BatchNorm: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -191,7 +192,7 @@ public final class LayerNorm: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -202,7 +203,7 @@ public final class Flatten: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -214,7 +215,7 @@ public final class Convolution: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -226,7 +227,7 @@ public final class MaxPool: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -238,7 +239,7 @@ public final class AveragePool: Model {
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(_ input: T, streamContext: StreamContext? = nil) -> T {
-    let outputs = self([input], streamContext: streamContext)
+    let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
   }
 }

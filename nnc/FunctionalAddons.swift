@@ -5,7 +5,7 @@ public extension Functional {
   static func sum<T: DynamicGraph.TensorGroup>(left: T, right: T, scalar: Float32 = 1, streamContext: StreamContext? = nil) -> T {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_EWSUM_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
@@ -15,7 +15,7 @@ public extension Functional {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (scalar, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MUL_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
@@ -25,7 +25,7 @@ public extension Functional {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (leftScalar, rightScalar, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
@@ -33,7 +33,7 @@ public extension Functional {
   static func log<T: DynamicGraph.TensorGroup>(_ one: T, streamContext: StreamContext? = nil) -> T {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_EWLOG_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [one], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
@@ -45,7 +45,7 @@ public extension Functional {
     params.blas.transpose_a = (Int32(leftTranspose.0), Int32(leftTranspose.1))
     params.blas.transpose_b = (Int32(rightTranspose.0), Int32(rightTranspose.1))
     let cmd = ccv_nnc_cmd(CCV_NNC_GEMM_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [left, right], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
@@ -55,7 +55,7 @@ public extension Functional {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (left, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALAR_MUL_FORWARD, nil, params, 0)
-    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [right], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: right, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 
@@ -63,14 +63,14 @@ public extension Functional {
   static func copy<T: DynamicGraph.TensorGroup>(from: T, to: T, streamContext: StreamContext? = nil) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
-    exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [from], outputs: [to], streamContext: streamContext)
+    exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: from, outputs: [to], streamContext: streamContext)
   }
 
   static func indexSelect<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(input: T, index: U, streamContext: StreamContext? = nil) -> T {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_INDEX_SELECT_FORWARD, nil, params, 0)
-    let outputs = exec(T.self, cmd: cmd, hint: ccv_nnc_no_hint, inputs: [input, index] as! [T.AnyTensor], outputSize: 1, streamContext: streamContext)
+    let outputs = exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, index, outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -81,7 +81,7 @@ public extension DynamicGraph.Tensor {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.transpose.axis = (Int32(axisA), Int32(axisB))
     let cmd = ccv_nnc_cmd(CCV_NNC_TRANSPOSE_FORWARD, nil, params, 0)
-    let outputs = Functional.exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: [self], outputSize: 1, streamContext: streamContext)
+    let outputs = Functional.exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])
   }
 }
