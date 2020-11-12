@@ -17,7 +17,7 @@ public protocol DynamicGraph_AnyTensorGroup: DynamicGraph_AnyTensorConvertible {
   associatedtype AnyTensor: DynamicGraph_AnyTensor
   static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor]
   static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputs: [AnyTensor], streamContext: StreamContext?)
-  static func evaluate(model: OpaquePointer, isTest: Bool, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor]
+  static func evaluate(model: OpaquePointer, isTest: Bool, dataParallel: inout Int?, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor]
 }
 
 public extension DynamicGraph {
@@ -70,7 +70,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     _outputs.deallocate()
   }
 
-  public static func evaluate(model: OpaquePointer, isTest: Bool, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
+  public static func evaluate(model: OpaquePointer, isTest: Bool, dataParallel: inout Int?, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
     assert(inputs.count > 0)
     let graph = inputs[0].graph
     for input in inputs {
@@ -160,7 +160,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTens
     _outputs.deallocate()
   }
 
-  public static func evaluate(model: OpaquePointer, isTest: Bool, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
+  public static func evaluate(model: OpaquePointer, isTest: Bool, dataParallel: inout Int?, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor] {
     assert(inputs.count > 0)
     assert(inputs.count > 0)
     let graph = inputs[0][0].graph
@@ -174,7 +174,13 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTens
         _inputs[j * inputSize + i] = tensor._tensor
       }
     }
-    ccv_cnnp_model_set_data_parallel(model, Int32(parallel))
+    if let dataParallel = dataParallel {
+      // You cannot run a model previously parallel and then not.
+      assert(dataParallel == parallel)
+    } else {
+      ccv_cnnp_model_set_data_parallel(model, Int32(parallel))
+      dataParallel = parallel
+    }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: Int(outputSize) * parallel)
     let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>] = (0..<outputSize).map { _ in DynamicGraph.Group((0..<parallel).map { _ in graph.variable() }) }
     for (i, output) in outputs.enumerated() {
@@ -269,7 +275,7 @@ public enum Functional {
 public extension Model {
   fileprivate func callAsFunction<T: DynamicGraph.AnyTensorGroup>(_: T.Type, _ inputs: [T.AnyTensor], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     let outputSize = ccv_cnnp_model_output_size(_model)
-    return T.evaluate(model: _model, isTest: isTest, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
+    return T.evaluate(model: _model, isTest: isTest, dataParallel: &dataParallel, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
   }
   func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     var tensorInputs: [T.AnyTensor]
@@ -297,7 +303,7 @@ fileprivate extension AnyModelBuilder {
     self.t = t
     self.inputs = (inputs as! [DynamicGraph_Any])
     let outputSize = self.outputSize
-    let outputs = U.evaluate(model: model!._model, isTest: isTest, inputs: inputs, outputSize: Int32(outputSize), streamContext: streamContext)
+    let outputs = U.evaluate(model: model!._model, isTest: isTest, dataParallel: &model!.dataParallel, inputs: inputs, outputSize: Int32(outputSize), streamContext: streamContext)
     self.inputs = nil
     return outputs
   }

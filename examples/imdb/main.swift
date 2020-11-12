@@ -183,7 +183,7 @@ for i in 0..<deviceCount {
   batchedTrainData["truncTensor_\(i)"] = batchedTrainData["tensor_\(i)"]!.toTruncate(batchedTrainData["mask_\(i)"]!)
   batchedTrainData["squaredMask_\(i)"] = batchedTrainData["mask_\(i)"]!.toOneSquared(maxLength: maxLength)
   // Move the tensors from CPU to GPU.
-  let toGPUTrain = batchedTrainData["truncTensor_\(i)", "oneHot_\(i)", "squaredMask_\(i)"].toGPU()
+  let toGPUTrain = batchedTrainData["truncTensor_\(i)", "oneHot_\(i)", "squaredMask_\(i)"].toGPU(i)
   batchedTrainData["tensorGPU_\(i)"] = toGPUTrain["truncTensor_\(i)"]
   batchedTrainData["oneHotGPU_\(i)"] = toGPUTrain["oneHot_\(i)"]
   batchedTrainData["squaredMaskGPU_\(i)"] = toGPUTrain["squaredMask_\(i)"]

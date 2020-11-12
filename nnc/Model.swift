@@ -17,6 +17,7 @@ public class Model {
 
   public var isTest: Bool = false
 
+  var dataParallel: Int? = nil // Keep track of whether we applied data parallel to the model or not.
   let _model: OpaquePointer
   private var selfOwned: Bool = true
 
