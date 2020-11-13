@@ -1,26 +1,53 @@
 import nnc
 
+func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
+  let input = Input()
+  let conv = Model([
+    Convolution(groups: 1, filters: filters, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+    BatchNorm(momentum: 0.9, epsilon: 1e-4),
+    RELU()
+  ])
+  var output = conv(input)
+  let pool = MaxPool(filterSize: [strides, strides], hint: Hint(stride: [strides, strides]))
+  output = pool(output)
+  if residual {
+    let shortcut = output
+    let res1 = Model([
+      Convolution(groups: 1, filters: filters, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+      BatchNorm(momentum: 0.9, epsilon: 1e-4),
+      RELU()
+    ])
+    output = res1(output)
+    let res2 = Model([
+      Convolution(groups: 1, filters: filters, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+      BatchNorm(momentum: 0.9, epsilon: 1e-4),
+      RELU()
+    ])
+    output = res2(output)
+    output = output .+ shortcut
+  }
+  return Model([input], [output])
+}
+
+func CIFAR10Dawn() -> Model {
+  let prep = Model([
+    Convolution(groups: 1, filters: 64, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+    BatchNorm(momentum: 0.9, epsilon: 1e-4),
+    RELU()
+  ])
+  let layer1 = DawnLayer(filters: 128, strides: 2, residual: true)
+  let layer2 = DawnLayer(filters: 256, strides: 2, residual: false)
+  let layer3 = DawnLayer(filters: 512, strides: 2, residual: true)
+  return Model([
+    prep,
+    layer1,
+    layer2,
+    layer3,
+    MaxPool(filterSize: [0, 0], hint: Hint()),
+    Flatten(),
+    Dense(count: 10)
+  ])
+}
+
 let graph = DynamicGraph()
 
-let tv1: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .C(1))
-tv1[0] = 10
-let tv1g0 = tv1.toGPU(0)
-let tv1g1 = tv1.toGPU(1)
-let tv2: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .C(1))
-tv2[0] = 2
-let tv2g0 = tv2.toGPU(0)
-let tv2g1 = tv2.toGPU(1)
-
-let model = Dense(count: 2)
-
-let tv1g = Group(tv1g0, tv1g1)
-let tv2g = Group(tv2g0, tv2g1)
-
-let rv = model(tv1g)
-print(rv)
-
-/*
-let tv3c0 = rv[0].toCPU()
-let tv3c1 = rv[1].toCPU()
-print(rv)
-*/

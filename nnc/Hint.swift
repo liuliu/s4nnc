@@ -12,6 +12,11 @@ public struct Hint {
       end = []
     }
 
+    public init(_ border: [Int]) {
+      begin = border
+      end = border
+    }
+
     public init(begin: [Int], end: [Int]) {
       self.begin = begin
       self.end = end
@@ -25,7 +30,7 @@ public struct Hint {
     border = Border()
   }
 
-  public init(stride: [Int], border: Border) {
+  public init(stride: [Int], border: Border = Border()) {
     self.stride = stride
     self.border = border
   }
