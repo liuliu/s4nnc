@@ -385,3 +385,147 @@ public extension DataFrame.TypedSeries where Element: AnyTensor {
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
   }
 }
+
+// MARK - Image Jitter
+
+public enum ImageJitter {
+  public struct Size {
+    var rows: Int
+    var cols: Int
+    public init(rows: Int, cols: Int) {
+      self.rows = rows
+      self.cols = cols
+    }
+  }
+  public struct Resize {
+    var min: Int
+    var max: Int
+    var roundup: Int
+    public init(min: Int, max: Int, roundup: Int = 0) {
+      self.min = min
+      self.max = max
+      self.roundup = roundup
+    }
+  }
+  public struct Offset {
+    var x: Int
+    var y: Int
+    public init(x: Int, y: Int) {
+      self.x = x
+      self.y = y
+    }
+  }
+  public struct Normalize {
+    var mean: [Float]
+    var std: [Float]
+    public init(mean: [Float], std: [Float]) {
+      self.mean = mean
+      self.std = std
+    }
+  }
+}
+final class ImageJitterParams {
+  let contrast: Float
+  let saturation: Float
+  let brightness: Float
+  let lighting: Float
+  let aspectRatio: Float
+  let symmetric: Bool
+  let seed: Int
+  let centerCrop: Bool
+  let size: ImageJitter.Size
+  let resize: ImageJitter.Resize
+  let offset: ImageJitter.Offset
+  let normalize: ImageJitter.Normalize
+  let dataType: DataType
+
+  init(contrast: Float, saturation: Float, brightness: Float, lighting: Float, aspectRatio: Float, symmetric: Bool, seed: Int, centerCrop: Bool, size: ImageJitter.Size, resize: ImageJitter.Resize, offset: ImageJitter.Offset, normalize: ImageJitter.Normalize, dataType: DataType) {
+    self.contrast = contrast
+    self.saturation = saturation
+    self.brightness = brightness
+    self.lighting = lighting
+    self.aspectRatio = aspectRatio
+    self.symmetric = symmetric
+    self.seed = seed
+    self.centerCrop = centerCrop
+    self.size = size
+    self.resize = resize
+    self.offset = offset
+    self.normalize = normalize
+    self.dataType = dataType
+  }
+
+  var toC: ccv_cnnp_random_jitter_t {
+    var params = ccv_cnnp_random_jitter_t()
+    params.contrast = contrast
+    params.saturation = saturation
+    params.brightness = brightness
+    params.lighting = lighting
+    params.aspect_ratio = aspectRatio
+    params.symmetric = symmetric ? 1 : 0
+    params.seed = Int32(seed)
+    params.center_crop = centerCrop ? 1 : 0
+    params.resize.min = Int32(resize.min)
+    params.resize.max = Int32(resize.max)
+    params.resize.roundup = Int32(resize.roundup)
+    params.size.rows = Int32(size.rows)
+    params.size.cols = Int32(size.cols)
+    params.offset.x = Int32(offset.x)
+    params.offset.y = Int32(offset.y)
+    let mean = normalize.mean
+    precondition(mean.count <= 3)
+    switch mean.count {
+    case 0:
+      params.normalize.mean = (0, 0, 0)
+    case 1:
+      params.normalize.mean = (mean[0], 0, 0)
+    case 2:
+      params.normalize.mean = (mean[0], mean[1], 0)
+    case 3:
+      params.normalize.mean = (mean[0], mean[1], mean[2])
+    default:
+      params.normalize.mean = (mean[0], mean[1], mean[2])
+    }
+    let std = normalize.std
+    precondition(std.count <= 3)
+    switch std.count {
+    case 0:
+      params.normalize.std = (1, 1, 1)
+    case 1:
+      params.normalize.std = (std[0], 1, 1)
+    case 2:
+      params.normalize.std = (std[0], std[1], 1)
+    case 3:
+      params.normalize.std = (std[0], std[1], std[2])
+    default:
+      params.normalize.std = (std[0], std[1], std[2])
+    }
+    return params
+  }
+}
+
+extension DataFrame {
+  static func addToImageJitter(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+    let inputIndex = Int32(property.index)
+    let imageJitterParams = params! as! ImageJitterParams
+    let index = ccv_cnnp_dataframe_image_random_jitter(_dataframe, inputIndex, imageJitterParams.dataType.toC, imageJitterParams.toC, name)
+    return ColumnProperty(index: Int(index), type: .tensor)
+  }
+}
+
+public extension DataFrame.UntypedSeries {
+  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [], std: [])) -> DataFrame.UntypedSeries {
+    guard let property = property else {
+      fatalError("Can only load from series from DataFrame")
+    }
+    precondition(property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToImageJitter, ImageJitterParams(contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting, aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop, size: size, resize: resize, offset: offset, normalize: normalize, dataType: Element.dataType)))
+  }
+}
+
+public extension DataFrame.TypedSeries where Element: AnyTensor {
+  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [], std: [])) -> DataFrame.UntypedSeries {
+    precondition(property.type == .tensor)
+    return DataFrame.UntypedSeries(.native(property, DataFrame.addToImageJitter, ImageJitterParams(contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting, aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop, size: size, resize: resize, offset: offset, normalize: normalize, dataType: Element.dataType)))
+  }
+}
