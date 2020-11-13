@@ -418,6 +418,60 @@ public extension Tensor {
 
 }
 
+public extension Collection where Element == Tensor<Float64> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments) }
+  }
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+  }
+}
+
+public extension Collection where Element == Tensor<Int64> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments) }
+  }
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+  }
+}
+
+public extension Collection where Element == Tensor<Float32> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments) }
+  }
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+  }
+}
+
+public extension Collection where Element == Tensor<Int32> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments) }
+  }
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+  }
+}
+
+public extension Collection where Element == Tensor<Float16> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments) }
+  }
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+  }
+}
+
+public extension Collection where Element == Tensor<UInt8> {
+  func reshape(format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments) }
+  }
+  func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> [Element] {
+    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+  }
+}
+
 extension _AnyTensor {
 
   func toAnyTensor() -> AnyTensor {
