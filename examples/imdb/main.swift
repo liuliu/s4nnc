@@ -205,6 +205,7 @@ for epoch in 0..<10 {
   for i in 0..<deviceCount {
     columns += ["tensorGPU_\(i)", "oneHotGPU_\(i)", "squaredMaskGPU_\(i)"]
   }
+  let computeStream = StreamContext(.GPU(0))
   for (i, batch) in batchedTrainData[columns].enumerated() {
     adamOptimizer.step = epoch * batchedTrainData.count + i + 1
     adamOptimizer.rate = 0.0001 * min(Float(adamOptimizer.step - 1) / (10000.0 / Float(batchSize)), 1) * Float(deviceCount)
@@ -222,16 +223,17 @@ for epoch in 0..<10 {
     }
     let seqIndicesGPU = (0..<deviceCount).map { seqIndicesCPU.toGPU($0) }
     let seqIndices = graph.constant(seqIndicesGPU)
-    let posVec = Functional.indexSelect(input: seqVec, index: seqIndices)
+    let posVec = Functional.indexSelect(input: seqVec, index: seqIndices, streamContext: computeStream)
     let selectVec = wordVec + posVec
     let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
     let masked = graph.constant(squaredMaskGPU.reshape(.CHW(batchSize, batchLength, batchLength)))
-    let output = transformer(inputs: inputVec, masked)[0]
+    let output = transformer(inputs: inputVec, masked, streamContext: computeStream)[0]
     let softmaxLoss = SoftmaxCrossEntropyLoss()
     let target = graph.variable(oneHotGPU)
-    let loss = softmaxLoss(output, target: target)
-    loss.backward(to: [vocabVec, seqVec])
-    adamOptimizer.step()
+    let loss = softmaxLoss(output, target: target, streamContext: computeStream)
+    loss.backward(to: [vocabVec, seqVec], streamContext: computeStream)
+    adamOptimizer.step(streamContext: computeStream)
+    computeStream.joined()
     var correct = 0
     for k in 0..<deviceCount {
       let oneHot = oneHotGPU[k].toCPU()
