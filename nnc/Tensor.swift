@@ -26,6 +26,12 @@ public enum DeviceKind {
       return .GPU(ordinal)
     }
   }
+
+  public enum GPUInfo {
+    public static var count: Int {
+      Int(ccv_nnc_device_count(Int32(CCV_STREAM_CONTEXT_GPU)))
+    }
+  }
 }
 
 public enum TensorFormat {
