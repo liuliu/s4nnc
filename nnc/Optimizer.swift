@@ -82,32 +82,32 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
 
 extension Optimizer {
   func savedAux(minimizer: ccv_nnc_cmd_t) -> [DynamicGraph_Any] {
-      guard parameters.count > 0 else { return [] }
-      switch parameters[0] {
-      case is DynamicGraph.AnyTensor:
-        let tensorParameters = parameters as! [DynamicGraph.AnyTensor]
-        let graph = tensorParameters[0].graph
-        for parameter in tensorParameters {
+    guard parameters.count > 0 else { return [] }
+    switch parameters[0] {
+    case is DynamicGraph.AnyTensor:
+      let tensorParameters = parameters as! [DynamicGraph.AnyTensor]
+      let graph = tensorParameters[0].graph
+      for parameter in tensorParameters {
+        assert(parameter.graph === graph)
+      }
+      // Update private saved_aux.
+      let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
+      return (0..<(tensorParameters.count * size)).map { _ in graph.variable() }
+    case is DynamicGraph.AnyGroup:
+      let groupParameters = parameters as! [DynamicGraph.AnyGroup]
+      let parallel = groupParameters[0].underlying.count
+      precondition(parallel > 0)
+      let graph = groupParameters[0].underlying[0].graph
+      for group in groupParameters {
+        for parameter in group.underlying {
           assert(parameter.graph === graph)
         }
-        // Update private saved_aux.
-        let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
-        return (0..<(tensorParameters.count * size)).map { _ in graph.variable() }
-      case is DynamicGraph.AnyGroup:
-        let groupParameters = parameters as! [DynamicGraph.AnyGroup]
-        let parallel = groupParameters[0].underlying.count
-        precondition(parallel > 0)
-        let graph = groupParameters[0].underlying[0].graph
-        for group in groupParameters {
-          for parameter in group.underlying {
-            assert(parameter.graph === graph)
-          }
-        }
-        let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
-        return (0..<(groupParameters.count * size)).map { _ in DynamicGraph.Group((0..<parallel).map { _ in graph.variable() }) }
-      default:
-        fatalError("Cannot support the given type")
       }
+      let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
+      return (0..<(groupParameters.count * size)).map { _ in DynamicGraph.Group((0..<parallel).map { _ in graph.variable() }) }
+    default:
+      fatalError("Cannot support the given type")
+    }
   }
 
   func step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, savedAux: [DynamicGraph_Any], streamContext: StreamContext?) {

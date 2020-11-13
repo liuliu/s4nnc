@@ -212,14 +212,14 @@ var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta
 adamOptimizer.parameters = [vocabVec, seqVec]
 var overallAccuracy = 0.0
 for epoch in 0..<10 {
-  batchedTrainData.shuffle()
+  trainData.shuffle()
   var columns = [String]()
   for i in 0..<deviceCount {
     columns += ["tensorGPU_\(i)", "oneHotGPU_\(i)", "squaredMaskGPU_\(i)"]
   }
   for (i, batch) in batchedTrainData[columns].enumerated() {
     adamOptimizer.step = epoch * batchedTrainData.count + i + 1
-    adamOptimizer.rate = 0.0001 * min(Float(i) / (10000.0 / Float(batchSize)), 1) * Float(deviceCount)
+    adamOptimizer.rate = 0.0001 * min(Float(adamOptimizer.step - 1) / (10000.0 / Float(batchSize)), 1) * Float(deviceCount)
     let tensorGPU = batch[0] as! Tensor<Int32> //(0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
     let oneHotGPU = batch[1] as! Tensor<Float32> //(0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
     let squaredMaskGPU = batch[2] as! Tensor<Int32> //(0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
@@ -247,7 +247,7 @@ for epoch in 0..<10 {
     loss.backward(to: [vocabVec, seqVec])
     adamOptimizer.step()
     var correct = 0
-    for k in 0..<deviceCount {
+    for _ in 0..<deviceCount {
       let oneHot = oneHotGPU.toCPU()
       let output = DynamicGraph.Tensor<Float32>(output).toCPU()
       for i in 0..<batchSize {

@@ -87,6 +87,17 @@ public extension DynamicGraph.Tensor {
   }
 }
 
+public extension DynamicGraph.Group {
+  func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil) -> DynamicGraph.Group<Element> {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.transpose.axis = (Int32(axisA), Int32(axisB))
+    let cmd = ccv_nnc_cmd(CCV_NNC_TRANSPOSE_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Group<Element>(outputs[0])
+  }
+}
+
 public extension DynamicGraph.Tensor {
   func rand(_ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil) {
     var params = CmdParamsFactory.factory.newParams()
