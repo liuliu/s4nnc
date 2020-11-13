@@ -105,7 +105,7 @@ public extension DynamicGraph.Tensor {
     params.blas.a = (lowerBound, upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
     let _graph = graph._graph
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = _tensor
     ccv_nnc_dynamic_graph_exec(_graph, cmd, ccv_nnc_no_hint, 0, nil, 0, &_output, 1, 0, _streamContext)
   }
@@ -118,8 +118,9 @@ public extension DynamicGraph.Group {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (lowerBound, upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
-    let _graph = underlying[0].graph._graph
-    let _streamContext = streamContext?._stream
+    let graph = underlying[0].graph
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = underlying[0]._tensor
     ccv_nnc_dynamic_graph_exec(_graph, cmd, ccv_nnc_no_hint, 0, nil, 0, &_output, 1, 0, _streamContext)
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
@@ -143,7 +144,7 @@ public extension DynamicGraph.Tensor {
     let output: DynamicGraph.Tensor<Element> = graph.variable(.GPU(ordinal), format: rawInput.format, dimensions: rawInput.dimensions)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
     let _graph = graph._graph
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(_graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
     return output
   }
@@ -157,7 +158,7 @@ public extension DynamicGraph.Tensor {
     let output: DynamicGraph.Tensor<Element> = graph.variable(.CPU, format: rawInput.format, dimensions: rawInput.dimensions)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
     let _graph = graph._graph
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(_graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
     return output
   }

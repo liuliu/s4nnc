@@ -213,26 +213,29 @@ for epoch in 0..<10 {
     let oneHotGPU = (0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
     let squaredMaskGPU = (0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
     let batchLength = tensorGPU[0].dimensions[1]
-    let wordIndices = graph.variable(tensorGPU.reshape(.C(batchSize * batchLength)))
-    let wordVec = Functional.indexSelect(input: vocabVec, index: wordIndices)
-    var seqIndicesCPU = Tensor<Int32>(.CPU, .C(batchSize * batchLength))
-    for i in 0..<batchSize {
-      for j in 0..<batchLength {
-        seqIndicesCPU[i * batchLength + j] = Int32(j)
+    let output = graph.withStream(computeStream) { () -> Group<DynamicGraph.AnyTensor> in
+      let wordIndices = graph.variable(tensorGPU.reshape(.C(batchSize * batchLength)))
+      let wordVec = Functional.indexSelect(input: vocabVec, index: wordIndices)
+      var seqIndicesCPU = Tensor<Int32>(.CPU, .C(batchSize * batchLength))
+      for i in 0..<batchSize {
+        for j in 0..<batchLength {
+          seqIndicesCPU[i * batchLength + j] = Int32(j)
+        }
       }
+      let seqIndicesGPU = (0..<deviceCount).map { seqIndicesCPU.toGPU($0) }
+      let seqIndices = graph.constant(seqIndicesGPU)
+      let posVec = Functional.indexSelect(input: seqVec, index: seqIndices)
+      let selectVec = wordVec + posVec
+      let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
+      let masked = graph.constant(squaredMaskGPU.reshape(.CHW(batchSize, batchLength, batchLength)))
+      let output = transformer(inputs: inputVec, masked)[0]
+      let softmaxLoss = SoftmaxCrossEntropyLoss()
+      let target = graph.variable(oneHotGPU)
+      let loss = softmaxLoss(output, target: target)
+      loss.backward(to: [vocabVec, seqVec])
+      adamOptimizer.step()
+      return output
     }
-    let seqIndicesGPU = (0..<deviceCount).map { seqIndicesCPU.toGPU($0) }
-    let seqIndices = graph.constant(seqIndicesGPU)
-    let posVec = Functional.indexSelect(input: seqVec, index: seqIndices, streamContext: computeStream)
-    let selectVec = wordVec + posVec
-    let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
-    let masked = graph.constant(squaredMaskGPU.reshape(.CHW(batchSize, batchLength, batchLength)))
-    let output = transformer(inputs: inputVec, masked, streamContext: computeStream)[0]
-    let softmaxLoss = SoftmaxCrossEntropyLoss()
-    let target = graph.variable(oneHotGPU)
-    let loss = softmaxLoss(output, target: target, streamContext: computeStream)
-    loss.backward(to: [vocabVec, seqVec], streamContext: computeStream)
-    adamOptimizer.step(streamContext: computeStream)
     computeStream.joined()
     var correct = 0
     for k in 0..<deviceCount {

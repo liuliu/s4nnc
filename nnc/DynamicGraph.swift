@@ -86,6 +86,7 @@ public final class DynamicGraph {
   }
 
   let _graph: OpaquePointer
+  var streamContext: StreamContext? = nil
 
   public init() {
     CmdParamsFactory.factory.sink()
@@ -268,6 +269,15 @@ public extension DynamicGraph {
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
     let result = try closure()
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 0)
+    return result
+  }
+}
+
+public extension DynamicGraph {
+  func withStream<Result>( _ streamContext: StreamContext, _ closure: () throws -> Result) rethrows -> Result {
+    self.streamContext = streamContext
+    let result = try closure()
+    self.streamContext = nil
     return result
   }
 }

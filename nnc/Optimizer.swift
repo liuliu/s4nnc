@@ -29,7 +29,7 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
   }
   let parameterSize = Int32(parameters.count)
   let _graph = graph._graph
-  let _streamContext = streamContext?._stream
+  let _streamContext = (streamContext ?? graph.streamContext)?._stream
   ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, _gradients, parameterSize, _parameters, parameterSize, _savedAux, 0, _streamContext)
   _parameters.deallocate()
   _savedAux.deallocate()
@@ -69,7 +69,7 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
     }
   }
   let _graph = graph._graph
-  let _streamContext = streamContext?._stream
+  let _streamContext = (streamContext ?? graph.streamContext)?._stream
   ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, _gradients, Int32(parameterSize * parallel), _parameters, Int32(parameterSize * parallel), _savedAux, Int32(parallel), _streamContext)
   _parameters.deallocate()
   _savedAux.deallocate()
@@ -113,7 +113,7 @@ extension Optimizer {
   func step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, savedAux: [DynamicGraph_Any], streamContext: StreamContext?) {
     guard parameters.count > 0 else {
       let _graph = graph._graph
-      let _streamContext = streamContext?._stream
+      let _streamContext = (streamContext ?? graph.streamContext)?._stream
       ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, nil, 0, nil, 0, nil, 0, _streamContext)
       return
     }
