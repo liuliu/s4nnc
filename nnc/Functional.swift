@@ -6,14 +6,11 @@ import C_nnc
  * It has a typed version DynamicGraph.TensorGroup to enforce type constraint.
  */
 
-public protocol DynamicGraph_AnyTensorConvertible {
-}
-
 public protocol DynamicGraph_AnyTensor {
-  static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor
+  static func upcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor
 }
 
-public protocol DynamicGraph_AnyTensorGroup: DynamicGraph_AnyTensorConvertible {
+public protocol DynamicGraph_AnyTensorGroup: DynamicGraph_Any {
   associatedtype AnyTensor: DynamicGraph_AnyTensor
   static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputSize: Int32, streamContext: StreamContext?) -> [AnyTensor]
   static func exec(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [AnyTensor], outputs: [AnyTensor], streamContext: StreamContext?)
@@ -25,7 +22,7 @@ public extension DynamicGraph {
 }
 
 extension DynamicGraph.AnyTensor: DynamicGraph_AnyTensor {
-  public static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor {
+  public static func upcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
     fatalError("This will not be needed.")
   }
 }
@@ -93,15 +90,15 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
 }
 
 extension DynamicGraph.Group: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
-  public static func upcasting(convertible: DynamicGraph_AnyTensorConvertible) -> DynamicGraph_AnyTensor {
-    guard let convertible = convertible as? DynamicGraph.AnyGroup else {
+  public static func upcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
+    guard let from = from as? DynamicGraph.AnyGroup else {
       fatalError("This will not be needed.")
     }
-    return DynamicGraph.Group<DynamicGraph.AnyTensor>(convertible.underlying)
+    return DynamicGraph.Group<DynamicGraph.AnyTensor>(from.underlying)
   }
 }
 
-extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup & DynamicGraph_AnyTensorConvertible where Element: DynamicGraph.AnyTensor {
+extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: DynamicGraph.AnyTensor {
 
   public typealias AnyTensor = DynamicGraph.Group<DynamicGraph.AnyTensor>
 
@@ -227,47 +224,47 @@ public enum Functional {
   internal static func exec<T: DynamicGraph.AnyTensorGroup>(_: T.Type, cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T.AnyTensor], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     return T.exec(cmd: cmd, hint: hint, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
   }
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: [DynamicGraph_Any], outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     var tensorInputs: [T.AnyTensor]
     if let upcastFirstInput = firstInput as? T.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [T.AnyTensor.upcasting(convertible: firstInput) as! T.AnyTensor]
+      tensorInputs = [T.AnyTensor.upcasting(from: firstInput) as! T.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorInputs += restInputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
     }
     return exec(T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputSize: outputSize, streamContext: streamContext)
   }
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: DynamicGraph_AnyTensorConvertible..., outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: DynamicGraph_Any..., outputSize: Int32, streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     exec(cmd: cmd, hint: hint, inputs: firstInput, restInputs, outputSize: outputSize, streamContext: streamContext)
   }
   internal static func exec<T: DynamicGraph.AnyTensorGroup>(_: T.Type, cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [T.AnyTensor], outputs: [T.AnyTensor], streamContext: StreamContext? = nil) {
     T.exec(cmd: cmd, hint: hint, inputs: inputs, outputs: outputs, streamContext: streamContext)
   }
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], outputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) {
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: [DynamicGraph_Any], outputs: [DynamicGraph_Any], streamContext: StreamContext? = nil) {
     var tensorInputs: [T.AnyTensor]
     if let upcastFirstInput = firstInput as? T.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [T.AnyTensor.upcasting(convertible: firstInput) as! T.AnyTensor]
+      tensorInputs = [T.AnyTensor.upcasting(from: firstInput) as! T.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorInputs += restInputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
     }
     let tensorOutputs: [T.AnyTensor]
     if let upcastTensorOutputs = outputs as? [T.AnyTensor] {
       tensorOutputs = upcastTensorOutputs
     } else {
-      tensorOutputs = outputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorOutputs = outputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
     }
     return exec(T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputs: tensorOutputs, streamContext: streamContext)
   }
-  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: DynamicGraph_AnyTensorConvertible..., outputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) {
+  static func exec<T: DynamicGraph.AnyTensorGroup>(cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs firstInput: T, _ restInputs: DynamicGraph_Any..., outputs: [DynamicGraph_Any], streamContext: StreamContext? = nil) {
     exec(cmd: cmd, hint: hint, inputs: firstInput, restInputs, outputs: outputs, streamContext: streamContext)
   }
 }
@@ -277,22 +274,22 @@ public extension Model {
     let outputSize = ccv_cnnp_model_output_size(_model)
     return T.evaluate(model: _model, isTest: isTest, dataParallel: &dataParallel, inputs: inputs, outputSize: outputSize, streamContext: streamContext)
   }
-  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: [DynamicGraph_AnyTensorConvertible], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: [DynamicGraph_Any], streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     var tensorInputs: [T.AnyTensor]
     if let upcastFirstInput = firstInput as? T.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [T.AnyTensor.upcasting(convertible: firstInput) as! T.AnyTensor]
+      tensorInputs = [T.AnyTensor.upcasting(from: firstInput) as! T.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { T.AnyTensor.upcasting(convertible: $0) as! T.AnyTensor }
+      tensorInputs += restInputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
     }
     return self(T.self, tensorInputs, streamContext: streamContext)
   }
 
-  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: DynamicGraph_AnyTensorConvertible..., streamContext: StreamContext? = nil) -> [T.AnyTensor] {
+  func callAsFunction<T: DynamicGraph.AnyTensorGroup>(inputs firstInput: T, _ restInputs: DynamicGraph_Any..., streamContext: StreamContext? = nil) -> [T.AnyTensor] {
     self(inputs: firstInput, restInputs, streamContext: streamContext)
   }
 }
@@ -310,34 +307,34 @@ fileprivate extension AnyModelBuilder {
 }
 
 public extension ModelBuilder {
-  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(_ t: T, inputs firstInput: U, _ restInputs: DynamicGraph_AnyTensorConvertible..., streamContext: StreamContext? = nil) -> [U.AnyTensor] {
+  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(_ t: T, inputs firstInput: U, _ restInputs: DynamicGraph_Any..., streamContext: StreamContext? = nil) -> [U.AnyTensor] {
     var tensorInputs: [U.AnyTensor]
     if let upcastFirstInput = firstInput as? U.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [U.AnyTensor.upcasting(convertible: firstInput) as! U.AnyTensor]
+      tensorInputs = [U.AnyTensor.upcasting(from: firstInput) as! U.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [U.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { U.AnyTensor.upcasting(convertible: $0) as! U.AnyTensor }
+      tensorInputs += restInputs.map { U.AnyTensor.upcasting(from: $0) as! U.AnyTensor }
     }
     return apply(ofType: U.self, t, tensorInputs, streamContext: streamContext)
   }
 }
 
 public extension ModelBuilder where T == Void {
-  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(inputs firstInput: U, _ restInputs: DynamicGraph_AnyTensorConvertible..., streamContext: StreamContext? = nil) -> [U.AnyTensor] {
+  func callAsFunction<U: DynamicGraph.AnyTensorGroup>(inputs firstInput: U, _ restInputs: DynamicGraph_Any..., streamContext: StreamContext? = nil) -> [U.AnyTensor] {
     var tensorInputs: [U.AnyTensor]
     if let upcastFirstInput = firstInput as? U.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [U.AnyTensor.upcasting(convertible: firstInput) as! U.AnyTensor]
+      tensorInputs = [U.AnyTensor.upcasting(from: firstInput) as! U.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [U.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { U.AnyTensor.upcasting(convertible: $0) as! U.AnyTensor }
+      tensorInputs += restInputs.map { U.AnyTensor.upcasting(from: $0) as! U.AnyTensor }
     }
     return apply(ofType: U.self, Void(), tensorInputs, streamContext: streamContext)
   }
