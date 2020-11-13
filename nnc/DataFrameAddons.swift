@@ -53,7 +53,7 @@ extension DataFrame {
       }
       columnProperties[columnName] = ColumnProperty(index: Int(stringIndex), type: .object)
     }
-    self.init(dataframe: dataframe, underlying: nil, columnProperties: columnProperties)
+    self.init(dataframe: dataframe, columnProperties: columnProperties)
   }
 }
 
@@ -84,7 +84,7 @@ extension DataFrame {
         columnProperties[String(cString: name)] = ColumnProperty(index: Int(index), type: .tensor)
       }
     }
-    self.init(dataframe: batching, underlying: dataframe, columnProperties: columnProperties)
+    self.init(dataframe: batching, columnProperties: columnProperties, parent: dataframe)
   }
   public convenience init(batchOf: DataFrame.UntypedSeries, size: Int, repeating: Int? = nil) {
     guard let property = batchOf.property,

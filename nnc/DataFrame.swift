@@ -49,6 +49,7 @@ public final class DataFrame {
   }
 
   private let _underlying: AnyObject?
+  private let parent: DataFrame?
 
   let _dataframe: OpaquePointer
   var columnProperties: [String: ColumnProperty]
@@ -57,10 +58,11 @@ public final class DataFrame {
     return Array(columnProperties.keys)
   }
 
-  init(dataframe: OpaquePointer, underlying: AnyObject?, columnProperties: [String: ColumnProperty]) {
+  init(dataframe: OpaquePointer, columnProperties: [String: ColumnProperty], parent: DataFrame? = nil) {
     CmdParamsFactory.factory.sink()
     _dataframe = dataframe
-    _underlying = underlying
+    self.parent = parent
+    _underlying = nil
     self.columnProperties = columnProperties
   }
 
@@ -111,11 +113,16 @@ public final class DataFrame {
       return ccv_cnnp_dataframe_new(&column_data, 1, Int32(underlying.value.count))!
     }
     _underlying = underlying
+    parent = nil
     columnProperties = [name: ColumnProperty(index: 0, type: propertyType)]
   }
 
   public func shuffle() {
     ccv_cnnp_dataframe_shuffle(_dataframe)
+    if let parent = parent {
+      // Propagate shuffle.
+      parent.shuffle()
+    }
   }
 
   public subscript(firstIndex: String, secondIndex: String, indices: String...) -> ManyUntypedSeries {
