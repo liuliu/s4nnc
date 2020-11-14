@@ -561,6 +561,9 @@ private extension DataFrame {
           }
           (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
         case .tensor:
+          if let opaque = data[i] {
+            wrappedMapper.tensors![OpaquePointer(opaque)] = nil
+          }
           let tensor = output as! AnyTensor
           wrappedMapper.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
           (data + i).initialize(to: tensor.underlying._tensor)
@@ -728,6 +731,9 @@ private extension DataFrame {
           }
           (data + i).initialize(to: Unmanaged.passRetained(output).toOpaque())
         case .tensor:
+          if let opaque = data[i] {
+            wrappedManyMapper.tensors![OpaquePointer(opaque)] = nil
+          }
           let tensor = output as! AnyTensor
           wrappedManyMapper.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
           (data + i).initialize(to: tensor.underlying._tensor)
