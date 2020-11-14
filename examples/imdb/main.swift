@@ -200,7 +200,7 @@ var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta
 adamOptimizer.parameters = [vocabVec, seqVec]
 var overallAccuracy = 0.0
 for epoch in 0..<10 {
-  trainData.shuffle()
+  batchedTrainData.shuffle()
   var columns = [String]()
   for i in 0..<deviceCount {
     columns += ["tensorGPU_\(i)", "oneHotGPU_\(i)", "squaredMaskGPU_\(i)"]
