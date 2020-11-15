@@ -7,10 +7,10 @@ public extension DynamicGraph.AnyTensor {
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
     for (i, tensor) in tensors.enumerated() {
-      if tensor.grad == nil {
+      if tensor.grad == nil && !tensor.isConstant {
         tensor.grad = graph.variable()
       }
-      (_outputs + i).initialize(to: tensor.grad!._tensor)
+      (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
     let _streamContext = streamContext?._stream
     var f: ccv_nnc_tensor_variable_t? = self._tensor
@@ -34,10 +34,10 @@ public extension DynamicGraph.Group {
     var i = 0
     for group in tensors {
       for tensor in group.underlying {
-        if tensor.grad == nil {
+        if tensor.grad == nil && !tensor.isConstant {
           tensor.grad = graph.variable()
         }
-        (_outputs + i).initialize(to: tensor.grad!._tensor)
+        (_outputs + i).initialize(to: tensor.grad?._tensor)
         i += 1
       }
     }
@@ -64,10 +64,10 @@ public extension Collection where Element: DynamicGraph.AnyTensor {
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
     for (i, tensor) in tensors.enumerated() {
-      if tensor.grad == nil {
+      if tensor.grad == nil && !tensor.isConstant {
         tensor.grad = graph.variable()
       }
-      (_outputs + i).initialize(to: tensor.grad!._tensor)
+      (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
     let _streamContext = streamContext?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.map { $0._tensor }
@@ -96,10 +96,10 @@ public extension Collection where Element: DynamicGraph.AnyGroup {
     var i = 0
     for group in tensors {
       for tensor in group.underlying {
-        if tensor.grad == nil {
+        if tensor.grad == nil && !tensor.isConstant {
           tensor.grad = graph.variable()
         }
-        (_outputs + i).initialize(to: tensor.grad!._tensor)
+        (_outputs + i).initialize(to: tensor.grad?._tensor)
         i += 1
       }
     }

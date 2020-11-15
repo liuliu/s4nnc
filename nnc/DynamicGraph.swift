@@ -39,9 +39,14 @@ public final class DynamicGraph {
     }
 
     public var dimensions: [Int] {
-        let _graph = graph._graph
+      let _graph = graph._graph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
       return fromCDimensions(info.dim)
+    }
+
+    public var isConstant: Bool {
+      let _graph = graph._graph
+      return ccv_nnc_tensor_variable_is_constant(_graph, _tensor) == 1
     }
   }
 
@@ -210,8 +215,7 @@ public extension DynamicGraph {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
     ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
     // Retain the tensor until we freed the variable.
-    ccv_nnc_tensor_variable_owner_hook(_graph, _tensor, { _, _, owner, ctx in
-      guard owner == nil else { return }
+    ccv_nnc_tensor_variable_destructor_hook(_graph, _tensor, { _, _, ctx in
       // No longer need to retain the tensor.
       Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
     }, Unmanaged.passRetained(tensor.underlying).toOpaque())
@@ -223,8 +227,7 @@ public extension DynamicGraph {
     let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
     ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
     // Retain the tensor until we freed the variable.
-    ccv_nnc_tensor_variable_owner_hook(_graph, _tensor, { _, _, owner, ctx in
-      guard owner == nil else { return }
+    ccv_nnc_tensor_variable_destructor_hook(_graph, _tensor, { _, _, ctx in
       // No longer need to retain the tensor.
       Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
     }, Unmanaged.passRetained(tensor.underlying).toOpaque())
