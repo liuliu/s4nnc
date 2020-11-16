@@ -50,16 +50,24 @@ func CIFAR10Dawn() -> Model {
   ])
 }
 
-let graph = DynamicGraph()
+/**
+ * MARK - The Training Program
+ */
 
 let dataBatchPath = "/fast/Data/cifar-10/cifar-10-batches-bin/data_batch.bin"
 let testBatchPath = "/fast/Data/cifar-10/cifar-10-batches-bin/test_batch.bin"
 
-let dataBatch = try! Data(contentsOf: URL(fileURLWithPath: dataBatchPath))
-let testBatch = try! Data(contentsOf: URL(fileURLWithPath: testBatchPath))
-
 let dataBatchSize = 50_000
 let testBatchSize = 10_000
+
+let batchSize = 128
+
+/**
+ * MARK - Loading Data from Disk
+ */
+
+let dataBatch = try! Data(contentsOf: URL(fileURLWithPath: dataBatchPath))
+let testBatch = try! Data(contentsOf: URL(fileURLWithPath: testBatchPath))
 
 struct CIFARData {
   var tensor: Tensor<Float32>
@@ -104,4 +112,59 @@ for k in 0..<dataBatchSize {
 mean.0 = mean.0 / Double(dataBatchSize)
 mean.1 = mean.1 / Double(dataBatchSize)
 mean.2 = mean.2 / Double(dataBatchSize)
-print(mean)
+
+var testData = [CIFARData?](repeating: nil, count: testBatchSize)
+let meanf: (Float, Float, Float) = (Float(mean.0), Float(mean.1), Float(mean.2))
+
+DispatchQueue.concurrentPerform(iterations: testBatchSize) { k in
+  var tensor = Tensor<Float32>(.CPU, .HWC(32, 32, 3))
+  let label = Int(dataBatch[k * (3 * 32 * 32 + 1)])
+  let imageData = dataBatch.subdata(in: (k * (3 * 32 * 32 + 1) + 1)..<((k + 1) * (3 * 32 * 32 + 1)))
+  for i in 0..<32 {
+    for j in 0..<32 {
+      tensor[i, j, 0] = Float(imageData[i * 32 + j]) * 2.0 / 255.0 - meanf.0
+      tensor[i, j, 1] = Float(imageData[32 * 32 + i * 32 + j]) * 2.0 / 255.0 - meanf.1
+      tensor[i, j, 2] = Float(imageData[32 * 32 * 2 + i * 32 + j]) * 2.0 / 255.0 - meanf.2
+    }
+  }
+  testData[k] = CIFARData(tensor: tensor, label: label, mean: meanf)
+}
+
+/**
+ * MARK - Setup Data Feeder Pipelne
+ */
+
+let trainDataDf = DataFrame(from: trainData, name: "main")
+let testDataDf = DataFrame(from: testData, name: "main")
+trainDataDf["tensor"] = trainDataDf["main", CIFARData.self].map(\.tensor)
+trainDataDf["c"] = trainDataDf["main", CIFARData.self].map {
+  Tensor<Int32>([Int32($0.label)], .C(1))
+}
+trainDataDf["jittered"] = trainDataDf["tensor"]!.toImageJitter(
+  Float32.self,
+  size: ImageJitter.Size(rows: 32, cols: 32),
+  resize: ImageJitter.Resize(min: 32, max: 32),
+  symmetric: true,
+  offset: ImageJitter.Offset(x: 4, y: 4),
+  normalize: ImageJitter.Normalize(mean: [meanf.0, meanf.1, meanf.2])
+)
+
+let batchedTrainData = DataFrame(batchOf: trainDataDf["jittered", "c"], size: batchSize)
+let toGPUTrain = batchedTrainData["jittered", "c"].toGPU()
+batchedTrainData["jitteredGPU"] = toGPUTrain["jittered"]
+batchedTrainData["cGPU"] = toGPUTrain["c"]
+
+/**
+ * MARK - Training Loop
+ */
+
+let graph = DynamicGraph()
+
+var sgdOptimizer = SGDOptimizer(graph, nesterov: true, rate: 0.001, decay: 0, momentum: 0.9, dampening: 0)
+for epoch in 0..<10 {
+  batchedTrainData.shuffle()
+  for (i, batch) in batchedTrainData["jitteredGPU", "cGPU"].enumerated() {
+    let tensorGPU = batch[0]
+    let cGPU = batch[1]
+  }
+}

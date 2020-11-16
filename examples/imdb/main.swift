@@ -93,8 +93,6 @@ let transformer: ModelBuilder = ModelBuilder { inputs in
   return ClassicTransformer(layers: parameters.layers, k: k, h: parameters.h, b: b, t: t, ff: parameters.ff * k, dropout: parameters.dropout)
 }
 
-let graph = DynamicGraph()
-
 let trainListFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/train.txt"
 let testListFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/test.txt"
 let vocabFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/imdb.vocab"
@@ -108,6 +106,7 @@ for (i, word) in vocabList.enumerated() {
   let lowercasedWord = word.lowercased()
   dict[lowercasedWord] = i
 }
+
 /**
  * MARK - Data Processing
  */
@@ -190,8 +189,11 @@ for i in 0..<deviceCount {
 }
 
 /**
- * The Training Loop
+ * MARK - The Training Loop
  */
+
+let graph = DynamicGraph()
+
 let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
 let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
 vocabVec.rand(-1, 1)

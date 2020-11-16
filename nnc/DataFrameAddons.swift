@@ -418,7 +418,7 @@ public enum ImageJitter {
   public struct Normalize {
     var mean: [Float]
     var std: [Float]
-    public init(mean: [Float], std: [Float]) {
+    public init(mean: [Float], std: [Float] = []) {
       self.mean = mean
       self.std = std
     }
@@ -514,7 +514,7 @@ extension DataFrame {
 }
 
 public extension DataFrame.UntypedSeries {
-  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [], std: [])) -> DataFrame.UntypedSeries {
+  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [])) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
@@ -524,7 +524,7 @@ public extension DataFrame.UntypedSeries {
 }
 
 public extension DataFrame.TypedSeries where Element: AnyTensor {
-  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [], std: [])) -> DataFrame.UntypedSeries {
+  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [])) -> DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToImageJitter, ImageJitterParams(contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting, aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop, size: size, resize: resize, offset: offset, normalize: normalize, dataType: Element.dataType)))
   }
