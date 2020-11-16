@@ -159,9 +159,8 @@ batchedTrainData["cGPU"] = toGPUTrain["c"]
  */
 
 let graph = DynamicGraph()
-
 let cifar = CIFAR10Dawn()
-
+var overallAccuracy = 0.0
 var sgdOptimizer = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1, decay: 0, momentum: 0.9, dampening: 0)
 for epoch in 0..<10 {
   batchedTrainData.shuffle()
@@ -175,5 +174,27 @@ for epoch in 0..<10 {
     let loss = softmaxLoss(output, target: target)
     loss.backward(to: [input])
     sgdOptimizer.step()
+    let c = cGPU.toCPU()
+    var correct = 0
+    let cpuOutput = DynamicGraph.Tensor<Float32>(output).toCPU()
+    for i in 0..<batchSize {
+      let label = c[i, 0]
+      var prediction: Int = 0
+      var predScore: Float = cpuOutput[i, 0]
+      for j in 1..<10 {
+        if cpuOutput[i, j] > predScore {
+          prediction = j
+          predScore = cpuOutput[i, j]
+        }
+      }
+      if label == prediction {
+        correct += 1
+      }
+    }
+    let accuracy = Double(correct) / Double(batchSize)
+    overallAccuracy = overallAccuracy * 0.9 + accuracy * 0.1
+    if (i + 1) % 50  == 0 {
+      print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")
+    }
   }
 }
