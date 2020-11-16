@@ -19,23 +19,26 @@ public class Model {
 
   var dataParallel: Int? = nil // Keep track of whether we applied data parallel to the model or not.
   let _model: OpaquePointer
-  private var selfOwned: Bool = true
+  private var owner: Model? = nil
 
   private func ownerHook() {
-    ccv_cnnp_model_owner_hook(_model, { _, owner, ctx in
-      guard owner != nil else { return }
+    ccv_cnnp_model_notify_hook(_model, { _, _, payload, ctx in
+      guard payload != nil && payload != ctx else { return }
       let model = Unmanaged<Model>.fromOpaque(ctx!).takeUnretainedValue()
-      model.selfOwned = false // No longer owned it, there is a new owner (!= nil).
+      model.owner = Unmanaged<Model>.fromOpaque(payload!).takeUnretainedValue()
     }, Unmanaged.passUnretained(self).toOpaque())
   }
 
   init(_ model: OpaquePointer) {
     _model = model
+    ccv_cnnp_model_notify(_model, 0, Unmanaged.passUnretained(self).toOpaque())
     ownerHook()
   }
 
-  func obtainUnderlyingModel() -> OpaquePointer {
-    selfOwned = false
+  func obtainUnderlyingModel(_ owner: Model) -> OpaquePointer {
+    ccv_cnnp_model_notify(_model, 0, Unmanaged.passUnretained(owner).toOpaque())
+    // self.owner = owner is not necessary because we will update in the callback.
+    assert(self.owner === owner)
     return _model
   }
 
@@ -46,25 +49,25 @@ public class Model {
   }
 
   deinit {
-    if selfOwned {
+    if owner == nil {
       ccv_cnnp_model_free(_model)
       return
     }
     // Unhook because I am no longer active (but the model can still be available).
-    ccv_cnnp_model_owner_hook(_model, nil, nil)
+    ccv_cnnp_model_notify_hook(_model, nil, nil)
   }
 
-  public init(_ inputs: [IO], _ outputs: [IO], name: String = "") {
+  public convenience init(_ inputs: [IO], _ outputs: [IO], name: String = "") {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _outputs: [ccv_cnnp_model_io_t?] = outputs.map { $0._io }
-    _model = ccv_cnnp_model_new(_inputs, Int32(inputs.count), _outputs, Int32(outputs.count), name)!
-    ownerHook()
+    let _model = ccv_cnnp_model_new(_inputs, Int32(inputs.count), _outputs, Int32(outputs.count), name)!
+    self.init(_model);
   }
 
-  public init(_ models: [Model], name: String = "") {
+  public convenience init(_ models: [Model], name: String = "") {
     let _models: [OpaquePointer?] = models.map { $0._model }
-    _model = ccv_cnnp_sequential_new(_models, Int32(models.count), name)!
-    ownerHook()
+    let _model = ccv_cnnp_sequential_new(_models, Int32(models.count), name)!
+    self.init(_model)
   }
 
 }

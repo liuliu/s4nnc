@@ -17,7 +17,7 @@ public class AnyModelBuilder {
       let inputs = modelBuilder.inputs!
       let builder = modelBuilder.builder
       let model = builder(t, inputs)
-      return model.obtainUnderlyingModel()
+      return model.obtainUnderlyingModel(modelBuilder.model!)
     }, Unmanaged.passUnretained(self).toOpaque(), name)!
     model = Model(_model)
   }
