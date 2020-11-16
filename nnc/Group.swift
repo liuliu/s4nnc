@@ -1,7 +1,10 @@
 // Empty protocol for other places to recognize AnyTensor and AnyGroup with dynamic dispatch.
 public protocol DynamicGraph_Any {
-    var dimensions: [Int] { get }
+  var dimensions: [Int] { get }
+  var isConstant: Bool { get }
+  var requiresGrad: Bool { get set }
 }
+
 public protocol DynamicGraph_AnyGroup: DynamicGraph_Any {
   var underlying: [DynamicGraph.AnyTensor] { get }
 }
@@ -13,6 +16,27 @@ extension DynamicGraph_AnyGroup {
       assert(dimensions == tensor.dimensions)
     }
     return dimensions
+  }
+  public var isConstant: Bool {
+    let isConstant = underlying[0].isConstant
+    for tensor in underlying {
+      assert(isConstant == tensor.isConstant)
+    }
+    return isConstant
+  }
+  public var requiresGrad: Bool {
+    get {
+      let requiresGrad = underlying[0].requiresGrad
+      for tensor in underlying {
+        assert(requiresGrad == tensor.requiresGrad)
+      }
+      return requiresGrad
+    }
+    set(v) {
+      for tensor in underlying {
+        tensor.requiresGrad = v
+      }
+    }
   }
 }
 

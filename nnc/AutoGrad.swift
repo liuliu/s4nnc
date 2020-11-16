@@ -7,7 +7,8 @@ public extension DynamicGraph.AnyTensor {
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
     for (i, tensor) in tensors.enumerated() {
-      if tensor.grad == nil && !tensor.isConstant {
+      precondition(!tensor.isConstant)
+      if tensor.grad == nil && tensor.requiresGrad {
         tensor.grad = graph.variable()
       }
       (_outputs + i).initialize(to: tensor.grad?._tensor)
@@ -34,7 +35,8 @@ public extension DynamicGraph.Group {
     var i = 0
     for group in tensors {
       for tensor in group.underlying {
-        if tensor.grad == nil && !tensor.isConstant {
+        precondition(!tensor.isConstant)
+        if tensor.grad == nil && tensor.requiresGrad {
           tensor.grad = graph.variable()
         }
         (_outputs + i).initialize(to: tensor.grad?._tensor)
@@ -64,7 +66,8 @@ public extension Collection where Element: DynamicGraph.AnyTensor {
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
     for (i, tensor) in tensors.enumerated() {
-      if tensor.grad == nil && !tensor.isConstant {
+      precondition(!tensor.isConstant)
+      if tensor.grad == nil && tensor.requiresGrad {
         tensor.grad = graph.variable()
       }
       (_outputs + i).initialize(to: tensor.grad?._tensor)
@@ -96,7 +99,8 @@ public extension Collection where Element: DynamicGraph.AnyGroup {
     var i = 0
     for group in tensors {
       for tensor in group.underlying {
-        if tensor.grad == nil && !tensor.isConstant {
+        precondition(!tensor.isConstant)
+        if tensor.grad == nil && tensor.requiresGrad {
           tensor.grad = graph.variable()
         }
         (_outputs + i).initialize(to: tensor.grad?._tensor)

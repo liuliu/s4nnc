@@ -7,14 +7,17 @@ public final class DynamicGraph {
     let graph: DynamicGraph
     let _tensor: ccv_nnc_tensor_variable_t
 
-    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t) {
+    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false) {
       self.graph = graph
       _tensor = tensor
+      self.requiresGrad = requiresGrad
     }
 
     deinit {
       ccv_nnc_tensor_variable_free(graph._graph, _tensor)
     }
+
+    var requiresGrad: Bool
   }
 
   public class AnyTensor {
@@ -26,8 +29,17 @@ public final class DynamicGraph {
     var graph: DynamicGraph { underlying.graph }
     var _tensor: ccv_nnc_tensor_variable_t { underlying._tensor }
 
-    fileprivate init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t) {
-      underlying = _AnyTensor(graph: graph, tensor: tensor)
+    public var requiresGrad: Bool { // I would like to keep this as internal. Unfortunately, that is hard to do. Hence, mark with _.
+      get {
+        underlying.requiresGrad
+      }
+      set(v) {
+        underlying.requiresGrad = v
+      }
+    }
+
+    fileprivate init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false) {
+      underlying = _AnyTensor(graph: graph, tensor: tensor, requiresGrad: requiresGrad)
     }
 
     fileprivate init(_ underlying: _AnyTensor) {
@@ -247,8 +259,7 @@ public extension DynamicGraph {
   func variable<Element: TensorNumeric>(_ device: DeviceKind, format: TensorFormat, dimensions: [Int]) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph,
       toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
-    let tensor = Tensor<Element>(graph: self, tensor: _tensor)
-    return tensor
+    return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
   func constant<Element: TensorNumeric>(_ device: DeviceKind, format: TensorFormat, dimensions: [Int]) -> Tensor<Element> {

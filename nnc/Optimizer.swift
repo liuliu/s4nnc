@@ -137,7 +137,16 @@ public struct SGDOptimizer: Optimizer {
   public var momentum: Float
   public var dampening: Float
   public var parameters = [DynamicGraph_Any]() {
+    willSet {
+      for var parameter in parameters {
+        parameter.requiresGrad = false
+      }
+    }
     didSet {
+      for var parameter in parameters {
+        precondition(!parameter.isConstant)
+        parameter.requiresGrad = true
+      }
       savedAux = savedAux(minimizer: minimizer)
     }
   }
@@ -178,7 +187,15 @@ public struct AdamOptimizer: Optimizer {
   public var decay: Float
   public var epsilon: Float
   public var parameters = [DynamicGraph_Any]() {
+    willSet {
+      for var parameter in parameters {
+        parameter.requiresGrad = false
+      }
+    }
     didSet {
+      for var parameter in parameters {
+        parameter.requiresGrad = true
+      }
       savedAux = savedAux(minimizer: minimizer)
     }
   }
