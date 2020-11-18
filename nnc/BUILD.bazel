@@ -19,6 +19,7 @@ swift_library(
 		"ModelBuilder.swift",
 		"Operators.swift",
 		"Optimizer.swift",
+		"OptimizerAddons.swift",
 		"StreamContext.swift"
 	],
 	visibility = ["//visibility:public"],
