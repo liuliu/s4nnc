@@ -1,5 +1,8 @@
 // Empty protocol for other places to recognize AnyTensor and AnyGroup with dynamic dispatch.
-public protocol DynamicGraph_Any {
+public protocol DynamicGraph_AnyParameters {
+}
+
+public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var dimensions: [Int] { get }
   var isConstant: Bool { get }
   var requiresGrad: Bool { get set }
@@ -41,6 +44,9 @@ extension DynamicGraph_AnyGroup {
 }
 
 extension DynamicGraph.AnyTensor: DynamicGraph_Any {
+}
+
+extension Model.Parameters: DynamicGraph_AnyParameters {
 }
 
 extension DynamicGraph {

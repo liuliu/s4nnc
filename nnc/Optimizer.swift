@@ -1,7 +1,7 @@
 import C_nnc
 
 public protocol Optimizer {
-  var parameters: [DynamicGraph_Any] { get set }
+  var parameters: [DynamicGraph_AnyParameters] { get set }
   func step(streamContext: StreamContext?)
 }
 
@@ -80,8 +80,56 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
   }
 }
 
+func optimizerStep(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph_AnyParameters], savedAux: [DynamicGraph_Any], streamContext: StreamContext?) {
+  let modelParameters = parameters.compactMap { $0 as? Model.Parameters }
+  let primaryModelParameters = modelParameters.filter { $0._io == $0.model!._parameters && $0.model!.owner == nil }
+  var models = Set(modelParameters.map { $0.model!.owner ?? $0.model! })
+  // Reset these models with primary parameters with the new minimizer.
+  for parameter in primaryModelParameters {
+    let model = parameter.model!
+    models.remove(model)
+    ccv_cnnp_model_set_minimizer(model._model, minimizer, 1, nil, 0)
+  }
+  // Reset other models to use noop.
+  let params = CmdParamsFactory.factory.newParams()
+  let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
+  for model in models {
+    ccv_cnnp_model_set_minimizer(model._model, noop, 1, nil, 0)
+  }
+  // Set minimizers on other models.
+  var modelParametersMap = [Model: [Model.Parameters]]()
+  for parameter in modelParameters
+    // If parameter is not primary
+    where parameter._io != parameter.model!._parameters || parameter.model!.owner != nil {
+    let model = parameter.model!.owner ?? parameter.model!
+    modelParametersMap[model, default: [Model.Parameters]()].append(parameter)
+  }
+  for (model, parameters) in modelParametersMap {
+    let _parameters: [ccv_cnnp_model_io_t?] = parameters.map { $0._io }
+    ccv_cnnp_model_set_minimizer(model._model, minimizer, 0, _parameters, Int32(_parameters.count))
+  }
+  let tensorParameters = parameters.compactMap { $0 as? DynamicGraph_Any }
+  assert(modelParameters.count + tensorParameters.count == parameters.count)
+  guard tensorParameters.count > 0 else {
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, nil, 0, nil, 0, nil, 0, _streamContext)
+    return
+  }
+  switch tensorParameters[0] {
+  case is DynamicGraph.AnyTensor:
+    _step(graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyTensor], savedAux: savedAux as! [DynamicGraph.AnyTensor], streamContext: streamContext)
+  case is DynamicGraph.AnyGroup:
+    _step(graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyGroup], savedAux: savedAux as! [DynamicGraph.AnyGroup], streamContext: streamContext)
+  default:
+    fatalError("Cannot support the given type")
+  }
+}
+
 extension Optimizer {
+
   func savedAux(minimizer: ccv_nnc_cmd_t) -> [DynamicGraph_Any] {
+    let parameters = self.parameters.compactMap { $0 as? DynamicGraph_Any }
     guard parameters.count > 0 else { return [] }
     switch parameters[0] {
     case is DynamicGraph.AnyTensor:
@@ -109,23 +157,6 @@ extension Optimizer {
       fatalError("Cannot support the given type")
     }
   }
-
-  func step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, savedAux: [DynamicGraph_Any], streamContext: StreamContext?) {
-    guard parameters.count > 0 else {
-      let _graph = graph._graph
-      let _streamContext = (streamContext ?? graph.streamContext)?._stream
-      ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, nil, 0, nil, 0, nil, 0, _streamContext)
-      return
-    }
-    switch parameters[0] {
-    case is DynamicGraph.AnyTensor:
-      _step(graph: graph, minimizer: minimizer, parameters: parameters as! [DynamicGraph.AnyTensor], savedAux: savedAux as! [DynamicGraph.AnyTensor], streamContext: streamContext)
-    case is DynamicGraph.AnyGroup:
-      _step(graph: graph, minimizer: minimizer, parameters: parameters as! [DynamicGraph.AnyGroup], savedAux: savedAux as! [DynamicGraph.AnyGroup], streamContext: streamContext)
-    default:
-      fatalError("Cannot support the given type")
-    }
-  }
 }
 
 public struct SGDOptimizer: Optimizer {
@@ -136,14 +167,14 @@ public struct SGDOptimizer: Optimizer {
   public var decay: Float
   public var momentum: Float
   public var dampening: Float
-  public var parameters = [DynamicGraph_Any]() {
+  public var parameters = [DynamicGraph_AnyParameters]() {
     willSet {
-      for var parameter in parameters {
+      for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
         parameter.requiresGrad = false
       }
     }
     didSet {
-      for var parameter in parameters {
+      for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
         precondition(!parameter.isConstant)
         parameter.requiresGrad = true
       }
@@ -174,7 +205,7 @@ public struct SGDOptimizer: Optimizer {
   }
 
   public func step(streamContext: StreamContext?) {
-    step(graph: graph, minimizer: minimizer, savedAux: savedAux, streamContext: streamContext)
+    optimizerStep(graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux, streamContext: streamContext)
   }
 }
 
@@ -186,14 +217,15 @@ public struct AdamOptimizer: Optimizer {
   public var beta2: Float
   public var decay: Float
   public var epsilon: Float
-  public var parameters = [DynamicGraph_Any]() {
+  public var parameters = [DynamicGraph_AnyParameters]() {
     willSet {
-      for var parameter in parameters {
+      for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
         parameter.requiresGrad = false
       }
     }
     didSet {
-      for var parameter in parameters {
+      for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
+        precondition(!parameter.isConstant)
         parameter.requiresGrad = true
       }
       savedAux = savedAux(minimizer: minimizer)
@@ -223,6 +255,6 @@ public struct AdamOptimizer: Optimizer {
   }
 
   public func step(streamContext: StreamContext?) {
-    step(graph: graph, minimizer: minimizer, savedAux: savedAux, streamContext: streamContext)
+    optimizerStep(graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux, streamContext: streamContext)
   }
 }

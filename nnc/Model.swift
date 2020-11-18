@@ -5,7 +5,7 @@ public class Model {
   public class IO {
 
     let _io: ccv_cnnp_model_io_t
-    private let model: Model?
+    let model: Model?
     private let inputs: [IO]?
 
     init(_ io: ccv_cnnp_model_io_t, model: Model? = nil, inputs: [IO]? = nil) {
@@ -19,7 +19,7 @@ public class Model {
 
   var dataParallel: Int? = nil // Keep track of whether we applied data parallel to the model or not.
   let _model: OpaquePointer
-  private var owner: Model? = nil
+  var owner: Model? = nil
 
   private func ownerHook() {
     ccv_cnnp_model_notify_hook(_model, { _, _, payload, ctx in
@@ -57,6 +57,55 @@ public class Model {
     ccv_cnnp_model_notify_hook(_model, nil, nil)
   }
 
+  public final class Parameters: IO {
+  }
+
+  var _parameters: ccv_cnnp_model_io_t? = nil
+
+  public var parameters: Parameters {
+    guard let _parameters = _parameters else {
+      let parameters = ccv_cnnp_model_parameters(_model, -1, -1)!
+      self._parameters = parameters
+      return Parameters(parameters, model: self)
+    }
+    return Parameters(_parameters, model: self)
+  }
+  
+  public enum ParametersType {
+    case weight
+    case bias
+  }
+
+  private var _biasParameters: ccv_cnnp_model_io_t? = nil
+  private var _weightParameters: ccv_cnnp_model_io_t? = nil
+
+  public func parameters(for type: ParametersType) -> Parameters {
+    switch type {
+    case .weight:
+      guard let _weightParameters = _weightParameters else {
+        let weightParameters = ccv_cnnp_model_parameters(_model, Int32(CCV_CNNP_PARAMETER_SELECT_WEIGHT), -1)!
+        self._weightParameters = weightParameters
+        return Parameters(weightParameters, model: self)
+      }
+      return Parameters(_weightParameters, model: self)
+    case .bias:
+      guard let _biasParameters = _biasParameters else {
+        let biasParameters = ccv_cnnp_model_parameters(_model, Int32(CCV_CNNP_PARAMETER_SELECT_BIAS), -1)!
+        self._biasParameters = biasParameters
+        return Parameters(biasParameters, model: self)
+      }
+      return Parameters(_biasParameters, model: self)
+    }
+  }
+
+}
+
+/**
+ * MARK - Functional and Sequential Models
+ */
+
+extension Model {
+
   public convenience init(_ inputs: [IO], _ outputs: [IO], name: String = "") {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _outputs: [ccv_cnnp_model_io_t?] = outputs.map { $0._io }
@@ -72,9 +121,27 @@ public class Model {
 
 }
 
+/**
+ * MARK - Model Inputs for Functional Model
+ */
+
 public final class Input: Model.IO {
   public init() {
     let _io = ccv_cnnp_input()!
     super.init(_io)
+  }
+}
+
+/**
+ * MARK - Hashable
+ */
+
+extension Model: Hashable {
+  public static func ==(lhs: Model, rhs: Model) -> Bool {
+    return lhs === rhs
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(ObjectIdentifier(self))
   }
 }

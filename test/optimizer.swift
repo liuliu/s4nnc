@@ -7,7 +7,8 @@ final class OptimizerTests: XCTestCase {
     let dynamicGraph = DynamicGraph()
     let linear = Dense(count: 1)
     let z = dynamicGraph.variable(Tensor<Float32>([5], .C(1)))
-    let sgd = SGDOptimizer(dynamicGraph, nesterov: false, rate: 0.01, scale: 1, decay: 0.01, momentum: 0, dampening: 0)
+    var sgd = SGDOptimizer(dynamicGraph, nesterov: false, rate: 0.01, scale: 1, decay: 0.01, momentum: 0, dampening: 0)
+    sgd.parameters = [linear.parameters]
     for i in 0..<100 {
       let x: DynamicGraph.Tensor<Float32>
       if i % 2 == 1 {

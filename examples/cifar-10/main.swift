@@ -161,7 +161,8 @@ batchedTrainData["cGPU"] = toGPUTrain["c"]
 let graph = DynamicGraph()
 let cifar = CIFAR10Dawn()
 var overallAccuracy = 0.0
-var sgdOptimizer = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1, decay: 0, momentum: 0.9, dampening: 0)
+var sgd = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1, decay: 0, momentum: 0.9, dampening: 0)
+sgd.parameters = [cifar.parameters]
 for epoch in 0..<10 {
   batchedTrainData.shuffle()
   for (i, batch) in batchedTrainData["jitteredGPU", "cGPU"].enumerated() {
@@ -173,7 +174,7 @@ for epoch in 0..<10 {
     let target = graph.constant(cGPU)
     let loss = softmaxLoss(output, target: target)
     loss.backward(to: [input])
-    sgdOptimizer.step()
+    sgd.step()
     let c = cGPU.toCPU()
     var correct = 0
     let cpuOutput = DynamicGraph.Tensor<Float32>(output).toCPU()

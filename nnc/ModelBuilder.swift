@@ -33,6 +33,14 @@ public class AnyModelBuilder {
     return outputSize
   }
 
+  public var parameters: Model.Parameters {
+    model!.parameters
+  }
+
+  public func parameters(for type: Model.ParametersType) -> Model.Parameters {
+    return model!.parameters(for: type)
+  }
+
 }
 
 public final class ModelBuilder<T>: AnyModelBuilder {
