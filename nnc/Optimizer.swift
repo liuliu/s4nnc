@@ -1,8 +1,14 @@
 import C_nnc
 
 public protocol Optimizer {
+  var graph: DynamicGraph { get }
   var parameters: [DynamicGraph_AnyParameters] { get set }
   func step(streamContext: StreamContext?)
+}
+
+protocol OptimizerAddons {
+  var savedAux: [DynamicGraph_Any] { get }
+  var minimizer: ccv_nnc_cmd_t { get }
 }
 
 public extension Optimizer {
@@ -127,7 +133,6 @@ func optimizerStep(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [D
 }
 
 extension Optimizer {
-
   func savedAux(minimizer: ccv_nnc_cmd_t) -> [DynamicGraph_Any] {
     let parameters = self.parameters.compactMap { $0 as? DynamicGraph_Any }
     guard parameters.count > 0 else { return [] }
@@ -155,6 +160,63 @@ extension Optimizer {
       return (0..<(groupParameters.count * size)).map { _ in DynamicGraph.Group((0..<parallel).map { _ in graph.variable() }) }
     default:
       fatalError("Cannot support the given type")
+    }
+  }
+}
+
+public extension Collection where Element: Optimizer {
+  func step(streamContext: StreamContext? = nil) {
+    // This is different from calling step on individual element is to set all parameters on models first
+    // before calling step individually. In this way, we can make sure whenever we step through, we will
+    // have all model parameters setup properly.
+    var models = Set<Model>()
+    var primaries = [(ccv_nnc_cmd_t, [Model.Parameters])]()
+    var secondaries = [(ccv_nnc_cmd_t, [Model.Parameters])]()
+    for optimizer in self {
+      let modelParameters = optimizer.parameters.compactMap { $0 as? Model.Parameters }
+      models.formUnion(modelParameters.map { $0.model!.owner ?? $0.model! })
+      let minimizer = (optimizer as! OptimizerAddons).minimizer
+      var primaryModelParameters = [Model.Parameters]()
+      var secondaryModelParameters = [Model.Parameters]()
+      for parameter in modelParameters {
+        if (parameter._io == parameter.model!._parameters && parameter.model!.owner == nil) {
+          primaryModelParameters.append(parameter)
+        } else {
+          secondaryModelParameters.append(parameter)
+        }
+      }
+      primaries.append((minimizer, primaryModelParameters))
+      secondaries.append((minimizer, secondaryModelParameters))
+    }
+    for (minimizer, modelParameters) in primaries {
+      for parameter in modelParameters {
+        let model = parameter.model!
+        models.remove(model)
+        ccv_cnnp_model_set_minimizer(model._model, minimizer, 1, nil, 0)
+      }
+    }
+    // Reset other models to use noop.
+    let params = CmdParamsFactory.factory.newParams()
+    let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
+    for model in models {
+      ccv_cnnp_model_set_minimizer(model._model, noop, 1, nil, 0)
+    }
+    for (minimizer, modelParameters) in secondaries {
+      var modelParametersMap = [Model: [Model.Parameters]]()
+      for parameter in modelParameters {
+        let model = parameter.model!.owner ?? parameter.model!
+        modelParametersMap[model, default: [Model.Parameters]()].append(parameter)
+      }
+      for (model, parameters) in modelParametersMap {
+        let _parameters: [ccv_cnnp_model_io_t?] = parameters.map { $0._io }
+        ccv_cnnp_model_set_minimizer(model._model, minimizer, 0, _parameters, Int32(_parameters.count))
+      }
+    }
+    // All done! Now run through optimizer!
+    for optimizer in self {
+      let tensorParameters = optimizer.parameters.compactMap { $0 as? DynamicGraph_Any }
+      let addons = (optimizer as! OptimizerAddons)
+      optimizerStep(graph: optimizer.graph, minimizer: addons.minimizer, parameters: tensorParameters, savedAux: addons.savedAux, streamContext: streamContext)
     }
   }
 }

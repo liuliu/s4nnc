@@ -60,7 +60,7 @@ let testBatchPath = "/fast/Data/cifar-10/cifar-10-batches-bin/test_batch.bin"
 let dataBatchSize = 50_000
 let testBatchSize = 10_000
 
-let batchSize = 128
+let batchSize = 1024
 
 /**
  * MARK - Loading Data from Disk
@@ -161,11 +161,24 @@ batchedTrainData["cGPU"] = toGPUTrain["c"]
 let graph = DynamicGraph()
 let cifar = CIFAR10Dawn()
 var overallAccuracy = 0.0
-var sgd = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1, decay: 0, momentum: 0.9, dampening: 0)
-sgd.parameters = [cifar.parameters]
-for epoch in 0..<10 {
+var sgd0 = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0.001, momentum: 0.9, dampening: 0)
+sgd0.parameters = [cifar.parameters]
+var sgd1 = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0, momentum: 0.9, dampening: 0)
+sgd1.parameters = [cifar.parameters(for: .bias)]
+for epoch in 0..<35 {
   batchedTrainData.shuffle()
   for (i, batch) in batchedTrainData["jitteredGPU", "cGPU"].enumerated() {
+    // Piece-wise linear learning rate: https://www.myrtle.ai/2018/09/24/how_to_train_your_resnet_3/
+    let overallIndex = i + epoch * batchedTrainData.count
+    var learnRate: Float
+    if overallIndex + 1 < 5 * batchedTrainData.count {
+      learnRate = 0.4 * Float(overallIndex + 1) / Float(5 * batchedTrainData.count)
+    } else {
+      learnRate = 0.4 * Float(30 * batchedTrainData.count - (overallIndex + 1)) / Float((30 - 5) * batchedTrainData.count)
+    }
+    learnRate = max(learnRate, 0.0001)
+    sgd0.rate = learnRate
+    sgd1.rate = learnRate
     let tensorGPU = batch[0] as! Tensor<Float32>
     let cGPU = batch[1] as! Tensor<Int32>
     let input = graph.variable(tensorGPU)
@@ -174,7 +187,7 @@ for epoch in 0..<10 {
     let target = graph.constant(cGPU)
     let loss = softmaxLoss(output, target: target)
     loss.backward(to: [input])
-    sgd.step()
+    [sgd0, sgd1].step()
     let c = cGPU.toCPU()
     var correct = 0
     let cpuOutput = DynamicGraph.Tensor<Float32>(output).toCPU()

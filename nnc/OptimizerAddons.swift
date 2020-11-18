@@ -1,7 +1,7 @@
 import C_nnc
 
-public struct SGDOptimizer: Optimizer {
-  private let graph: DynamicGraph
+public struct SGDOptimizer: Optimizer, OptimizerAddons {
+  public let graph: DynamicGraph
   public var nesterov: Bool
   public var rate: Float
   public var scale: Float
@@ -50,8 +50,8 @@ public struct SGDOptimizer: Optimizer {
   }
 }
 
-public struct AdamOptimizer: Optimizer {
-  private let graph: DynamicGraph
+public struct AdamOptimizer: Optimizer, OptimizerAddons {
+  public let graph: DynamicGraph
   public var step: Int
   public var rate: Float
   public var beta1: Float
