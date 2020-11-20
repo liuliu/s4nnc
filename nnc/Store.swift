@@ -14,13 +14,15 @@ extension DynamicGraph {
   }
 
   public struct Store {
+    private let graph: DynamicGraph
     private let store: _Store
 
     @discardableResult
     public func read(_ key: String, variable: DynamicGraph_Any) -> Bool {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
-        let _graph = tensor.graph._graph
+        assert(tensor.graph === graph)
+        let _graph = graph._graph
         let _tensor = tensor._tensor
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)
         if raw != nil {
@@ -62,7 +64,8 @@ extension DynamicGraph {
     public func write(_ key: String, variable: DynamicGraph_Any) {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
-        let _graph = tensor.graph._graph
+        assert(tensor.graph === graph)
+        let _graph = graph._graph
         let _tensor = tensor._tensor
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
         ccv_nnc_tensor_write(raw, store.sqlite, key)
@@ -81,8 +84,9 @@ extension DynamicGraph {
       write(key, model: model.model!)
     }
 
-    init(_ store: _Store) {
+    init(_ store: _Store, graph: DynamicGraph) {
       self.store = store
+      self.graph = graph
     }
 
   }
@@ -92,7 +96,7 @@ extension DynamicGraph {
     var _sqlite: OpaquePointer? = nil
     sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
     guard let sqlite = _sqlite else { return false }
-    let store = Store(_Store(sqlite: sqlite))
+    let store = Store(_Store(sqlite: sqlite), graph: self)
     procedure(store)
     return true
   }
