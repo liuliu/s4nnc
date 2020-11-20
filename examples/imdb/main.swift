@@ -198,6 +198,11 @@ let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map 
 let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
 vocabVec.rand(-1, 1)
 seqVec.rand(-1, 1)
+graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
+  store.read("vocab", variable: vocabVec)
+  store.read("seq", variable: seqVec)
+  store.read("transformer", model: transformer)
+}
 var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec, transformer.parameters]
 var overallAccuracy = 0.0
@@ -256,6 +261,11 @@ for epoch in 0..<10 {
     if adamOptimizer.step % 50  == 0 {
       print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")
     }
+  }
+  graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
+    store.write("vocab", variable: vocabVec)
+    store.write("seq", variable: seqVec)
+    store.write("transformer", model: transformer)
   }
 }
 
