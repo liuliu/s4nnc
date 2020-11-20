@@ -8,12 +8,14 @@ swift_test(
 		"loss.swift",
 		"main.swift",
 		"model.swift",
-		"optimizer.swift"
+		"optimizer.swift",
+		"store.swift"
 	],
 	deps = [
 		"//nnc:nnc"
 	],
 	data = [
-		"scaled_data.csv"
+		"scaled_data.csv",
+		"some_variables.db"
 	]
 )

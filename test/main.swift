@@ -6,7 +6,8 @@ XCTMain([
   testCase(GraphTests.allTests),
   testCase(LossTests.allTests),
   testCase(ModelTests.allTests),
-  testCase(OptimizerTests.allTests)
+  testCase(OptimizerTests.allTests),
+  testCase(StoreTests.allTests)
 ])
 
 #endif
