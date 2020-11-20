@@ -81,6 +81,7 @@ extension DynamicGraph {
     guard let sqlite = _sqlite else { return false }
     let store = Store(sqlite: UnsafeMutableRawPointer(sqlite))
     procedure(store)
+    sqlite3_close(sqlite)
     return true
   }
 
