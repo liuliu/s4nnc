@@ -16,7 +16,8 @@ extension DynamicGraph {
   public struct Store {
     private let store: _Store
 
-    public func read(_ key: String, variable: DynamicGraph_Any) {
+    @discardableResult
+    public func read(_ key: String, variable: DynamicGraph_Any) -> Bool {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
         let _graph = tensor.graph._graph
@@ -28,11 +29,11 @@ extension DynamicGraph {
           if result == CCV_IO_FINAL {
             assert(underlying == raw)
           }
-          return
+          return result == CCV_IO_FINAL
         }
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
         let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
-        guard result == CCV_IO_FINAL else { return }
+        guard result == CCV_IO_FINAL else { return false }
         let anyTensor = _AnyTensor(underlying!)
         ccv_nnc_tensor_variable_set(_graph, _tensor, anyTensor._tensor)
         // Retain the tensor until we freed the variable.
@@ -40,14 +41,16 @@ extension DynamicGraph {
           // No longer need to retain the tensor.
           Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
         }, Unmanaged.passRetained(anyTensor).toOpaque())
-        break
       case let group as DynamicGraph.AnyGroup:
         for (i, tensor) in group.underlying.enumerated() {
-          read("\(key)(\(i))", variable: tensor)
+          guard read("\(key)(\(i))", variable: tensor) else {
+            return false
+          }
         }
       default:
         fatalError("Cannot recognize the variable")
       }
+      return true
     }
     public func read(_ key: String, model: Model) {
       ccv_cnnp_model_read(store.sqlite, key, model._model)
