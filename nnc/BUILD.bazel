@@ -20,7 +20,8 @@ swift_library(
 		"Operators.swift",
 		"Optimizer.swift",
 		"OptimizerAddons.swift",
-		"StreamContext.swift"
+		"StreamContext.swift",
+		"Store.swift"
 	],
 	visibility = ["//visibility:public"],
 	deps = [
