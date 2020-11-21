@@ -164,7 +164,7 @@ This is useful because if tensor variables are on different GPUs, this can compu
 
 ## Example
 
-Below are the training loop to train an sentiment analysis transformer model with s4nnc. It trains the model with multiple GPUs.
+Below are the training loop to train an sentiment analysis transformer model with s4nnc. It trains the model with multiple GPUs. You can find comparable PyTorch code from [Transformers from Scratch](http://peterbloem.nl/blog/transformers).
 
 ```swift
 /**
