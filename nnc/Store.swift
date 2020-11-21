@@ -17,6 +17,14 @@ extension DynamicGraph {
     private let graph: DynamicGraph
     private let store: _Store
 
+    public func read(_ key: String) -> nnc.AnyTensor? {
+      var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
+      let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
+      guard result == CCV_IO_FINAL else { return nil }
+      let anyTensor = _AnyTensor(underlying!)
+      return anyTensor.toAnyTensor()
+    }
+
     @discardableResult
     public func read(_ key: String, variable: DynamicGraph_Any) -> Bool {
       switch variable {
@@ -61,6 +69,9 @@ extension DynamicGraph {
       model.read(key, from: store)
     }
 
+    public func write(_ key: String, tensor: nnc.AnyTensor) {
+      ccv_nnc_tensor_write(tensor.underlying._tensor, store.sqlite, key)
+    }
     public func write(_ key: String, variable: DynamicGraph_Any) {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:

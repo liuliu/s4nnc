@@ -36,6 +36,17 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(varf[1], 2.2)
   }
 
+  func testReadExistRawTensor() throws {
+    let graph = DynamicGraph()
+    var tensor: AnyTensor? = nil
+    graph.openStore("test/some_variables.db") { store in
+      tensor = store.read("b")
+    }
+    let varf = Tensor<Float32>(tensor!)
+    XCTAssertEqual(varf[0], 1.1)
+    XCTAssertEqual(varf[1], 2.2)
+  }
+
   func testReadExistTensorGroupWithoutShape() throws {
     let graph = DynamicGraph()
     let variable1 = graph.variable()
@@ -52,10 +63,45 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(varf2[1], 4.4)
   }
 
+  func testWriteTensorAndReadBack() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    tensor[0] = 2.2
+    tensor[1] = 1.1
+    var readout: AnyTensor? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor)
+      readout = store.read("a")
+    }
+    let varf = Tensor<Float32>(readout!)
+    XCTAssertEqual(varf[0], 2.2)
+    XCTAssertEqual(varf[1], 1.1)
+  }
+
+  func testWriteTensorConstantAndReadBack() throws {
+    let graph = DynamicGraph()
+    let constant: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .C(2))
+    constant[0] = 3.3
+    constant[1] = 4.4
+    let variable = graph.variable()
+    graph.openStore("test/tmp.db") { store in
+      store.write("b", variable: constant)
+    }
+    graph.openStore("test/tmp.db") { store in
+      store.read("b", variable: variable)
+    }
+    let varf = DynamicGraph.Tensor<Float32>(variable)
+    XCTAssertEqual(3.3, varf[0])
+    XCTAssertEqual(4.4, varf[1])
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
     ("testReadExistTensorWithoutShape", testReadExistTensorWithoutShape),
-    ("testReadExistTensorGroupWithoutShape", testReadExistTensorGroupWithoutShape)
+    ("testReadExistRawTensor", testReadExistRawTensor),
+    ("testReadExistTensorGroupWithoutShape", testReadExistTensorGroupWithoutShape),
+    ("testWriteTensorAndReadBack", testWriteTensorAndReadBack),
+    ("testWriteTensorConstantAndReadBack", testWriteTensorConstantAndReadBack)
   ]
 }
