@@ -164,62 +164,10 @@ This is useful because if tensor variables are on different GPUs, this can compu
 
 ## Example
 
-Below are the training loop to train an sentiment analysis transformer model with s4nnc. It trains the model with multiple GPUs. You can find comparable PyTorch code from [Transformers from Scratch](http://peterbloem.nl/blog/transformers).
+Below are the training loop to train an sentiment analysis transformer model with s4nnc. It trains the model with multiple GPUs. You can find comparable PyTorch code from [Transformers from Scratch](http://peterbloem.nl/blog/transformers). You can find the rest of the code in <https://github.com/liuliu/s4nnc/blob/main/examples/imdb/main.swift>.
 
+### Setup the Data Feeder Pipeline
 ```swift
-/**
- * MARK - Data Processing
- */
-
-let unknownFlag = Int32(vocabList.count)
-let endFlag = Int32(vocabList.count + 1)
-let padFlag = Int32(vocabList.count + 2)
-let maxLength = 512
-let vocabSize = vocabList.count + 3
-let embeddingSize = 128
-let batchSize = 64
-
-struct ImdbText {
-  var tensor: Tensor<Int32>
-  var mask: Tensor<Int32>
-  var c: Int
-}
-
-func dataFromDisk(filePath trainListFile: String) -> DataFrame {
-  let trainListContent = try! String(contentsOfFile: trainListFile, encoding: .utf8)
-  let trainList = trainListContent.split(separator: "\n")
-  var trainData = [ImdbText]()
-  for trainFile in trainList {
-    let parts = trainFile.split(separator: " ")
-    let c = Int(parts[0])!
-    let filePath = parts[1...].joined(separator: " ")
-    let trainText = try! String(contentsOfFile: "\(baseDir)/\(filePath)", encoding: .utf8)
-    let lowercasedTrainText = trainText.lowercased()
-    let separators: Set<Character> = [" ", ".", ",", "<", ">", "/", "~", "`", "@", "#", "$", "%", "^", "&", "*", "+", "\\", "\""]
-    let tokens = lowercasedTrainText.split(whereSeparator: { character in
-      return separators.contains(character)
-    })
-    var tensor = Tensor<Int32>(.CPU, .C(maxLength))
-    for (i, token) in tokens.enumerated() where i < maxLength {
-      tensor[i] = dict[String(token)].map { Int32($0) } ?? unknownFlag
-    }
-    if tokens.count < maxLength {
-      for i in tokens.count..<maxLength {
-        tensor[i] = i == tokens.count ? endFlag : padFlag
-      }
-    }
-    var mask = Tensor<Int32>(.CPU, .C(1))
-    mask[0] = Int32(min(tokens.count + 1, maxLength))
-    let imdbText = ImdbText(tensor: tensor, mask: mask, c: c)
-    trainData.append(imdbText)
-  }
-  return DataFrame(from: trainData, name: "main")
-}
-
-/**
- * MARK - Setup the Data Feeder Pipeline
- */
-
 let trainData = dataFromDisk(filePath: trainListFile)
 let testData = dataFromDisk(filePath: testListFile)
 // Extract tensors from ImdbText struct.
@@ -247,11 +195,10 @@ for i in 0..<deviceCount {
   batchedTrainData["oneHotGPU_\(i)"] = toGPUTrain["oneHot_\(i)"]
   batchedTrainData["squaredMaskGPU_\(i)"] = toGPUTrain["squaredMask_\(i)"]
 }
+```
 
-/**
- * MARK - The Training Loop
- */
-
+### The Training Loop
+```swift
 let graph = DynamicGraph()
 
 let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })

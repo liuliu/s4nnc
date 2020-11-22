@@ -1,3 +1,5 @@
+workspace(name = "s4nnc")
+
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
 git_repository(
@@ -54,8 +56,8 @@ protobuf_deps()
 
 new_git_repository(
 	name = "PythonKit",
-	remote = "https://github.com/liuliu/PythonKit.git",
-	commit = "5d1cf3215cc232118b3e7891ba2cabb08d414e66",
-	shallow_since = "1604363258 -0500",
+	remote = "https://github.com/pvieito/PythonKit.git",
+	commit = "59a868e84e1d6a5e01569cf92086554033415fa4",
+	shallow_since = "1604702703 -0800",
 	build_file = "PythonKit.BUILD"
 )
