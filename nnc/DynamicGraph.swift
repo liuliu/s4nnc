@@ -64,17 +64,17 @@ public final class DynamicGraph {
 
   public final class Tensor<Element: TensorNumeric>: AnyTensor {
     // This is to help speed up, there is no need to have only one rawValue.
-    private weak var _rawValue: nnc._AnyTensor? = nil
+    private weak var _rawValue: NNC._AnyTensor? = nil
 
-    public var rawValue: nnc.Tensor<Element> {
+    public var rawValue: NNC.Tensor<Element> {
       if let rawValue = _rawValue {
-        return nnc.Tensor<Element>(rawValue)
+        return NNC.Tensor<Element>(rawValue)
       }
       let _graph = graph._graph
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-      let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
+      let rawValue = NNC._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
       _rawValue = rawValue
-      return nnc.Tensor<Element>(rawValue)
+      return NNC.Tensor<Element>(rawValue)
     }
 
     // If we did type conversion, we need to hold a reference to its parent.
@@ -85,7 +85,7 @@ public final class DynamicGraph {
         }
         let _graph = graph._graph
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
+        let rawValue = NNC._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
         _rawValue = rawValue
         return rawValue[indices, Element.self]
       }
@@ -95,7 +95,7 @@ public final class DynamicGraph {
         }
         let _graph = graph._graph
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        let rawValue = nnc._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
+        let rawValue = NNC._AnyTensor(tensor, original: self) // To enforce copy-on-write syntax.
         _rawValue = rawValue
         rawValue[indices, Element.self] = v
       }
@@ -223,35 +223,35 @@ public extension DynamicGraph {
     return AnyTensor(graph: self, tensor: _tensor)
   }
 
-  func variable<Element: TensorNumeric>(_ tensor: nnc.Tensor<Element>) -> Tensor<Element> {
+  func variable<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
     ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_destructor_hook(_graph, _tensor, { _, _, ctx in
       // No longer need to retain the tensor.
-      Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
+      Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
     }, Unmanaged.passRetained(tensor.underlying).toOpaque())
     let tensor = Tensor<Element>(graph: self, tensor: _tensor)
     return tensor
   }
 
-  func constant<Element: TensorNumeric>(_ tensor: nnc.Tensor<Element>) -> Tensor<Element> {
+  func constant<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
     ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_destructor_hook(_graph, _tensor, { _, _, ctx in
       // No longer need to retain the tensor.
-      Unmanaged<nnc._AnyTensor>.fromOpaque(ctx!).release()
+      Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
     }, Unmanaged.passRetained(tensor.underlying).toOpaque())
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
-  func variable<Element: TensorNumeric>(_ tensors: [nnc.Tensor<Element>]) -> Group<Tensor<Element>> {
+  func variable<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>]) -> Group<Tensor<Element>> {
     precondition(tensors.count > 0)
     return Group(tensors.map { self.variable($0) })
   }
 
-  func constant<Element: TensorNumeric>(_ tensors: [nnc.Tensor<Element>]) -> Group<Tensor<Element>> {
+  func constant<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>]) -> Group<Tensor<Element>> {
     precondition(tensors.count > 0)
     return Group(tensors.map { self.constant($0) })
   }

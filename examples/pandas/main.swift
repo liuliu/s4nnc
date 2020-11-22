@@ -1,4 +1,4 @@
-import nnc
+import NNC
 import PythonKit
 
 let sys = Python.import("sys")

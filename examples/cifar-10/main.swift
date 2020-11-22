@@ -1,4 +1,4 @@
-import nnc
+import NNC
 import Foundation
 
 func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
