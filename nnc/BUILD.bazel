@@ -28,3 +28,16 @@ swift_library(
 		"@ccv//lib:nnc"
 	]
 )
+
+swift_library(
+	name = "nnc_python",
+	module_name = "NNCPythonConversion",
+	srcs = [
+		"PythonConversion.swift"
+	],
+	visibility = ["//visibility:public"],
+	deps = [
+		":nnc",
+		"@PythonKit//:PythonKit"
+	]
+)

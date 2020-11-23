@@ -19,3 +19,14 @@ swift_test(
 		"some_variables.db"
 	]
 )
+
+swift_test(
+	name = "nnc_python",
+	srcs = [
+		"python/numpy.swift",
+		"python/main.swift"
+	],
+	deps = [
+		"//nnc:nnc_python"
+	]
+)

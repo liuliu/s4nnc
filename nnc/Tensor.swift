@@ -211,7 +211,7 @@ public final class _AnyTensor {
   fileprivate let original: Any?
   private let selfOwned: Bool
 
-  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true) {
+  public init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true) {
     self.original = original
     self.selfOwned = selfOwned
     _tensor = tensor
@@ -308,6 +308,13 @@ public extension AnyTensor {
   }
 }
 
+public extension Tensor {
+  func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+    let count = increments.reduce(MemoryLayout<Element>.size, *)
+    return try body(UnsafeRawBufferPointer(start: underlying._tensor.pointee.data.u8, count: count))
+  }
+}
+
 public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
   private var _tensor: _AnyTensor
@@ -325,7 +332,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     self.init(kind, dataType: dataType, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
-  init(_ tensor: _AnyTensor) {
+  public init(_ tensor: _AnyTensor) {
     _tensor = tensor
   }
 
@@ -598,7 +605,7 @@ func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, In
     }
 }
 
-func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) -> ccv_nnc_tensor_param_t {
+public func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) -> ccv_nnc_tensor_param_t {
   var params = ccv_nnc_tensor_param_t()
   switch kind {
     case .CPU:
