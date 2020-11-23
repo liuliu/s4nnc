@@ -211,7 +211,7 @@ public final class _AnyTensor {
   fileprivate let original: Any?
   private let selfOwned: Bool
 
-  public init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true) {
+  init(_ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true) {
     self.original = original
     self.selfOwned = selfOwned
     _tensor = tensor
@@ -332,7 +332,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     self.init(kind, dataType: dataType, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
-  public init(_ tensor: _AnyTensor) {
+  init(_ tensor: _AnyTensor) {
     _tensor = tensor
   }
 
@@ -359,6 +359,13 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
   public init<S: Sequence>(_ sequence: S, _ dimensionFormat: TensorDimensionFormat) where S.Element == Element {
     self.init(sequence, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
+  }
+
+  public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int], unsafeMutablePointer: UnsafeMutablePointer<Element>, keepAlive: Any) {
+    let underlying = ccv_nnc_tensor_new(unsafeMutablePointer,
+      toCTensorParams(kind, dataType: Element.dataType, format: format, dimensions: dimensions),
+      0)!
+    self.init(_AnyTensor(underlying, original: keepAlive))
   }
 
   public subscript(indices: Int...) -> Element {
@@ -605,7 +612,7 @@ func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, In
     }
 }
 
-public func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) -> ccv_nnc_tensor_param_t {
+func toCTensorParams(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) -> ccv_nnc_tensor_param_t {
   var params = ccv_nnc_tensor_param_t()
   switch kind {
     case .CPU:

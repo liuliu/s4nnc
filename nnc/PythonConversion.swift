@@ -18,6 +18,7 @@ extension Tensor where Element: NumpyScalarCompatible {
     }
     let pyShape = numpyArray.__array_interface__["shape"]
     guard let shape = Array<Int>(pyShape) else { return nil }
+    precondition(shape.count <= CCV_NNC_MAX_DIM_ALLOC)
     // Make sure that the array is contiguous in memory. This does a copy if
     // the array is not already contiguous in memory.
     let contiguousNumpyArray = np.ascontiguousarray(numpyArray)
@@ -25,14 +26,10 @@ extension Tensor where Element: NumpyScalarCompatible {
         UInt(contiguousNumpyArray.__array_interface__["data"].tuple2.0) else {
             return nil
     }
-    guard let ptr = UnsafePointer<Element>(bitPattern: ptrVal) else {
+    guard let pointer = UnsafeMutablePointer<Element>(bitPattern: ptrVal) else {
       fatalError("numpy.ndarray data pointer was nil")
     }
-    let underlying = ccv_nnc_tensor_new(ptr,
-      toCTensorParams(.CPU, dataType: Element.dataType, format: .NCHW, dimensions: shape),
-      0)!
-    let anyTensor = _AnyTensor(underlying, original: numpyArray)
-    self.init(anyTensor)
+    self.init(.CPU, format: .NCHW, dimensions: shape, unsafeMutablePointer: pointer, keepAlive: numpyArray)
   }
 }
 
