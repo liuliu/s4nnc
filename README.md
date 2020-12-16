@@ -106,7 +106,7 @@ Sometimes, your `Model` can change its shape based on the inputs. `ModelBuilder`
 
 ### DataFrame
 
-`DataFrame` provides an easy way to construct data feeder into your computation. The data feeder is memory and computation efficient, meaning for each column you try to pull,only that column will be materialized. Hence, if you loop through a list of file names and declare a column to be the loaded images, only one image loaded at a time when you loop through the `DataFrame`.
+`DataFrame` provides an easy way to construct data feeder into your computation. The data feeder is memory and computation efficient, meaning for each column you try to pull, only that column will be materialized. Hence, if you loop through a list of file names and declare a column to be the loaded images, only one image loaded at a time when you loop through the `DataFrame`.
 
 ```swift
 let df = DataFrame(from: [filename1, filename2, filename3])

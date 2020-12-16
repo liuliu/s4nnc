@@ -149,7 +149,7 @@ trainDataDf["jittered"] = trainDataDf["tensor"]!.toImageJitter(
   normalize: ImageJitter.Normalize(mean: [meanf.0, meanf.1, meanf.2])
 )
 
-let batchedTrainData = DataFrame(batchOf: trainDataDf["jittered", "c"], size: batchSize)
+let batchedTrainData = trainDataDf["jittered", "c"].combine(size: batchSize)
 let toGPUTrain = batchedTrainData["jittered", "c"].toGPU()
 batchedTrainData["jitteredGPU"] = toGPUTrain["jittered"]
 batchedTrainData["cGPU"] = toGPUTrain["c"]

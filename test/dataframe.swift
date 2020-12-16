@@ -189,7 +189,7 @@ final class DataFrameTests: XCTestCase {
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
     tensor1[0] = 2.2
     let df = DataFrame(from: [tensor0, tensor1], name: "main")
-    let batched = DataFrame(batchOf: df["main"]!, size: 2)
+    let batched = df["main"]!.combine(size: 2)
     for tensor in batched["main", Tensor<Float32>.self] {
       XCTAssertEqual(1.1, tensor[0, 0])
       XCTAssertEqual(2.2, tensor[1, 0])
@@ -215,7 +215,7 @@ final class DataFrameTests: XCTestCase {
     var tensor13 = Tensor<Float32>(.CPU, .C(1))
     tensor13[0] = 4.3
     df["1"] = .from([tensor10, tensor11, tensor12, tensor13])
-    let batched = DataFrame(batchOf: df["main", "1"], size: 2, repeating: 2)
+    let batched = df["main", "1"].combine(size: 2, repeating: 2)
     for tensor in batched["main_0", Tensor<Float32>.self] {
       XCTAssertEqual(1.1, tensor[0, 0])
       XCTAssertEqual(2.2, tensor[1, 0])
@@ -240,7 +240,7 @@ final class DataFrameTests: XCTestCase {
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
     tensor1[0] = 2.2
     let df = DataFrame(from: [tensor0, tensor1], name: "main")
-    let batched = DataFrame(batchOf: df["main", Tensor<Float32>.self], size: 2)
+    let batched = df["main", Tensor<Float32>.self].combine(size: 2)
     for tensor in batched["main", Tensor<Float32>.self] {
       XCTAssertEqual(1.1, tensor[0, 0])
       XCTAssertEqual(2.2, tensor[1, 0])
@@ -258,7 +258,7 @@ final class DataFrameTests: XCTestCase {
       output[0] = input[0] + 1
       return output
     }
-    let batched = DataFrame(batchOf: df["main", "1"], size: 2)
+    let batched = df["main", "1"].combine(size: 2)
     for tensor in batched["main", Tensor<Float32>.self] {
       XCTAssertEqual(1.1, tensor[0, 0])
       XCTAssertEqual(2.2, tensor[1, 0])

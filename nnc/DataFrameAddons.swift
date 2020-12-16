@@ -64,7 +64,7 @@ extension DataFrame {
     let _dataframe = dataframe._dataframe
     let columnSize: Int32 = Int32(properties.count)
     let indices: [Int32] = properties.map { Int32($0.index) }
-    let batching = ccv_cnnp_dataframe_batching_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1), Int32(CCV_TENSOR_FORMAT_NCHW))!
+    let combined = ccv_cnnp_dataframe_combine_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1), Int32(CCV_TENSOR_FORMAT_NCHW))!
     var columnProperties = [String: ColumnProperty]()
     if let repeating = repeating {
       for i in 0..<repeating {
@@ -72,7 +72,7 @@ extension DataFrame {
           // These must have names.
           let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
           let indexedName = "\(String(cString: name))_\(i)"
-          let index = ccv_cnnp_dataframe_extract_tuple(batching, 0, Int32(i * properties.count + j), indexedName)
+          let index = ccv_cnnp_dataframe_extract_tuple(combined, 0, Int32(i * properties.count + j), indexedName)
           columnProperties[indexedName] = ColumnProperty(index: Int(index), type: .tensor)
         }
       }
@@ -80,31 +80,38 @@ extension DataFrame {
       for (i, property) in properties.enumerated() {
         // These must have names.
         let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
-        let index = ccv_cnnp_dataframe_extract_tuple(batching, 0, Int32(i), name)
+        let index = ccv_cnnp_dataframe_extract_tuple(combined, 0, Int32(i), name)
         columnProperties[String(cString: name)] = ColumnProperty(index: Int(index), type: .tensor)
       }
     }
-    self.init(dataframe: batching, columnProperties: columnProperties, parent: dataframe)
+    self.init(dataframe: combined, columnProperties: columnProperties, parent: dataframe)
   }
-  public convenience init(batchOf: DataFrame.UntypedSeries, size: Int, repeating: Int? = nil) {
-    guard let property = batchOf.property,
-          let dataframe = batchOf.dataframe else {
+}
+
+extension DataFrame.UntypedSeries {
+  public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
+    guard let property = property,
+          let dataframe = dataframe else {
       fatalError("An UntypedSeries has to be referenced from existing dataframe. Cannot be a temporary one.")
     }
     precondition(property.type == .tensor)
-    self.init(dataframe: dataframe, properties: [property], size: size, repeating: repeating)
+    return DataFrame(dataframe: dataframe, properties: [property], size: size, repeating: repeating)
   }
-  public convenience init<T: AnyTensor>(batchOf: DataFrame.TypedSeries<T>, size: Int, repeating: Int? = nil) {
-    let property = batchOf.property
+}
+
+extension DataFrame.TypedSeries where Element: AnyTensor {
+  public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
     precondition(property.type == .tensor)
-    self.init(dataframe: batchOf.dataframe, properties: [property], size: size, repeating: repeating)
+    return DataFrame(dataframe: dataframe, properties: [property], size: size, repeating: repeating)
   }
-  public convenience init(batchOf: DataFrame.ManyUntypedSeries, size: Int, repeating: Int? = nil) {
-    let properties = batchOf.properties
+}
+
+extension DataFrame.ManyUntypedSeries {
+  public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
     for property in properties {
       precondition(property.type == .tensor)
     }
-    self.init(dataframe: batchOf.dataframe, properties: properties, size: size, repeating: repeating)
+    return DataFrame(dataframe: dataframe, properties: properties, size: size, repeating: repeating)
   }
 }
 
