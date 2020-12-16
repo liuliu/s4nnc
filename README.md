@@ -185,7 +185,7 @@ testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
 let deviceCount = DeviceKind.GPUInfo.count
 
 // Batching tensors together. 
-let batchedTrainData = DataFrame(batchOf: trainData["tensor", "mask", "oneHot"], size: batchSize, repeating: deviceCount)
+let batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)
 for i in 0..<deviceCount {
   batchedTrainData["truncTensor_\(i)"] = batchedTrainData["tensor_\(i)"]!.toTruncate(batchedTrainData["mask_\(i)"]!)
   batchedTrainData["squaredMask_\(i)"] = batchedTrainData["mask_\(i)"]!.toOneSquared(maxLength: maxLength)
