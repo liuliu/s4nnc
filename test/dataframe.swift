@@ -444,7 +444,9 @@ final class DataFrameTests: XCTestCase {
     tensor3[0] = 3.2
     let df = DataFrame(from: [tensor0, tensor1, tensor2, tensor3], name: "main")
     let sampled = df["main", Tensor<Float32>.self].sample(size: 2) { input -> Tensor<Float32> in
-      return input[1]
+      var tensor = Tensor<Float32>(.CPU, .C(2))
+      tensor[0] = input[1][0]
+      return tensor
     }
     var result = [Float]()
     for val in sampled["main", Tensor<Float32>.self] {
@@ -483,7 +485,9 @@ final class DataFrameTests: XCTestCase {
     tensor4[0] = 3.3
     let df = DataFrame(from: [tensor0, tensor1, tensor2, tensor3, tensor4], name: "main")
     let sampled = df["main", Tensor<Float32>.self].sample(size: 2, repeating: 2) { input -> Tensor<Float32> in
-      return input.last!
+      var tensor = Tensor<Float32>(.CPU, .C(1))
+      tensor[0] = input.last![0]
+      return tensor
     }
     var result = [Float]()
     for val in sampled["main_0", Tensor<Float32>.self] {
