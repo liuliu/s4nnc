@@ -3,7 +3,7 @@ import C_nnc
 // MARK - Load CSV
 
 extension DataFrame {
-  public convenience init?(fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",", quotation: String = "\"") {
+  public init?(fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",", quotation: String = "\"") {
     var columnSize: Int32 = 0
     let fileHandle = fopen(filePath, "r")
     guard fileHandle != nil else { return nil }
@@ -53,15 +53,15 @@ extension DataFrame {
       }
       columnProperties[columnName] = ColumnProperty(index: Int(stringIndex), type: .object)
     }
-    self.init(dataframe: dataframe, columnProperties: columnProperties)
+    self.init(dataframe: _DataFrame(dataframe: dataframe), columnProperties: columnProperties)
   }
 }
 
 // MARK - Batching
 
 extension DataFrame {
-  convenience init(dataframe: DataFrame, properties: [ColumnProperty], size: Int, repeating: Int?) {
-    let _dataframe = dataframe._dataframe
+  init(dataframe: _DataFrame, properties: [ColumnProperty], size: Int, repeating: Int?) {
+    let _dataframe = dataframe.dataframe
     let columnSize: Int32 = Int32(properties.count)
     let indices: [Int32] = properties.map { Int32($0.index) }
     let combined = ccv_cnnp_dataframe_combine_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1), Int32(CCV_TENSOR_FORMAT_NCHW))!
@@ -84,7 +84,7 @@ extension DataFrame {
         columnProperties[String(cString: name)] = ColumnProperty(index: Int(index), type: .tensor)
       }
     }
-    self.init(dataframe: combined, columnProperties: columnProperties, parent: dataframe)
+    self.init(dataframe: _DataFrame(dataframe: combined, parent: dataframe), columnProperties: columnProperties)
   }
 }
 
@@ -140,8 +140,8 @@ extension DataFrame {
     }
   }
   // No repeating, or repeating is 1, this is simple case.
-  convenience init(dataframe: DataFrame, property: ColumnProperty, size: Int, sample: @escaping ([AnyObject]) -> AnyObject, outputType: ColumnProperty.PropertyType) {
-    let _dataframe = dataframe._dataframe
+  init(dataframe: _DataFrame, property: ColumnProperty, size: Int, sample: @escaping ([AnyObject]) -> AnyObject, outputType: ColumnProperty.PropertyType) {
+    let _dataframe = dataframe.dataframe
     let index = Int32(property.index)
     let sampler = WrappedSampler(property: property, size: size, repeating: nil, sample: sample, outputType: outputType)
     let sampled = ccv_cnnp_dataframe_sample_new(_dataframe, { input, inputSize, data, context, _ in
@@ -190,12 +190,12 @@ extension DataFrame {
     // These must have names.
     let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
     let columnProperties = [String(cString: name): ColumnProperty(index: 0, type: outputType)]
-    self.init(dataframe: sampled, columnProperties: columnProperties, parent: dataframe)
+    self.init(dataframe: _DataFrame(dataframe: sampled, parent: dataframe), columnProperties: columnProperties)
   }
   // Has repeating, need to group the objects out.
-  convenience init(dataframe: DataFrame, property: ColumnProperty, size: Int, repeating: Int, sample: @escaping ([AnyObject]) -> AnyObject, outputType: ColumnProperty.PropertyType) {
+  init(dataframe: _DataFrame, property: ColumnProperty, size: Int, repeating: Int, sample: @escaping ([AnyObject]) -> AnyObject, outputType: ColumnProperty.PropertyType) {
     precondition(repeating > 1)
-    let _dataframe = dataframe._dataframe
+    let _dataframe = dataframe.dataframe
     let index = Int32(property.index)
     let sampler = WrappedSampler(property: property, size: size, repeating: repeating, sample: sample, outputType: .object)
     let sampled = ccv_cnnp_dataframe_sample_new(_dataframe, { input, inputSize, data, context, _ in
@@ -241,7 +241,7 @@ extension DataFrame {
       let indexName = "\(name)_\(i)"
       columnProperties[indexName] = Self.add(to: sampled, map: { ($0 as! [AnyObject])[i] }, property: mainProperty, outputType: outputType, name: indexName)
     }
-    self.init(dataframe: sampled, columnProperties: columnProperties, parent: dataframe)
+    self.init(dataframe: _DataFrame(dataframe: sampled, parent: dataframe), columnProperties: columnProperties)
   }
 }
 
@@ -477,7 +477,7 @@ public extension DataFrame.ManyUntypedSeries {
       precondition(property.type == .tensor)
     }
     let inputIndex = properties.map { Int32($0.index) }
-    let _dataframe = dataframe._dataframe
+    let _dataframe = dataframe.dataframe
     let tupleIndex = ccv_cnnp_dataframe_make_tuple(_dataframe, inputIndex, Int32(inputIndex.count), nil)
     let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(_dataframe, tupleIndex, 0, Int32(inputIndex.count), Int32(ordinal), nil)
     var namedIndex = [String: Int]()

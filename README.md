@@ -168,24 +168,18 @@ Below are the training loop to train an sentiment analysis transformer model wit
 
 ### Setup the Data Feeder Pipeline
 ```swift
-let trainData = dataFromDisk(filePath: trainListFile)
-let testData = dataFromDisk(filePath: testListFile)
+var trainData = dataFromDisk(filePath: trainListFile)
 // Extract tensors from ImdbText struct.
 trainData["tensor"] = trainData["main", ImdbText.self].map(\.tensor)
 trainData["mask"] = trainData["main", ImdbText.self].map(\.mask)
 trainData["c"] = trainData["main", ImdbText.self].map(\.c)
 // Create one hot tensor out of the scalar.
 trainData["oneHot"] = trainData["c", Int.self].toOneHot(Float32.self, count: 2)
-// Do above for test data.
-testData["tensor"] = testData["main", ImdbText.self].map(\.tensor)
-testData["mask"] = testData["main", ImdbText.self].map(\.mask)
-testData["c"] = testData["main", ImdbText.self].map(\.c)
-testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
 
 let deviceCount = DeviceKind.GPUInfo.count
 
 // Batching tensors together. 
-let batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)
+var batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)
 for i in 0..<deviceCount {
   batchedTrainData["truncTensor_\(i)"] = batchedTrainData["tensor_\(i)"]!.toTruncate(batchedTrainData["mask_\(i)"]!)
   batchedTrainData["squaredMask_\(i)"] = batchedTrainData["mask_\(i)"]!.toOneSquared(maxLength: maxLength)

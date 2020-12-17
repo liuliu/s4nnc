@@ -160,8 +160,8 @@ func dataFromDisk(filePath trainListFile: String) -> DataFrame {
  * MARK - Setup the Data Feeder Pipeline
  */
 
-let trainData = dataFromDisk(filePath: trainListFile)
-let testData = dataFromDisk(filePath: testListFile)
+var trainData = dataFromDisk(filePath: trainListFile)
+var testData = dataFromDisk(filePath: testListFile)
 // Extract tensors from ImdbText struct.
 trainData["tensor"] = trainData["main", ImdbText.self].map(\.tensor)
 trainData["mask"] = trainData["main", ImdbText.self].map(\.mask)
@@ -177,7 +177,7 @@ testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
 let deviceCount = DeviceKind.GPUInfo.count
 
 // Batching tensors together. 
-let batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)
+var batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)
 for i in 0..<deviceCount {
   batchedTrainData["truncTensor_\(i)"] = batchedTrainData["tensor_\(i)"]!.toTruncate(batchedTrainData["mask_\(i)"]!)
   batchedTrainData["squaredMask_\(i)"] = batchedTrainData["mask_\(i)"]!.toOneSquared(maxLength: maxLength)

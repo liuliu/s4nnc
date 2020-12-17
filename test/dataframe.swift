@@ -19,7 +19,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testAddScalar() throws {
-    let df = DataFrame(from: [1, 2, 3, 4])
+    var df = DataFrame(from: [1, 2, 3, 4])
     df["1"] = .from(10)
     var newArray = [[Int]]()
     for i in df["0", "1"] {
@@ -29,7 +29,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testAddScalarWithSequenceIndices() throws {
-    let df = DataFrame(from: [1, 2, 3, 4])
+    var df = DataFrame(from: [1, 2, 3, 4])
     df["1"] = .from(10)
     var newArray = [[Int]]()
     for i in df[["0", "1"]] {
@@ -39,7 +39,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testRename() throws {
-    let df = DataFrame(from: [1, 2, 3, 4])
+    var df = DataFrame(from: [1, 2, 3, 4])
     df["2"] = .from([4, 3, 2, 1])
     df["rename"] = df["2"]
     var newArray = [[Int]]()
@@ -82,7 +82,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testMap() throws {
-    let df = DataFrame(from: [1, 2, 3, 4, 5])
+    var df = DataFrame(from: [1, 2, 3, 4, 5])
     df["+1"] = df["0"]!.map { (i: Int) -> Int in
       i + 1
     }
@@ -94,7 +94,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testMultiMap() throws {
-    let df = DataFrame(from: [1, 2, 3, 4, 5])
+    var df = DataFrame(from: [1, 2, 3, 4, 5])
 
     df["+1"] = df["0"]!.map { (i: Int) -> Int in
       i + 1
@@ -123,7 +123,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testFromTensor() throws {
-    let df = DataFrame(from: [1, 2])
+    var df = DataFrame(from: [1, 2])
     var tensor = Tensor<Float32>(.CPU, .C(1))
     tensor[0] = 1.2
     df["image"] = .from(tensor)
@@ -135,7 +135,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testFromTensorArray() throws {
-    let df = DataFrame(from: [1, 2])
+    var df = DataFrame(from: [1, 2])
     var tensor0 = Tensor<Float32>(.CPU, .C(1))
     tensor0[0] = 1.2
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
@@ -205,7 +205,7 @@ final class DataFrameTests: XCTestCase {
     tensor02[0] = 3.2
     var tensor03 = Tensor<Float32>(.CPU, .C(1))
     tensor03[0] = 4.2
-    let df = DataFrame(from: [tensor00, tensor01, tensor02, tensor03], name: "main")
+    var df = DataFrame(from: [tensor00, tensor01, tensor02, tensor03], name: "main")
     var tensor10 = Tensor<Float32>(.CPU, .C(1))
     tensor10[0] = 1.2
     var tensor11 = Tensor<Float32>(.CPU, .C(1))
@@ -252,7 +252,7 @@ final class DataFrameTests: XCTestCase {
     tensor0[0] = 1.1
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
     tensor1[0] = 2.2
-    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    var df = DataFrame(from: [tensor0, tensor1], name: "main")
     df["1"] = df["main", Tensor<Float32>.self].map { input -> Tensor<Float32> in
       var output = Tensor<Float32>(.CPU, .C(1))
       output[0] = input[0] + 1
@@ -270,7 +270,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testOneHot() throws {
-    let df = DataFrame(from: [0, 1, 2], name: "main")
+    var df = DataFrame(from: [0, 1, 2], name: "main")
     df["oneHot"] = df["main"]!.toOneHot(Float32.self, count: 3)
     var i: Int = 0
     for tensor in df["oneHot", Tensor<Float32>.self] {
@@ -287,7 +287,7 @@ final class DataFrameTests: XCTestCase {
       var str: String
       var val: Int
     }
-    let df = DataFrame(from: [Holder(str: "abc", val: 1), Holder(str: "happy", val: 2)], name: "main")
+    var df = DataFrame(from: [Holder(str: "abc", val: 1), Holder(str: "happy", val: 2)], name: "main")
     df["c"] = df["main", Holder.self].map(\.val)
     df["oneHot"] = df["c", Int.self].toOneHot(Float32.self, count: 3)
     var i: Int = 1
@@ -305,7 +305,7 @@ final class DataFrameTests: XCTestCase {
     tensor0[0] = 1.1
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
     tensor1[0] = 2.2
-    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    var df = DataFrame(from: [tensor0, tensor1], name: "main")
     df["main_gpu"] = df["main"]!.toGPU()
     var i: Int = 0
     for tensor in df["main_gpu", Tensor<Float32>.self] {
@@ -327,7 +327,7 @@ final class DataFrameTests: XCTestCase {
     tensor0[0] = 1.1
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
     tensor1[0] = 2.2
-    let df = DataFrame(from: [tensor0, tensor1], name: "main")
+    var df = DataFrame(from: [tensor0, tensor1], name: "main")
     df["1"] = df["main", Tensor<Float32>.self].map { input -> Tensor<Float32> in
       var output = Tensor<Float32>(.CPU, .C(1))
       output[0] = input[0] + 1
@@ -368,7 +368,7 @@ final class DataFrameTests: XCTestCase {
     var tensor0 = Tensor<Int32>(.CPU, .NC(2, 1))
     tensor0[0, 0] = 1
     tensor0[1, 0] = 2
-    let df = DataFrame(from: [tensor0], name: "main")
+    var df = DataFrame(from: [tensor0], name: "main")
     df["squared"] = df["main"]!.toOneSquared(maxLength: 3)
     df["squared_max"] = df["main"]!.toOneSquared(maxLength: 3, variableLength: false)
     for tensor in df["squared", Tensor<Int32>.self] {
@@ -410,7 +410,7 @@ final class DataFrameTests: XCTestCase {
     tensor0[0, 2] = 1.2
     var tensor1 = Tensor<Int32>(.CPU, .C(1))
     tensor1[0] = 2
-    let df = DataFrame(from: [tensor0], name: "main")
+    var df = DataFrame(from: [tensor0], name: "main")
     df["len"] = .from([tensor1])
     df["truncated"] = df["main"]!.toTruncate(df["len"]!)
     for tensor in df["truncated", Tensor<Float32>.self] {

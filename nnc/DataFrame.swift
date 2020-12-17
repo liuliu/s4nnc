@@ -30,7 +30,34 @@ public struct DataSeriesIterator<S: DataSeries>: IteratorProtocol {
 
 }
 
-public final class DataFrame {
+final class _DataFrame {
+  private let underlying: AnyObject?
+  private let parent: _DataFrame?
+  let dataframe: OpaquePointer
+  init(dataframe: OpaquePointer, parent: _DataFrame? = nil, underlying: AnyObject? = nil) {
+    self.dataframe = dataframe
+    self.parent = parent
+    self.underlying = underlying
+  }
+
+  func shuffle() {
+    ccv_cnnp_dataframe_shuffle(dataframe)
+    if let parent = parent {
+      // Propagate shuffle.
+      parent.shuffle()
+    }
+  }
+
+  var count: Int {
+    return Int(ccv_cnnp_dataframe_row_count(dataframe))
+  }
+
+  deinit {
+    ccv_cnnp_dataframe_free(dataframe)
+  }
+}
+
+public struct DataFrame {
 
   final class Wrapped<T> {
     let value: T
@@ -48,21 +75,17 @@ public final class DataFrame {
     var type: PropertyType
   }
 
-  private let _underlying: AnyObject?
-  private let parent: DataFrame?
-
-  let _dataframe: OpaquePointer
   var columnProperties: [String: ColumnProperty]
 
   public var columns: [String] {
     return Array(columnProperties.keys)
   }
 
-  init(dataframe: OpaquePointer, columnProperties: [String: ColumnProperty], parent: DataFrame? = nil) {
+  let _dataframe: _DataFrame
+
+  init(dataframe: _DataFrame, columnProperties: [String: ColumnProperty]) {
     CmdParamsFactory.factory.sink()
     _dataframe = dataframe
-    self.parent = parent
-    _underlying = nil
     self.columnProperties = columnProperties
   }
 
@@ -107,22 +130,17 @@ public final class DataFrame {
       guard let context = context else { return }
       Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
     }
-    _dataframe = name.withCString {
+    let dataframe: OpaquePointer = name.withCString {
       column_data.name = UnsafeMutablePointer<Int8>(mutating: $0)
       column_data.context = Unmanaged.passRetained(underlying).toOpaque()
       return ccv_cnnp_dataframe_new(&column_data, 1, Int32(underlying.value.count))!
     }
-    _underlying = underlying
-    parent = nil
     columnProperties = [name: ColumnProperty(index: 0, type: propertyType)]
+    _dataframe = _DataFrame(dataframe: dataframe, underlying: underlying)
   }
 
   public func shuffle() {
-    ccv_cnnp_dataframe_shuffle(_dataframe)
-    if let parent = parent {
-      // Propagate shuffle.
-      parent.shuffle()
-    }
+    _dataframe.shuffle()
   }
 
   public subscript(firstIndex: String, secondIndex: String, indices: String...) -> ManyUntypedSeries {
@@ -133,18 +151,20 @@ public final class DataFrame {
       properties.append(columnProperties[index]!)
     }
     let i: [Int32] = properties.map { Int32($0.index) }
-    let iter = ccv_cnnp_dataframe_iter_new(_dataframe, i, Int32(i.count))!
-    let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
-    return ManyUntypedSeries(iter, count: Int(rowCount), properties: properties, dataframe: self)
+    let dataframe = _dataframe.dataframe
+    let iter = ccv_cnnp_dataframe_iter_new(dataframe, i, Int32(i.count))!
+    let rowCount = ccv_cnnp_dataframe_row_count(dataframe)
+    return ManyUntypedSeries(_Iterator(iterator: iter), count: Int(rowCount), properties: properties, dataframe: _dataframe)
   }
 
   public subscript<S: Sequence>(indices: S) -> ManyUntypedSeries where S.Element == String {
     let properties = indices.map { columnProperties[$0]! }
     assert(properties.count > 0)
     let i: [Int32] = properties.map { Int32($0.index) }
-    let iter = ccv_cnnp_dataframe_iter_new(_dataframe, i, Int32(i.count))!
-    let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
-    return ManyUntypedSeries(iter, count: Int(rowCount), properties: properties, dataframe: self)
+    let dataframe = _dataframe.dataframe
+    let iter = ccv_cnnp_dataframe_iter_new(dataframe, i, Int32(i.count))!
+    let rowCount = ccv_cnnp_dataframe_row_count(dataframe)
+    return ManyUntypedSeries(_Iterator(iterator: iter), count: Int(rowCount), properties: properties, dataframe: _dataframe)
   }
 
   public subscript(index: String) -> UntypedSeries? {
@@ -153,9 +173,10 @@ public final class DataFrame {
         return nil
       }
       var i: Int32 = Int32(columnProperty.index)
-      let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
-      let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
-      return UntypedSeries(iter, count: Int(rowCount), name: index, property: columnProperty, dataframe: self)
+      let dataframe = _dataframe.dataframe
+      let iter = ccv_cnnp_dataframe_iter_new(dataframe, &i, 1)!
+      let rowCount = ccv_cnnp_dataframe_row_count(dataframe)
+      return UntypedSeries(_Iterator(iterator: iter), count: Int(rowCount), name: index, property: columnProperty, dataframe: _dataframe)
     }
     set (v) {
       guard let v = v else {
@@ -163,7 +184,7 @@ public final class DataFrame {
         return
       }
       switch (v.action) {
-        case .opaque(_):
+        case .iterator(_):
           columnProperties[index] = columnProperties[v.name!]!
         case .scalar(let scalar):
           self.add(from: scalar, name: index)
@@ -174,7 +195,8 @@ public final class DataFrame {
         case .multimap(let properties, let mapper, let outputType):
           self.add(multimap: mapper, properties: properties, outputType: outputType, name: index)
         case .native(let property, let transformer, let context):
-          columnProperties[index] = transformer(_dataframe, property, index, context)
+          let dataframe = _dataframe.dataframe
+          columnProperties[index] = transformer(dataframe, property, index, context)
       }
     }
   }
@@ -182,23 +204,35 @@ public final class DataFrame {
   public subscript<Element>(index: String, type: Element.Type) -> TypedSeries<Element> {
     let columnProperty = columnProperties[index]!
     var i: Int32 = Int32(columnProperty.index)
-    let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
-    let rowCount = ccv_cnnp_dataframe_row_count(_dataframe)
-    return TypedSeries(iter, count: Int(rowCount), property: columnProperty, dataframe: self)
+    let dataframe = _dataframe.dataframe
+    let iter = ccv_cnnp_dataframe_iter_new(dataframe, &i, 1)!
+    let rowCount = ccv_cnnp_dataframe_row_count(dataframe)
+    return TypedSeries(_Iterator(iterator: iter), count: Int(rowCount), property: columnProperty, dataframe: _dataframe)
   }
 
   public var count: Int {
-    return Int(ccv_cnnp_dataframe_row_count(_dataframe))
+    return _dataframe.count
   }
+}
 
-  deinit {
-    ccv_cnnp_dataframe_free(_dataframe)
+extension DataFrame {
+  final class _Iterator {
+    let iterator: OpaquePointer
+    init(iterator: OpaquePointer) {
+      self.iterator = iterator
+    }
+    func setZero() {
+      ccv_cnnp_dataframe_iter_set_cursor(iterator, 0)
+    }
+    deinit {
+      ccv_cnnp_dataframe_iter_free(iterator)
+    }
   }
 }
 
 enum UntypedSeriesAction {
   // getter
-  case opaque(OpaquePointer)
+  case iterator(DataFrame._Iterator)
   // setter
   case scalar(AnyObject)
   case sequence(DataFrame.Wrapped<[AnyObject]>)
@@ -209,14 +243,14 @@ enum UntypedSeriesAction {
 
 public extension DataFrame {
 
-  final class UntypedSeries: DataSeries {
+  struct UntypedSeries: DataSeries {
 
     public typealias Element = AnyObject
 
     public func makeIterator() -> DataSeriesIterator<UntypedSeries> {
       switch action {
-        case .opaque(let iter):
-          ccv_cnnp_dataframe_iter_set_cursor(iter, 0)
+        case .iterator(let iterator):
+          iterator.setZero()
         default:
           fatalError()
       }
@@ -225,8 +259,8 @@ public extension DataFrame {
 
     public func prefetch(_ i: Int, streamContext: StreamContext?) {
       switch action {
-        case .opaque(let iter):
-          ccv_cnnp_dataframe_iter_prefetch(iter, Int32(i), streamContext?._stream)
+        case .iterator(let iterator):
+          ccv_cnnp_dataframe_iter_prefetch(iterator.iterator, Int32(i), streamContext?._stream)
         default:
           fatalError()
       }
@@ -234,9 +268,9 @@ public extension DataFrame {
 
     public func next(_ streamContext: StreamContext?) -> AnyObject? {
       switch action {
-        case .opaque(let iter):
+        case .iterator(let iterator):
           var data: UnsafeMutableRawPointer? = nil
-          let retval = ccv_cnnp_dataframe_iter_next(iter, &data, 1, streamContext?._stream)
+          let retval = ccv_cnnp_dataframe_iter_next(iterator.iterator, &data, 1, streamContext?._stream)
           guard retval == 0 else { return nil }
           if data == nil {
             return nil
@@ -262,10 +296,10 @@ public extension DataFrame {
     fileprivate let name: String?
 
     let property: ColumnProperty?
-    let dataframe: DataFrame?
+    let dataframe: _DataFrame?
 
-    fileprivate init(_ iter: OpaquePointer, count: Int, name: String, property: ColumnProperty, dataframe: DataFrame) {
-      action = .opaque(iter)
+    fileprivate init(_ iterator: _Iterator, count: Int, name: String, property: ColumnProperty, dataframe: _DataFrame) {
+      action = .iterator(iterator)
       self.count = count
       self.name = name
       self.property = property
@@ -279,12 +313,6 @@ public extension DataFrame {
       property = nil
       dataframe = nil
     }
-
-    deinit {
-      if case .opaque(let iter) = action {
-        ccv_cnnp_dataframe_iter_free(iter)
-      }
-    }
   }
 }
 
@@ -294,18 +322,18 @@ public extension DataFrame {
     public typealias Element = [AnyObject]
 
     public func makeIterator() -> DataSeriesIterator<ManyUntypedSeries> {
-      ccv_cnnp_dataframe_iter_set_cursor(_iter, 0)
+      iterator.setZero()
       return DataSeriesIterator(self)
     }
 
     public func prefetch(_ i: Int, streamContext: StreamContext?) {
-      ccv_cnnp_dataframe_iter_prefetch(_iter, Int32(i), streamContext?._stream)
+      ccv_cnnp_dataframe_iter_prefetch(iterator.iterator, Int32(i), streamContext?._stream)
     }
 
     public func next(_ streamContext: StreamContext?) -> [AnyObject]? {
       let count = properties.count
       let data = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: count)
-      let retval = ccv_cnnp_dataframe_iter_next(_iter, data, Int32(count), streamContext?._stream)
+      let retval = ccv_cnnp_dataframe_iter_next(iterator.iterator, data, Int32(count), streamContext?._stream)
       guard retval == 0 else { return nil }
       var columnData = [AnyObject]()
       for i in 0..<count {
@@ -329,20 +357,16 @@ public extension DataFrame {
 
     public let count: Int
 
-    private let _iter: OpaquePointer
+    private let iterator: _Iterator
 
     let properties: [ColumnProperty]
-    let dataframe: DataFrame
+    let dataframe: _DataFrame
 
-    fileprivate init(_ iter: OpaquePointer, count: Int, properties: [ColumnProperty], dataframe: DataFrame) {
-      _iter = iter
+    fileprivate init(_ iterator: _Iterator, count: Int, properties: [ColumnProperty], dataframe: _DataFrame) {
+      self.iterator = iterator
       self.count = count
       self.properties = properties
       self.dataframe = dataframe
-    }
-
-    deinit {
-      ccv_cnnp_dataframe_iter_free(_iter)
     }
   }
 }
@@ -353,17 +377,17 @@ public extension DataFrame {
     public typealias Element = Element
 
     public func makeIterator() -> DataSeriesIterator<TypedSeries> {
-      ccv_cnnp_dataframe_iter_set_cursor(_iter, 0)
+      iterator.setZero()
       return DataSeriesIterator(self)
     }
 
     public func prefetch(_ i: Int, streamContext: StreamContext?) {
-      ccv_cnnp_dataframe_iter_prefetch(_iter, Int32(i), streamContext?._stream)
+      ccv_cnnp_dataframe_iter_prefetch(iterator.iterator, Int32(i), streamContext?._stream)
     }
 
     public func next(_ streamContext: StreamContext?) -> Element? {
       var data: UnsafeMutableRawPointer? = nil
-      let retval = ccv_cnnp_dataframe_iter_next(_iter, &data, 1, streamContext?._stream)
+      let retval = ccv_cnnp_dataframe_iter_next(iterator.iterator, &data, 1, streamContext?._stream)
       guard retval == 0 else { return nil }
       if data == nil {
         return nil
@@ -382,19 +406,15 @@ public extension DataFrame {
 
     public let count: Int
 
-    private let _iter: OpaquePointer
+    private let iterator: _Iterator
     let property: ColumnProperty
-    let dataframe: DataFrame
+    let dataframe: _DataFrame
 
-    fileprivate init(_ iter: OpaquePointer, count: Int, property: ColumnProperty, dataframe: DataFrame) {
-      _iter = iter
+    fileprivate init(_ iterator: _Iterator, count: Int, property: ColumnProperty, dataframe: _DataFrame) {
+      self.iterator = iterator
       self.count = count
       self.property = property
       self.dataframe = dataframe
-    }
-
-    deinit {
-      ccv_cnnp_dataframe_iter_free(_iter)
     }
   }
 }
@@ -408,9 +428,10 @@ public extension DataFrame.UntypedSeries {
 }
 
 private extension DataFrame {
-  private func add(from scalar: AnyObject, name: String) {
+  private mutating func add(from scalar: AnyObject, name: String) {
+    let dataframe = _dataframe.dataframe
     if scalar is AnyTensor {
-      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+      let index = ccv_cnnp_dataframe_add(dataframe, {  _, row_idxs, row_size, data, context, _ in
         guard let data = data else { return }
         let tensor = Unmanaged<AnyObject>.fromOpaque(context!).takeUnretainedValue() as! AnyTensor
         for i in 0..<Int(row_size) {
@@ -422,7 +443,7 @@ private extension DataFrame {
       }, name)
       columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
     } else {
-      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+      let index = ccv_cnnp_dataframe_add(dataframe, {  _, row_idxs, row_size, data, context, _ in
         guard let data = data else { return }
         for i in 0..<Int(row_size) {
           (data + i).initialize(to: context)
@@ -445,10 +466,11 @@ public extension DataFrame.UntypedSeries {
 }
 
 private extension DataFrame {
-  private func add(from sequence: Wrapped<[AnyObject]>, name: String) {
+  private mutating func add(from sequence: Wrapped<[AnyObject]>, name: String) {
     assert(sequence.value.count == count)
+    let dataframe = _dataframe.dataframe
     if sequence.value.count > 0 && sequence.value[0] is AnyTensor {
-      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+      let index = ccv_cnnp_dataframe_add(dataframe, {  _, row_idxs, row_size, data, context, _ in
         guard let row_idxs = row_idxs else { return }
         guard let data = data else { return }
         let underlying = Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context!).takeUnretainedValue()
@@ -466,7 +488,7 @@ private extension DataFrame {
       }, name)
       columnProperties[name] = ColumnProperty(index: Int(index), type: .tensor)
     } else {
-      let index = ccv_cnnp_dataframe_add(_dataframe, {  _, row_idxs, row_size, data, context, _ in
+      let index = ccv_cnnp_dataframe_add(dataframe, {  _, row_idxs, row_size, data, context, _ in
         guard let row_idxs = row_idxs else { return }
         guard let data = data else { return }
         let underlying = Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context!).takeUnretainedValue()
@@ -583,8 +605,8 @@ extension DataFrame {
     }, name)
     return ColumnProperty(index: Int(index), type: outputType)
   }
-  private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, outputType: ColumnProperty.PropertyType, name: String) {
-    columnProperties[name] = Self.add(to: _dataframe, map: map, property: property, outputType: outputType, name: name)
+  private mutating func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, outputType: ColumnProperty.PropertyType, name: String) {
+    columnProperties[name] = Self.add(to: _dataframe.dataframe, map: map, property: property, outputType: outputType, name: name)
   }
 }
 
@@ -708,9 +730,9 @@ private extension DataFrame {
       }
     }
   }
-  private func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], outputType: ColumnProperty.PropertyType, name: String) {
+  private mutating func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], outputType: ColumnProperty.PropertyType, name: String) {
     let inputIndex = properties.map { Int32($0.index) }
-    let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+    let index = ccv_cnnp_dataframe_map(_dataframe.dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
       guard let data = data else { return }
       let wrappedManyMapper = Unmanaged<WrappedManyMapper>.fromOpaque(context!).takeUnretainedValue()

@@ -134,7 +134,7 @@ DispatchQueue.concurrentPerform(iterations: testBatchSize) { k in
  * MARK - Setup Data Feeder Pipelne
  */
 
-let trainDataDf = DataFrame(from: trainData, name: "main")
+var trainDataDf = DataFrame(from: trainData, name: "main")
 let testDataDf = DataFrame(from: testData, name: "main")
 trainDataDf["tensor"] = trainDataDf["main", CIFARData.self].map(\.tensor)
 trainDataDf["c"] = trainDataDf["main", CIFARData.self].map {
@@ -149,7 +149,7 @@ trainDataDf["jittered"] = trainDataDf["tensor"]!.toImageJitter(
   normalize: ImageJitter.Normalize(mean: [meanf.0, meanf.1, meanf.2])
 )
 
-let batchedTrainData = trainDataDf["jittered", "c"].combine(size: batchSize)
+var batchedTrainData = trainDataDf["jittered", "c"].combine(size: batchSize)
 let toGPUTrain = batchedTrainData["jittered", "c"].toGPU()
 batchedTrainData["jitteredGPU"] = toGPUTrain["jittered"]
 batchedTrainData["cGPU"] = toGPUTrain["c"]
