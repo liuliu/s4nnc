@@ -421,6 +421,82 @@ final class DataFrameTests: XCTestCase {
     }
   }
 
+  func testSimpleSampler() throws {
+    let df = DataFrame(from: [1, 2, 3, 4, 5, 6, 7, 8], name: "main")
+    let sampled = df["main"]!.sample(size: 3) { (input: [Int]) -> String in
+      return "\(input[0])"
+    }
+    var result = [String]()
+    for val in sampled["main", String.self] {
+      result.append(val)
+    }
+    XCTAssertEqual(result, ["1", "4", "7"])
+  }
+
+  func testTensorSampler() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    var tensor2 = Tensor<Float32>(.CPU, .C(1))
+    tensor2[0] = 2.3
+    var tensor3 = Tensor<Float32>(.CPU, .C(1))
+    tensor3[0] = 3.2
+    let df = DataFrame(from: [tensor0, tensor1, tensor2, tensor3], name: "main")
+    let sampled = df["main", Tensor<Float32>.self].sample(size: 2) { input -> Tensor<Float32> in
+      return input[1]
+    }
+    var result = [Float]()
+    for val in sampled["main", Tensor<Float32>.self] {
+      result.append(val[0])
+    }
+    XCTAssertEqual(result, [2.2, 3.2])
+  }
+
+  func testSimpleRepeatingSampler() throws {
+    let df = DataFrame(from: [1, 2, 3, 4, 5, 6, 7, 8], name: "main")
+    let sampled = df["main"]!.sample(size: 3, repeating: 2) { (input: [Int]) -> String in
+      return "\(input[0])"
+    }
+    var result = [String]()
+    for val in sampled["main_0", String.self] {
+      result.append(val)
+    }
+    XCTAssertEqual(result, ["1", "7"])
+    result.removeAll()
+    for val in sampled["main_1", String.self] {
+      result.append(val)
+    }
+    XCTAssertEqual(result, ["4", "8"])
+  }
+
+  func testTensorRepeatingSampler() throws {
+    var tensor0 = Tensor<Float32>(.CPU, .C(1))
+    tensor0[0] = 1.1
+    var tensor1 = Tensor<Float32>(.CPU, .C(1))
+    tensor1[0] = 2.2
+    var tensor2 = Tensor<Float32>(.CPU, .C(1))
+    tensor2[0] = 2.3
+    var tensor3 = Tensor<Float32>(.CPU, .C(1))
+    tensor3[0] = 3.2
+    var tensor4 = Tensor<Float32>(.CPU, .C(1))
+    tensor4[0] = 3.3
+    let df = DataFrame(from: [tensor0, tensor1, tensor2, tensor3, tensor4], name: "main")
+    let sampled = df["main", Tensor<Float32>.self].sample(size: 2, repeating: 2) { input -> Tensor<Float32> in
+      return input.last!
+    }
+    var result = [Float]()
+    for val in sampled["main_0", Tensor<Float32>.self] {
+      result.append(val[0])
+    }
+    XCTAssertEqual(result, [2.2, 3.3])
+    result.removeAll()
+    for val in sampled["main_1", Tensor<Float32>.self] {
+      result.append(val[0])
+    }
+    XCTAssertEqual(result, [3.2, 3.3])
+  }
+
   static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -442,6 +518,10 @@ final class DataFrameTests: XCTestCase {
     ("testToGPU", testToGPU),
     ("testToManyGPU", testToManyGPU),
     ("testOneSquared", testOneSquared),
-    ("testTruncate", testTruncate)
+    ("testTruncate", testTruncate),
+    ("testSimpleSampler", testSimpleSampler),
+    ("testTensorSampler", testTensorSampler),
+    ("testSimpleRepeatingSampler", testSimpleRepeatingSampler),
+    ("testTensorRepeatingSampler", testTensorRepeatingSampler),
   ]
 }

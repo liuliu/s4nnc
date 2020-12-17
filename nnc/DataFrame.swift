@@ -520,7 +520,7 @@ public extension DataFrame.TypedSeries {
   }
 }
 
-private extension DataFrame {
+extension DataFrame {
   private final class WrappedMapper {
     let property: ColumnProperty
     let map: (AnyObject) -> AnyObject
@@ -538,9 +538,9 @@ private extension DataFrame {
       }
     }
   }
-  private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, outputType: ColumnProperty.PropertyType, name: String) {
+  static func add(to dataframe: OpaquePointer, map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, outputType: ColumnProperty.PropertyType, name: String) -> ColumnProperty {
     var inputIndex = Int32(property.index)
-    let index = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
+    let index = ccv_cnnp_dataframe_map(dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
       guard let data = data else { return }
       let inputData = input[0]!
@@ -581,7 +581,10 @@ private extension DataFrame {
     }, &inputIndex, 1, Unmanaged.passRetained(WrappedMapper(property: property, map: map, outputType: outputType)).toOpaque(), { mapper in
       Unmanaged<WrappedMapper>.fromOpaque(mapper!).release()
     }, name)
-    columnProperties[name] = ColumnProperty(index: Int(index), type: outputType)
+    return ColumnProperty(index: Int(index), type: outputType)
+  }
+  private func add(map: @escaping (AnyObject) -> AnyObject, property: ColumnProperty, outputType: ColumnProperty.PropertyType, name: String) {
+    columnProperties[name] = Self.add(to: _dataframe, map: map, property: property, outputType: outputType, name: name)
   }
 }
 
