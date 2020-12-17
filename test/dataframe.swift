@@ -501,6 +501,24 @@ final class DataFrameTests: XCTestCase {
     XCTAssertEqual(result, [3.2, 3.3])
   }
 
+  func testStructSampler() throws {
+    struct MyStruct: Equatable {
+      var value: Float32
+      var string: String
+    }
+
+    let df = DataFrame(from: [MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2"), MyStruct(value: 1.3, string: "1.3")])
+    let sampled = df["0", MyStruct?.self].sample(size: 2) { input -> Float32 in
+      return input[0]!.value
+    }
+    var newArray = [Float]()
+    for i in sampled["0"]! {
+      let s = i as! Float
+      newArray.append(s)
+    }
+    XCTAssertEqual(newArray, [1.0, 1.2])
+  }
+
   static let allTests = [
     ("testBasicIteration", testBasicIteration),
     ("testAddScalar", testAddScalar),
@@ -527,5 +545,6 @@ final class DataFrameTests: XCTestCase {
     ("testTensorSampler", testTensorSampler),
     ("testSimpleRepeatingSampler", testSimpleRepeatingSampler),
     ("testTensorRepeatingSampler", testTensorRepeatingSampler),
+    ("testStructSampler", testStructSampler),
   ]
 }

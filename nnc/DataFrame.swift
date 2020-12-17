@@ -41,10 +41,11 @@ final class _DataFrame {
   }
 
   func shuffle() {
-    ccv_cnnp_dataframe_shuffle(dataframe)
     if let parent = parent {
-      // Propagate shuffle.
+      // Only shuffle the source.
       parent.shuffle()
+    } else {
+      ccv_cnnp_dataframe_shuffle(dataframe)
     }
   }
 
@@ -139,7 +140,7 @@ public struct DataFrame {
     _dataframe = _DataFrame(dataframe: dataframe, underlying: underlying)
   }
 
-  public func shuffle() {
+  public mutating func shuffle() {
     _dataframe.shuffle()
   }
 
