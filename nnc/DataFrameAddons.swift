@@ -66,7 +66,7 @@ extension DataFrame {
     let indices: [Int32] = properties.map { Int32($0.index) }
     let combined = ccv_cnnp_dataframe_combine_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1), Int32(CCV_TENSOR_FORMAT_NCHW))!
     var columnProperties = [String: ColumnProperty]()
-    if let repeating = repeating {
+    if let repeating = repeating, repeating > 1 {
       for i in 0..<repeating {
         for (j, property) in properties.enumerated() {
           // These must have names.
