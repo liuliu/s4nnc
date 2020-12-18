@@ -713,7 +713,7 @@ public extension DataFrame.ManyUntypedSeries {
   }
 }
 
-private extension DataFrame {
+extension DataFrame {
   private final class WrappedManyMapper {
     let properties: [ColumnProperty]
     let map: ([AnyObject]) -> AnyObject
@@ -731,9 +731,9 @@ private extension DataFrame {
       }
     }
   }
-  private mutating func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], outputType: ColumnProperty.PropertyType, name: String) {
+  static func add(to dataframe: OpaquePointer, multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], outputType: ColumnProperty.PropertyType, name: String) -> ColumnProperty {
     let inputIndex = properties.map { Int32($0.index) }
-    let index = ccv_cnnp_dataframe_map(_dataframe.dataframe, { input, _, row_size, data, context, _ in
+    let index = ccv_cnnp_dataframe_map(dataframe, { input, _, row_size, data, context, _ in
       guard let input = input else { return }
       guard let data = data else { return }
       let wrappedManyMapper = Unmanaged<WrappedManyMapper>.fromOpaque(context!).takeUnretainedValue()
@@ -777,6 +777,9 @@ private extension DataFrame {
     }, inputIndex, Int32(inputIndex.count), Unmanaged.passRetained(WrappedManyMapper(properties: properties, map: multimap, outputType: outputType)).toOpaque(), { mapper in
       Unmanaged<WrappedManyMapper>.fromOpaque(mapper!).release()
     }, name)
-    columnProperties[name] = ColumnProperty(index: Int(index), type: outputType)
+    return ColumnProperty(index: Int(index), type: outputType)
+  }
+  private mutating func add(multimap: @escaping ([AnyObject]) -> AnyObject, properties: [ColumnProperty], outputType: ColumnProperty.PropertyType, name: String) {
+    columnProperties[name] = Self.add(to: _dataframe.dataframe, multimap: multimap, properties: properties, outputType: outputType, name: name)
   }
 }
