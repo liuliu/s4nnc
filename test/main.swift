@@ -7,7 +7,8 @@ XCTMain([
   testCase(LossTests.allTests),
   testCase(ModelTests.allTests),
   testCase(OptimizerTests.allTests),
-  testCase(StoreTests.allTests)
+  testCase(StoreTests.allTests),
+  testCase(TensorTests.allTests)
 ])
 
 #endif

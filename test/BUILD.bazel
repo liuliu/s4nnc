@@ -9,7 +9,8 @@ swift_test(
 		"main.swift",
 		"model.swift",
 		"optimizer.swift",
-		"store.swift"
+		"store.swift",
+		"tensor.swift"
 	],
 	deps = [
 		"//nnc:nnc"

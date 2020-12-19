@@ -273,6 +273,63 @@ public final class _AnyTensor {
   }
 }
 
+extension _AnyTensor {
+  subscript<Element: TensorNumeric>(ranges: [Range<Int>], type: Element.Type) -> _AnyTensor {
+    get {
+      // This is a restricted form a reshape.
+      let cTensorParams = _tensor.pointee.info
+      let device = DeviceKind.from(cTensorParams: cTensorParams)
+      let format = TensorFormat.from(cTensorParams: cTensorParams)
+      let increments = self.increments
+      assert(increments.count == ranges.count)
+      for (i, range) in ranges.enumerated() {
+        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
+        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+      }
+      let offset = ranges.map { $0.lowerBound }
+      let dimensions = ranges.map { $0.count }
+      var cOffset = toCDimensions(offset)
+      var cIncrements = toCDimensions(increments)
+      let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
+        withUnsafePointer(to: &cIncrements.0) { cIncrements in
+          ccv_nnc_tensor_view_new(_tensor, toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset, cIncrements)!
+        }
+      }
+      return newt.withMemoryRebound(to: ccv_nnc_tensor_t.self, capacity: 1) { _AnyTensor($0, original: self) }
+    }
+    set(v) {
+      let cTensorParams = _tensor.pointee.info
+      let device = DeviceKind.from(cTensorParams: cTensorParams)
+      let format = TensorFormat.from(cTensorParams: cTensorParams)
+      let increments = self.increments
+      assert(increments.count == ranges.count)
+      for (i, range) in ranges.enumerated() {
+        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
+        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+      }
+      let offset = ranges.map { $0.lowerBound }
+      let dimensions = ranges.map { $0.count }
+      var cOffset = toCDimensions(offset)
+      var cIncrements = toCDimensions(increments)
+      var newt = withUnsafePointer(to: &cOffset.0) { cOffset in
+        withUnsafePointer(to: &cIncrements.0) { cIncrements in
+          ccv_nnc_tensor_view(_tensor, toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset, cIncrements)
+        }
+      }
+      let inputDim = fromCDimensions(v._tensor.pointee.info.dim)
+      for (i, dimension) in dimensions.enumerated() {
+        assert(dimension == inputDim[i])
+      }
+      var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = v._tensor
+      withUnsafeMutablePointer(to: &newt) { newt in
+        var output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = UnsafeMutableRawPointer(newt).bindMemory(to: ccv_nnc_tensor_t.self, capacity: 1)
+        ccv_nnc_cmd_exec(ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
+          ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
+      }
+    }
+  }
+}
+
 public protocol AnyTensor {
   var underlying: _AnyTensor { get }
 }
@@ -384,6 +441,21 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     }
   }
 
+  public subscript(ranges: Range<Int>...) -> Tensor<Element> {
+    get {
+      return Tensor<Element>(_tensor[ranges, Element.self])
+    }
+    set(v) {
+      guard case .CPU = kind else {
+        fatalError("cannot modify non-CPU tensor")
+      }
+      if !isKnownUniquelyReferenced(&_tensor) {
+        // Make a copy (copy-on-write).
+        _tensor = _tensor.copy()
+      }
+      _tensor[ranges, Element.self] = v._tensor
+    }
+  }
 }
 
 public extension Tensor {
