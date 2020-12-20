@@ -6,11 +6,13 @@ public final class DynamicGraph {
 
     let graph: DynamicGraph
     let _tensor: ccv_nnc_tensor_variable_t
+    let original: Any?
 
-    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false) {
+    init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false, original: Any? = nil) {
       self.graph = graph
       _tensor = tensor
       self.requiresGrad = requiresGrad
+      self.original = original
     }
 
     deinit {
@@ -38,8 +40,8 @@ public final class DynamicGraph {
       }
     }
 
-    fileprivate init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false) {
-      underlying = _AnyTensor(graph: graph, tensor: tensor, requiresGrad: requiresGrad)
+    fileprivate init(graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false, original: Any? = nil) {
+      underlying = _AnyTensor(graph: graph, tensor: tensor, requiresGrad: requiresGrad, original: original)
     }
 
     fileprivate init(_ underlying: _AnyTensor) {
@@ -185,7 +187,7 @@ public extension DynamicGraph.Tensor {
           toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
       }
     }
-    return Self(graph: underlying.graph, tensor: _alias)
+    return Self(graph: underlying.graph, tensor: _alias, original: self)
   }
 
   func reshape(_ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil) -> Self {
