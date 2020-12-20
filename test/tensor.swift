@@ -29,7 +29,22 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual(0, outT[2, 1])
   }
 
+  func testGetSetPartTensorFromArray() throws {
+    var tensor = Tensor<Int32>(.CPU, .NC(2, 3))
+    tensor[[1], 0..<3] = [1, 2, 3]
+    tensor[[0], 0..<3] = [-1, -2, -3]
+    XCTAssertEqual(-1, tensor[0, 0])
+    XCTAssertEqual(-2, tensor[0, 1])
+    XCTAssertEqual(-3, tensor[0, 2])
+    XCTAssertEqual(1, tensor[1, 0])
+    XCTAssertEqual(2, tensor[1, 1])
+    XCTAssertEqual(3, tensor[1, 2])
+    XCTAssertEqual([-2, -3], tensor[[0], 1..<3])
+    XCTAssertEqual([1, 2], tensor[[1], 0..<2])
+  }
+
   static let allTests = [
     ("testGetSetPartTensor", testGetSetPartTensor),
+    ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
   ]
 }

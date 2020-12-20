@@ -330,6 +330,46 @@ extension _AnyTensor {
   }
 }
 
+extension _AnyTensor {
+  subscript<Element: TensorNumeric>(indices: [Int], range: Range<Int>, type: Element.Type) -> [Element] {
+    get {
+      let increments = self.increments
+      assert(increments.count == indices.count + 1)
+      let count = increments.reduce(1, *)
+      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
+      var offset = 0
+      for (i, increment) in increments.prefix(indices.count).enumerated() {
+        offset *= increment
+        offset += indices[i]
+      }
+      offset *= increments[indices.count]
+      offset += range.lowerBound
+      return Array(UnsafeBufferPointer(start: pointer + offset, count: range.count))
+    }
+    set(v) {
+      let increments = self.increments
+      assert(increments.count == indices.count + 1)
+      let count = increments.reduce(1, *)
+      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
+      assert(range.count == v.count)
+      var offset = 0
+      for (i, increment) in increments.prefix(indices.count).enumerated() {
+        offset *= increment
+        offset += indices[i]
+      }
+      offset *= increments[indices.count]
+      offset += range.lowerBound
+      v.withUnsafeBytes { bytes -> Void in
+        memcpy(pointer + offset, bytes.baseAddress!, bytes.count)
+      }
+    }
+  }
+}
+
 public protocol AnyTensor {
   var underlying: _AnyTensor { get }
 }
@@ -454,6 +494,22 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
         _tensor = _tensor.copy()
       }
       _tensor[ranges, Element.self] = v._tensor
+    }
+  }
+
+  public subscript(indices: [Int], range: Range<Int>) -> [Element] {
+    get {
+      return _tensor[indices, range, Element.self]
+    }
+    set(v) {
+      guard case .CPU = kind else {
+        fatalError("cannot modify non-CPU tensor")
+      }
+      if !isKnownUniquelyReferenced(&_tensor) {
+        // Make a copy (copy-on-write).
+        _tensor = _tensor.copy()
+      }
+      _tensor[indices, range, Element.self] = v
     }
   }
 }
