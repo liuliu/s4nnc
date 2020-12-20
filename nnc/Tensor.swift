@@ -497,7 +497,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     }
   }
 
-  public subscript(indices: [Int], range: Range<Int>) -> [Element] {
+  private subscript(indices: [Int], range: Range<Int>) -> [Element] {
     get {
       return _tensor[indices, range, Element.self]
     }
@@ -511,6 +511,48 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       }
       _tensor[indices, range, Element.self] = v
     }
+  }
+}
+
+extension Tensor {
+  public subscript(range: Range<Int>) -> [Element] {
+    get { self[[], range] }
+    set { self[[], range] = newValue }
+  }
+
+  public subscript(i0: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0], range] }
+    set { self[[i0], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0, i1], range] }
+    set { self[[i0, i1], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0, i1, i2], range] }
+    set { self[[i0, i1, i2], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0, i1, i2, i3], range] }
+    set { self[[i0, i1, i2, i3], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0, i1, i2, i3, i4], range] }
+    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0, i1, i2, i3, i4, i5], range] }
+    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>) -> [Element] {
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
   }
 }
 
