@@ -15,7 +15,12 @@ public extension DynamicGraph.AnyTensor {
     }
     let _streamContext = streamContext?._stream
     var f: ccv_nnc_tensor_variable_t? = self._tensor
-    ccv_nnc_dynamic_graph_backward(_graph, &f, 1, nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
+    var g: ccv_nnc_tensor_variable_t? = self.grad?._tensor
+    if g == nil {
+      ccv_nnc_dynamic_graph_backward(_graph, &f, 1, nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
+    } else {
+      ccv_nnc_dynamic_graph_backward(_graph, &f, 1, &g, _inputs, inputSize, _outputs, inputSize, _streamContext)
+    }
     _outputs.deallocate()
   }
 
@@ -45,7 +50,8 @@ public extension DynamicGraph.Group {
     }
     let _streamContext = streamContext?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.underlyingArray.map { $0._tensor }
-    ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
+    let g: [ccv_nnc_tensor_variable_t?] = self.underlyingArray.map { $0.grad?._tensor }
+    ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), g, _inputs, inputSize, _outputs, inputSize, _streamContext)
     _outputs.deallocate()
   }
 
@@ -74,7 +80,8 @@ public extension Collection where Element: DynamicGraph.AnyTensor {
     }
     let _streamContext = streamContext?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.map { $0._tensor }
-    ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
+    let g: [ccv_nnc_tensor_variable_t?] = self.map { $0.grad?._tensor }
+    ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), g, _inputs, inputSize, _outputs, inputSize, _streamContext)
     _outputs.deallocate()
   }
 
@@ -109,7 +116,8 @@ public extension Collection where Element: DynamicGraph.AnyGroup {
     }
     let _streamContext = streamContext?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.underlying.map { $0._tensor } }
-    ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), nil, _inputs, inputSize, _outputs, inputSize, _streamContext)
+    let g: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.underlying.map { $0.grad?._tensor } }
+    ccv_nnc_dynamic_graph_backward(_graph, f, Int32(f.count), g, _inputs, inputSize, _outputs, inputSize, _streamContext)
     _outputs.deallocate()
   }
 
