@@ -25,13 +25,14 @@ final class GraphTests: XCTestCase {
     a2.backward(to: a0)
     let a0Grad = DynamicGraph.Tensor<Float32>(a0.grad!)
     let a1Grad = DynamicGraph.Tensor<Float32>(a1.grad!)
-    XCTAssertEqual(a0Grad.rawValue[0, 0], 1)
-    XCTAssertEqual(a0Grad.rawValue[1, 0], 1)
-    XCTAssertEqual(a1Grad.rawValue[0, 0], 1)
-    XCTAssertEqual(a1Grad.rawValue[0, 1], 1)
+    XCTAssertEqual(a0Grad.rawValue[0, 0], 5.5, accuracy: 1e-5)
+    XCTAssertEqual(a0Grad.rawValue[1, 0], 5.5, accuracy: 1e-5)
+    XCTAssertEqual(a1Grad.rawValue[0, 0], 3.3, accuracy: 1e-5)
+    XCTAssertEqual(a1Grad.rawValue[0, 1], 3.3, accuracy: 1e-5)
   }
 
   static let allTests = [
     ("testGEMM", testGEMM),
+    ("testGEMMGrad", testGEMMGrad),
   ]
 }
