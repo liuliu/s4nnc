@@ -3,10 +3,18 @@ import C_nnc
 public extension DynamicGraph.AnyTensor {
   func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil) where S.Element: DynamicGraph.AnyTensor {
     let _graph = graph._graph
-    let _inputs: [ccv_nnc_tensor_variable_t?] = tensors.map { $0._tensor }
+    var gradients = graph.gradients(for: [self])
+    var gradientsSet = Set(gradients)
+    for tensor in tensors {
+      if !gradientsSet.contains(tensor) {
+        gradients.append(tensor)
+        gradientsSet.insert(tensor)
+      }
+    }
+    let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
-    for (i, tensor) in tensors.enumerated() {
+    for (i, tensor) in gradients.enumerated() {
       precondition(!tensor.isConstant)
       if tensor.grad == nil && tensor.requiresGrad {
         tensor.grad = graph.variable()
@@ -33,20 +41,24 @@ public extension DynamicGraph.Group {
   func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil) where S.Element: DynamicGraph.AnyGroup {
     precondition(underlyingArray.count > 0)
     let graph = underlyingArray[0].graph
+    var gradients = graph.gradients(for: underlyingArray)
+    var gradientsSet = Set(gradients)
+    for tensor in tensors.flatMap({ $0.underlying }) {
+      if !gradientsSet.contains(tensor) {
+        gradients.append(tensor)
+        gradientsSet.insert(tensor)
+      }
+    }
     let _graph = graph._graph
-    let _inputs: [ccv_nnc_tensor_variable_t?] = tensors.flatMap { $0.underlying.map { $0._tensor } }
+    let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
-    var i = 0
-    for group in tensors {
-      for tensor in group.underlying {
-        precondition(!tensor.isConstant)
-        if tensor.grad == nil && tensor.requiresGrad {
-          tensor.grad = graph.variable()
-        }
-        (_outputs + i).initialize(to: tensor.grad?._tensor)
-        i += 1
+    for (i, tensor) in gradients.enumerated() {
+      precondition(!tensor.isConstant)
+      if tensor.grad == nil && tensor.requiresGrad {
+        tensor.grad = graph.variable()
       }
+      (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
     let _streamContext = streamContext?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.underlyingArray.map { $0._tensor }
@@ -68,10 +80,18 @@ public extension Collection where Element: DynamicGraph.AnyTensor {
       assert(f.graph === graph)
     }
     let _graph = graph._graph
-    let _inputs: [ccv_nnc_tensor_variable_t?] = tensors.map { $0._tensor }
+    var gradients = graph.gradients(for: self)
+    var gradientsSet = Set(gradients)
+    for tensor in tensors {
+      if !gradientsSet.contains(tensor) {
+        gradients.append(tensor)
+        gradientsSet.insert(tensor)
+      }
+    }
+    let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
-    for (i, tensor) in tensors.enumerated() {
+    for (i, tensor) in gradients.enumerated() {
       precondition(!tensor.isConstant)
       if tensor.grad == nil && tensor.requiresGrad {
         tensor.grad = graph.variable()
@@ -100,19 +120,23 @@ public extension Collection where Element: DynamicGraph.AnyGroup {
       }
     }
     let _graph = graph._graph
-    let _inputs: [ccv_nnc_tensor_variable_t?] = tensors.flatMap { $0.underlying.map { $0._tensor } }
+    var gradients = graph.gradients(for: self.flatMap { $0.underlying })
+    var gradientsSet = Set(gradients)
+    for tensor in tensors.flatMap({ $0.underlying }) {
+      if !gradientsSet.contains(tensor) {
+        gradients.append(tensor)
+        gradientsSet.insert(tensor)
+      }
+    }
+    let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: _inputs.count)
-    var i = 0
-    for group in tensors {
-      for tensor in group.underlying {
-        precondition(!tensor.isConstant)
-        if tensor.grad == nil && tensor.requiresGrad {
-          tensor.grad = graph.variable()
-        }
-        (_outputs + i).initialize(to: tensor.grad?._tensor)
-        i += 1
+    for (i, tensor) in gradients.enumerated() {
+      precondition(!tensor.isConstant)
+      if tensor.grad == nil && tensor.requiresGrad {
+        tensor.grad = graph.variable()
       }
+      (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
     let _streamContext = streamContext?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.underlying.map { $0._tensor } }

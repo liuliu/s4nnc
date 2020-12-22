@@ -37,6 +37,11 @@ public final class DynamicGraph {
       }
       set(v) {
         underlying.requiresGrad = v
+        if v {
+          graph.trackGrad(self)
+        } else {
+          graph.untrackGrad(ObjectIdentifier(self))
+        }
       }
     }
 
@@ -46,6 +51,12 @@ public final class DynamicGraph {
 
     fileprivate init(_ underlying: _AnyTensor) {
       self.underlying = underlying
+    }
+
+    deinit {
+      if requiresGrad {
+        graph.untrackGrad(ObjectIdentifier(self))
+      }
     }
 
     public required init(_ tensor: AnyTensor) {
@@ -107,6 +118,11 @@ public final class DynamicGraph {
   let _graph: OpaquePointer
   var streamContext: StreamContext? = nil
 
+  struct WeakAnyTensor: Equatable, Hashable {
+    weak var value: AnyTensor?
+  }
+  var trackGrads = [ObjectIdentifier: WeakAnyTensor]()
+
   public init() {
     CmdParamsFactory.factory.sink()
     _graph = ccv_nnc_dynamic_graph_new()
@@ -114,6 +130,33 @@ public final class DynamicGraph {
 
   deinit {
     ccv_nnc_dynamic_graph_free(_graph)
+  }
+}
+
+extension DynamicGraph {
+  func trackGrad(_ tensor: AnyTensor) {
+    let weakAnyTensor = WeakAnyTensor(value: tensor)
+    trackGrads[ObjectIdentifier(tensor)] = weakAnyTensor
+  }
+  func untrackGrad(_ objectIdentifier: ObjectIdentifier) {
+    trackGrads[objectIdentifier] = nil
+  }
+  func gradients<S: Sequence>(for tensors: S) -> [AnyTensor] where S.Element: AnyTensor {
+    let values = trackGrads.values.compactMap { $0.value }
+    guard values.count > 0 else { return [] }
+    var bitmask = [UInt64](repeating: 0, count: (values.count + 63) / 64)
+    let sources: [ccv_nnc_tensor_variable_t?] = values.map { $0._tensor }
+    let destinations: [ccv_nnc_tensor_variable_t?] = tensors.map { $0._tensor }
+    bitmask.withUnsafeMutableBufferPointer { buffer in
+      ccv_nnc_dynamic_graph_has_effect_to_tensor_variables(_graph, sources, Int32(sources.count), destinations, Int32(destinations.count), buffer.baseAddress)
+    }
+    var gradients = [AnyTensor]()
+    for (i, value) in values.enumerated() {
+      if bitmask[i / 64] & 1 << (i & 63) != 0 {
+        gradients.append(value)
+      }
+    }
+    return gradients
   }
 }
 

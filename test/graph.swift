@@ -15,6 +15,22 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[1, 1], 2.2 * 3.3)
   }
 
+  func testGEMMGrad() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2], .NC(2, 1)))
+    a0.requiresGrad = true
+    let a1 = dynamicGraph.variable(Tensor<Float32>([2.2, 3.3], .NC(1, 2)))
+    a1.requiresGrad = true
+    let a2 = a0 * a1
+    a2.backward(to: a0)
+    let a0Grad = DynamicGraph.Tensor<Float32>(a0.grad!)
+    let a1Grad = DynamicGraph.Tensor<Float32>(a1.grad!)
+    XCTAssertEqual(a0Grad.rawValue[0, 0], 1)
+    XCTAssertEqual(a0Grad.rawValue[1, 0], 1)
+    XCTAssertEqual(a1Grad.rawValue[0, 0], 1)
+    XCTAssertEqual(a1Grad.rawValue[0, 1], 1)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
   ]
