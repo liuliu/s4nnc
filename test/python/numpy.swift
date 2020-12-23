@@ -1,7 +1,7 @@
-import XCTest
 import NNC
 import NNCPythonConversion
 import PythonKit
+import XCTest
 
 final class NumpyTests: XCTestCase {
 
@@ -28,6 +28,6 @@ final class NumpyTests: XCTestCase {
 
   static let allTests = [
     ("testMakeNumpyArray", testMakeNumpyArray),
-    ("testReadNumpyArray", testReadNumpyArray)
+    ("testReadNumpyArray", testReadNumpyArray),
   ]
 }

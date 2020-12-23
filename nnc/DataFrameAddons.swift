@@ -3,7 +3,10 @@ import C_nnc
 // MARK - Load CSV
 
 extension DataFrame {
-  public init?(fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",", quotation: String = "\"") {
+  public init?(
+    fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",",
+    quotation: String = "\""
+  ) {
     var columnSize: Int32 = 0
     let fileHandle = fopen(filePath, "r")
     guard fileHandle != nil else { return nil }
@@ -13,7 +16,9 @@ extension DataFrame {
     let delim = _delimiter.withUTF8 { $0.withMemoryRebound(to: CChar.self) { $0[0] } }
     var _quotation = quotation
     let quote = _quotation.withUTF8 { $0.withMemoryRebound(to: CChar.self) { $0[0] } }
-    let dataframe_ = ccv_cnnp_dataframe_from_csv_new(fileHandle, Int32(CCV_CNNP_DATAFRAME_CSV_FILE), 0, delim, quote, (automaticUseHeader ? 1 : 0), &columnSize)
+    let dataframe_ = ccv_cnnp_dataframe_from_csv_new(
+      fileHandle, Int32(CCV_CNNP_DATAFRAME_CSV_FILE), 0, delim, quote, (automaticUseHeader ? 1 : 0),
+      &columnSize)
     fclose(fileHandle)
     guard let dataframe = dataframe_ else {
       return nil
@@ -25,25 +30,30 @@ extension DataFrame {
     var columnProperties = [String: ColumnProperty]()
     for i in 0..<columnSize {
       var inputIndex: Int32 = Int32(i)
-      let stringIndex = ccv_cnnp_dataframe_map(dataframe, { input, _, row_size, data, context, _ in
-        guard let input = input else { return }
-        guard let data = data else { return }
-        let inputData = input[0]!
-        for i in 0..<Int(row_size) {
-          guard let str = inputData[i].map({ String(cString: $0.assumingMemoryBound(to: Int8.self)) }) else {
-            continue
+      let stringIndex = ccv_cnnp_dataframe_map(
+        dataframe,
+        { input, _, row_size, data, context, _ in
+          guard let input = input else { return }
+          guard let data = data else { return }
+          let inputData = input[0]!
+          for i in 0..<Int(row_size) {
+            guard
+              let str = inputData[i].map({ String(cString: $0.assumingMemoryBound(to: Int8.self)) })
+            else {
+              continue
+            }
+            if let opaque = data[i] {
+              Unmanaged<AnyObject>.fromOpaque(opaque).release()
+            }
+            let obj = str as AnyObject
+            let utf8 = Unmanaged<AnyObject>.passRetained(obj).toOpaque()
+            (data + i).initialize(to: utf8)
           }
-          if let opaque = data[i] {
-            Unmanaged<AnyObject>.fromOpaque(opaque).release()
-          }
-          let obj = str as AnyObject
-          let utf8 = Unmanaged<AnyObject>.passRetained(obj).toOpaque()
-          (data + i).initialize(to: utf8)
-        }
-      }, 0, { obj, _ in
-        guard let obj = obj else { return }
-        Unmanaged<AnyObject>.fromOpaque(obj).release()
-      }, &inputIndex, 1, nil, nil, nil)
+        }, 0,
+        { obj, _ in
+          guard let obj = obj else { return }
+          Unmanaged<AnyObject>.fromOpaque(obj).release()
+        }, &inputIndex, 1, nil, nil, nil)
       let columnName: String
       if automaticUseHeader {
         let cString = ccv_cnnp_dataframe_column_name(dataframe, Int32(i))
@@ -64,7 +74,9 @@ extension DataFrame {
     let _dataframe = dataframe.dataframe
     let columnSize: Int32 = Int32(properties.count)
     let indices: [Int32] = properties.map { Int32($0.index) }
-    let combined = ccv_cnnp_dataframe_combine_new(_dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1), Int32(CCV_TENSOR_FORMAT_NCHW))!
+    let combined = ccv_cnnp_dataframe_combine_new(
+      _dataframe, indices, columnSize, Int32(size), Int32(repeating ?? 1),
+      Int32(CCV_TENSOR_FORMAT_NCHW))!
     var columnProperties = [String: ColumnProperty]()
     if let repeating = repeating, repeating > 1 {
       for i in 0..<repeating {
@@ -72,7 +84,8 @@ extension DataFrame {
           // These must have names.
           let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
           let indexedName = "\(String(cString: name))_\(i)"
-          let index = ccv_cnnp_dataframe_extract_tuple(combined, 0, Int32(i * properties.count + j), indexedName)
+          let index = ccv_cnnp_dataframe_extract_tuple(
+            combined, 0, Int32(i * properties.count + j), indexedName)
           columnProperties[indexedName] = ColumnProperty(index: Int(index), type: .tensor)
         }
       }
@@ -84,15 +97,19 @@ extension DataFrame {
         columnProperties[String(cString: name)] = ColumnProperty(index: Int(index), type: .tensor)
       }
     }
-    self.init(dataframe: _DataFrame(dataframe: combined, parent: dataframe), columnProperties: columnProperties)
+    self.init(
+      dataframe: _DataFrame(dataframe: combined, parent: dataframe),
+      columnProperties: columnProperties)
   }
 }
 
 extension DataFrame.UntypedSeries {
   public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
     guard let property = property,
-          let dataframe = dataframe else {
-      fatalError("An UntypedSeries has to be referenced from existing dataframe. Cannot be a temporary one.")
+      let dataframe = dataframe
+    else {
+      fatalError(
+        "An UntypedSeries has to be referenced from existing dataframe. Cannot be a temporary one.")
     }
     precondition(property.type == .tensor)
     return DataFrame(dataframe: dataframe, properties: [property], size: size, repeating: repeating)
@@ -118,43 +135,50 @@ extension DataFrame.ManyUntypedSeries {
 // MARK - Load image.
 
 extension DataFrame {
-  static func addToLoadImage(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _: AnyObject?) -> ColumnProperty {
+  static func addToLoadImage(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _: AnyObject?
+  ) -> ColumnProperty {
     var inputIndex = Int32(property.index)
-    let pathIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
-      guard let input = input else { return }
-      guard let data = data else { return }
-      let inputData = input[0]!
-      for i in 0..<Int(row_size) {
-        var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
-        if let container = data[i] {
-          let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
-          string.deallocate()
-          container.deallocate()
+    let pathIndex = ccv_cnnp_dataframe_map(
+      _dataframe,
+      { input, _, row_size, data, context, _ in
+        guard let input = input else { return }
+        guard let data = data else { return }
+        let inputData = input[0]!
+        for i in 0..<Int(row_size) {
+          var path = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! String
+          if let container = data[i] {
+            let string = container.assumingMemoryBound(
+              to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
+            string.deallocate()
+            container.deallocate()
+          }
+          let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
+            let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count + 1)
+            string.initialize(from: $0.baseAddress!, count: $0.count)
+            // null-terminated
+            (string + $0.count).initialize(to: 0)
+            let container = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: 1)
+            container.initialize(to: string)
+            return container
+          }
+          (data + i).initialize(to: utf8)
         }
-        let utf8: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>> = path.withUTF8 {
-          let string = UnsafeMutablePointer<UInt8>.allocate(capacity: $0.count + 1)
-          string.initialize(from: $0.baseAddress!, count: $0.count)
-          // null-terminated
-          (string + $0.count).initialize(to: 0)
-          let container = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: 1)
-          container.initialize(to: string)
-          return container
-        }
-        (data + i).initialize(to: utf8)
-      }
-    }, 0, { container, _ in
-      guard let container = container else { return }
-      let string = container.assumingMemoryBound(to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
-      string.deallocate()
-      container.deallocate()
-    }, &inputIndex, 1, nil, nil, nil)
+      }, 0,
+      { container, _ in
+        guard let container = container else { return }
+        let string = container.assumingMemoryBound(
+          to: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.self)[0]
+        string.deallocate()
+        container.deallocate()
+      }, &inputIndex, 1, nil, nil, nil)
     let index = ccv_cnnp_dataframe_read_image(_dataframe, pathIndex, 0, name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 
-public extension DataFrame.UntypedSeries {
-  func toLoadImage() -> DataFrame.UntypedSeries {
+extension DataFrame.UntypedSeries {
+  public func toLoadImage() -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
@@ -163,8 +187,8 @@ public extension DataFrame.UntypedSeries {
   }
 }
 
-public extension DataFrame.TypedSeries where Element == String {
-  func toLoadImage() -> DataFrame.UntypedSeries {
+extension DataFrame.TypedSeries where Element == String {
+  public func toLoadImage() -> DataFrame.UntypedSeries {
     precondition(property.type == .object)
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToLoadImage, nil))
   }
@@ -177,7 +201,7 @@ final class OneHotParams {
   let count: Int
   let onval: Float
   let offval: Float
-  init(dataType: DataType, count: Int, onval: Float, offval:Float) {
+  init(dataType: DataType, count: Int, onval: Float, offval: Float) {
     self.dataType = dataType
     self.count = count
     self.onval = onval
@@ -186,63 +210,83 @@ final class OneHotParams {
 }
 
 extension DataFrame {
-  static func addToOneHot(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+  static func addToOneHot(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?
+  ) -> ColumnProperty {
     var inputIndex = Int32(property.index)
     let oneHotParams = params! as! OneHotParams
-    let intIndex = ccv_cnnp_dataframe_map(_dataframe, { input, _, row_size, data, context, _ in
-      guard let input = input else { return }
-      guard let data = data else { return }
-      let inputData = input[0]!
-      for i in 0..<Int(row_size) {
-        let int = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! Int
-        if let container = data[i] {
-          container.assumingMemoryBound(to: Int32.self).initialize(to: Int32(int))
-        } else {
-          let container = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
-          container.initialize(to: Int32(int))
-          (data + i).initialize(to: container)
+    let intIndex = ccv_cnnp_dataframe_map(
+      _dataframe,
+      { input, _, row_size, data, context, _ in
+        guard let input = input else { return }
+        guard let data = data else { return }
+        let inputData = input[0]!
+        for i in 0..<Int(row_size) {
+          let int = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue() as! Int
+          if let container = data[i] {
+            container.assumingMemoryBound(to: Int32.self).initialize(to: Int32(int))
+          } else {
+            let container = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
+            container.initialize(to: Int32(int))
+            (data + i).initialize(to: container)
+          }
         }
-      }
-    }, 0, { container, _ in
-      guard let container = container else { return }
-      container.deallocate()
-    }, &inputIndex, 1, nil, nil, nil)
-    let index = ccv_cnnp_dataframe_one_hot(_dataframe, intIndex, 0, Int32(oneHotParams.count), oneHotParams.onval, oneHotParams.offval, oneHotParams.dataType.toC, Int32(CCV_TENSOR_FORMAT_NCHW), name)
+      }, 0,
+      { container, _ in
+        guard let container = container else { return }
+        container.deallocate()
+      }, &inputIndex, 1, nil, nil, nil)
+    let index = ccv_cnnp_dataframe_one_hot(
+      _dataframe, intIndex, 0, Int32(oneHotParams.count), oneHotParams.onval, oneHotParams.offval,
+      oneHotParams.dataType.toC, Int32(CCV_TENSOR_FORMAT_NCHW), name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 
-public extension DataFrame.UntypedSeries {
-  func toOneHot<Element: TensorNumeric>(_ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0) -> DataFrame.UntypedSeries {
+extension DataFrame.UntypedSeries {
+  public func toOneHot<Element: TensorNumeric>(
+    _ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0
+  ) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .object)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneHot, OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
+    return DataFrame.UntypedSeries(
+      .native(
+        property, DataFrame.addToOneHot,
+        OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
   }
 }
 
-public extension DataFrame.TypedSeries where Element == Int {
-  func toOneHot<Element: TensorNumeric>(_ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0) -> DataFrame.UntypedSeries {
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneHot, OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
+extension DataFrame.TypedSeries where Element == Int {
+  public func toOneHot<Element: TensorNumeric>(
+    _ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0
+  ) -> DataFrame.UntypedSeries {
+    return DataFrame.UntypedSeries(
+      .native(
+        property, DataFrame.addToOneHot,
+        OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
   }
 }
 
 // MARK - Copy to GPU.
 
 extension DataFrame {
-  static func addToOneGPU(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+  static func addToOneGPU(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?
+  ) -> ColumnProperty {
     var inputIndex = Int32(property.index)
     let tupleIndex = ccv_cnnp_dataframe_make_tuple(_dataframe, &inputIndex, 1, nil)
     let ordinal = params! as! Int
-    let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(_dataframe, tupleIndex, 0, 1, Int32(ordinal), nil)
+    let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(
+      _dataframe, tupleIndex, 0, 1, Int32(ordinal), nil)
     let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, copyIndex, 0, name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 
-public extension DataFrame.UntypedSeries {
-  func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
+extension DataFrame.UntypedSeries {
+  public func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
@@ -251,22 +295,24 @@ public extension DataFrame.UntypedSeries {
   }
 }
 
-public extension DataFrame.TypedSeries where Element: AnyTensor {
-  func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
+extension DataFrame.TypedSeries where Element: AnyTensor {
+  public func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneGPU, ordinal as AnyObject))
   }
 }
 
-public extension DataFrame {
-  struct ManyUntypedSeriesToGPU {
+extension DataFrame {
+  public struct ManyUntypedSeriesToGPU {
     var index: Int
     var namedIndex: [String: Int]
   }
 }
 
 extension DataFrame {
-  static func extractTensorTuple(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+  static func extractTensorTuple(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?
+  ) -> ColumnProperty {
     let inputIndex = Int32(property.index)
     let tupleIndex = params! as! Int
     let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, inputIndex, Int32(tupleIndex), name)
@@ -274,28 +320,32 @@ extension DataFrame {
   }
 }
 
-public extension DataFrame.ManyUntypedSeriesToGPU {
-  subscript(name: String) -> DataFrame.UntypedSeries {
+extension DataFrame.ManyUntypedSeriesToGPU {
+  public subscript(name: String) -> DataFrame.UntypedSeries {
     let tupleIndex = namedIndex[name]!
     let property = DataFrame.ColumnProperty(index: index, type: .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
+    return DataFrame.UntypedSeries(
+      .native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
   }
-  subscript(tupleIndex: Int) -> DataFrame.UntypedSeries {
+  public subscript(tupleIndex: Int) -> DataFrame.UntypedSeries {
     precondition(tupleIndex < namedIndex.count)
     let property = DataFrame.ColumnProperty(index: index, type: .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
+    return DataFrame.UntypedSeries(
+      .native(property, DataFrame.extractTensorTuple, tupleIndex as AnyObject))
   }
 }
 
-public extension DataFrame.ManyUntypedSeries {
-  func toGPU(_ ordinal: Int = 0) -> DataFrame.ManyUntypedSeriesToGPU {
+extension DataFrame.ManyUntypedSeries {
+  public func toGPU(_ ordinal: Int = 0) -> DataFrame.ManyUntypedSeriesToGPU {
     for property in properties {
       precondition(property.type == .tensor)
     }
     let inputIndex = properties.map { Int32($0.index) }
     let _dataframe = dataframe.dataframe
-    let tupleIndex = ccv_cnnp_dataframe_make_tuple(_dataframe, inputIndex, Int32(inputIndex.count), nil)
-    let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(_dataframe, tupleIndex, 0, Int32(inputIndex.count), Int32(ordinal), nil)
+    let tupleIndex = ccv_cnnp_dataframe_make_tuple(
+      _dataframe, inputIndex, Int32(inputIndex.count), nil)
+    let copyIndex = ccv_cnnp_dataframe_copy_to_gpu(
+      _dataframe, tupleIndex, 0, Int32(inputIndex.count), Int32(ordinal), nil)
     var namedIndex = [String: Int]()
     for (i, property) in properties.enumerated() {
       let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
@@ -317,36 +367,48 @@ final class OneSquaredParams {
 }
 
 extension DataFrame {
-  static func addToOneSquared(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+  static func addToOneSquared(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?
+  ) -> ColumnProperty {
     var inputIndex = Int32(property.index)
     let oneSquareParams = params! as! OneSquaredParams
-    let tupleIndex = ccv_cnnp_dataframe_one_squared(_dataframe, &inputIndex, 1, oneSquareParams.variableLength ? 1 : 0, Int32(oneSquareParams.maxLength), nil)
+    let tupleIndex = ccv_cnnp_dataframe_one_squared(
+      _dataframe, &inputIndex, 1, oneSquareParams.variableLength ? 1 : 0,
+      Int32(oneSquareParams.maxLength), nil)
     let index = ccv_cnnp_dataframe_extract_tuple(_dataframe, tupleIndex, 0, name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 
-public extension DataFrame.UntypedSeries {
-  func toOneSquared(maxLength: Int, variableLength: Bool = true) -> DataFrame.UntypedSeries {
+extension DataFrame.UntypedSeries {
+  public func toOneSquared(maxLength: Int, variableLength: Bool = true) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneSquared, OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
+    return DataFrame.UntypedSeries(
+      .native(
+        property, DataFrame.addToOneSquared,
+        OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
   }
 }
 
-public extension DataFrame.TypedSeries where Element: AnyTensor {
-  func toOneSquared(maxLength: Int, variableLength: Bool = true) -> DataFrame.UntypedSeries {
+extension DataFrame.TypedSeries where Element: AnyTensor {
+  public func toOneSquared(maxLength: Int, variableLength: Bool = true) -> DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneSquared, OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
+    return DataFrame.UntypedSeries(
+      .native(
+        property, DataFrame.addToOneSquared,
+        OneSquaredParams(variableLength: variableLength, maxLength: maxLength)))
   }
 }
 
 // MARK - Truncate
 
 extension DataFrame {
-  static func addToTruncate(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+  static func addToTruncate(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?
+  ) -> ColumnProperty {
     let otherProperty = (params! as! Wrapped<ColumnProperty>).value
     var inputIndex = Int32(property.index)
     var truncateIndex = Int32(otherProperty.index)
@@ -356,40 +418,49 @@ extension DataFrame {
   }
 }
 
-public extension DataFrame.UntypedSeries {
-  func toTruncate(_ other: DataFrame.UntypedSeries) -> DataFrame.UntypedSeries {
+extension DataFrame.UntypedSeries {
+  public func toTruncate(_ other: DataFrame.UntypedSeries) -> DataFrame.UntypedSeries {
     guard let property = property,
-      let otherProperty = other.property else {
+      let otherProperty = other.property
+    else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .tensor)
     precondition(otherProperty.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
+    return DataFrame.UntypedSeries(
+      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
   }
 
-  func toTruncate<Element: AnyTensor>(_ other: DataFrame.TypedSeries<Element>) -> DataFrame.UntypedSeries {
+  public func toTruncate<Element: AnyTensor>(_ other: DataFrame.TypedSeries<Element>)
+    -> DataFrame.UntypedSeries
+  {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .tensor)
     precondition(other.property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
+    return DataFrame.UntypedSeries(
+      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
   }
 }
 
-public extension DataFrame.TypedSeries where Element: AnyTensor {
-  func toTruncate(_ other: DataFrame.UntypedSeries) -> DataFrame.UntypedSeries {
+extension DataFrame.TypedSeries where Element: AnyTensor {
+  public func toTruncate(_ other: DataFrame.UntypedSeries) -> DataFrame.UntypedSeries {
     guard let otherProperty = other.property else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .tensor)
     precondition(otherProperty.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
+    return DataFrame.UntypedSeries(
+      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
   }
-  func toTruncate<OtherElement: AnyTensor>(_ other: DataFrame.TypedSeries<OtherElement>) -> DataFrame.UntypedSeries {
+  public func toTruncate<OtherElement: AnyTensor>(_ other: DataFrame.TypedSeries<OtherElement>)
+    -> DataFrame.UntypedSeries
+  {
     precondition(property.type == .tensor)
     precondition(other.property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
+    return DataFrame.UntypedSeries(
+      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
   }
 }
 
@@ -446,7 +517,12 @@ final class ImageJitterParams {
   let normalize: ImageJitter.Normalize
   let dataType: DataType
 
-  init(contrast: Float, saturation: Float, brightness: Float, lighting: Float, aspectRatio: Float, symmetric: Bool, seed: Int, centerCrop: Bool, size: ImageJitter.Size, resize: ImageJitter.Resize, offset: ImageJitter.Offset, normalize: ImageJitter.Normalize, dataType: DataType) {
+  init(
+    contrast: Float, saturation: Float, brightness: Float, lighting: Float, aspectRatio: Float,
+    symmetric: Bool, seed: Int, centerCrop: Bool, size: ImageJitter.Size,
+    resize: ImageJitter.Resize, offset: ImageJitter.Offset, normalize: ImageJitter.Normalize,
+    dataType: DataType
+  ) {
     self.contrast = contrast
     self.saturation = saturation
     self.brightness = brightness
@@ -512,27 +588,56 @@ final class ImageJitterParams {
 }
 
 extension DataFrame {
-  static func addToImageJitter(_ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?) -> ColumnProperty {
+  static func addToImageJitter(
+    _ _dataframe: OpaquePointer, _ property: ColumnProperty, _ name: String, _ params: AnyObject?
+  ) -> ColumnProperty {
     let inputIndex = Int32(property.index)
     let imageJitterParams = params! as! ImageJitterParams
-    let index = ccv_cnnp_dataframe_image_random_jitter(_dataframe, inputIndex, imageJitterParams.dataType.toC, imageJitterParams.toC, name)
+    let index = ccv_cnnp_dataframe_image_random_jitter(
+      _dataframe, inputIndex, imageJitterParams.dataType.toC, imageJitterParams.toC, name)
     return ColumnProperty(index: Int(index), type: .tensor)
   }
 }
 
-public extension DataFrame.UntypedSeries {
-  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [])) -> DataFrame.UntypedSeries {
+extension DataFrame.UntypedSeries {
+  public func toImageJitter<Element: TensorNumeric>(
+    _ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0,
+    saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0,
+    symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false,
+    offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0),
+    normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [])
+  ) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
     }
     precondition(property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToImageJitter, ImageJitterParams(contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting, aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop, size: size, resize: resize, offset: offset, normalize: normalize, dataType: Element.dataType)))
+    return DataFrame.UntypedSeries(
+      .native(
+        property, DataFrame.addToImageJitter,
+        ImageJitterParams(
+          contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting,
+          aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop,
+          size: size, resize: resize, offset: offset, normalize: normalize,
+          dataType: Element.dataType)))
   }
 }
 
-public extension DataFrame.TypedSeries where Element: AnyTensor {
-  func toImageJitter<Element: TensorNumeric>(_ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0, saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0, symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false, offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0), normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [])) -> DataFrame.UntypedSeries {
+extension DataFrame.TypedSeries where Element: AnyTensor {
+  public func toImageJitter<Element: TensorNumeric>(
+    _ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0,
+    saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0,
+    symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false,
+    offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0),
+    normalize: ImageJitter.Normalize = ImageJitter.Normalize(mean: [])
+  ) -> DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
-    return DataFrame.UntypedSeries(.native(property, DataFrame.addToImageJitter, ImageJitterParams(contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting, aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop, size: size, resize: resize, offset: offset, normalize: normalize, dataType: Element.dataType)))
+    return DataFrame.UntypedSeries(
+      .native(
+        property, DataFrame.addToImageJitter,
+        ImageJitterParams(
+          contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting,
+          aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop,
+          size: size, resize: resize, offset: offset, normalize: normalize,
+          dataType: Element.dataType)))
   }
 }

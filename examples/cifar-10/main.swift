@@ -1,12 +1,14 @@
-import NNC
 import Foundation
+import NNC
 
 func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
   let input = Input()
   let conv = Model([
-    Convolution(groups: 1, filters: filters, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+    Convolution(
+      groups: 1, filters: filters, filterSize: [3, 3], noBias: false,
+      hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
     BatchNorm(momentum: 0.9, epsilon: 1e-4),
-    RELU()
+    RELU(),
   ])
   var output = conv(input)
   let pool = MaxPool(filterSize: [strides, strides], hint: Hint(stride: [strides, strides]))
@@ -14,15 +16,19 @@ func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
   if residual {
     let shortcut = output
     let res1 = Model([
-      Convolution(groups: 1, filters: filters, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+      Convolution(
+        groups: 1, filters: filters, filterSize: [3, 3], noBias: false,
+        hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
       BatchNorm(momentum: 0.9, epsilon: 1e-4),
-      RELU()
+      RELU(),
     ])
     output = res1(output)
     let res2 = Model([
-      Convolution(groups: 1, filters: filters, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+      Convolution(
+        groups: 1, filters: filters, filterSize: [3, 3], noBias: false,
+        hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
       BatchNorm(momentum: 0.9, epsilon: 1e-4),
-      RELU()
+      RELU(),
     ])
     output = res2(output)
     output = output .+ shortcut
@@ -32,9 +38,11 @@ func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
 
 func CIFAR10Dawn() -> Model {
   let prep = Model([
-    Convolution(groups: 1, filters: 64, filterSize: [3, 3], noBias: false, hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
+    Convolution(
+      groups: 1, filters: 64, filterSize: [3, 3], noBias: false,
+      hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
     BatchNorm(momentum: 0.9, epsilon: 1e-4),
-    RELU()
+    RELU(),
   ])
   let layer1 = DawnLayer(filters: 128, strides: 2, residual: true)
   let layer2 = DawnLayer(filters: 256, strides: 2, residual: false)
@@ -46,13 +54,11 @@ func CIFAR10Dawn() -> Model {
     layer3,
     MaxPool(filterSize: [0, 0], hint: Hint()),
     Flatten(),
-    Dense(count: 10)
+    Dense(count: 10),
   ])
 }
 
-/**
- * MARK - The Training Program
- */
+/// MARK - The Training Program
 
 let dataBatchPath = "/fast/Data/cifar-10/cifar-10-batches-bin/data_batch.bin"
 let testBatchPath = "/fast/Data/cifar-10/cifar-10-batches-bin/test_batch.bin"
@@ -62,9 +68,7 @@ let testBatchSize = 10_000
 
 let batchSize = 1024
 
-/**
- * MARK - Loading Data from Disk
- */
+/// MARK - Loading Data from Disk
 
 let dataBatch = try! Data(contentsOf: URL(fileURLWithPath: dataBatchPath))
 let testBatch = try! Data(contentsOf: URL(fileURLWithPath: testBatchPath))
@@ -130,9 +134,7 @@ DispatchQueue.concurrentPerform(iterations: testBatchSize) { k in
   testData[k] = CIFARData(tensor: tensor, label: label, mean: meanf)
 }
 
-/**
- * MARK - Setup Data Feeder Pipelne
- */
+/// MARK - Setup Data Feeder Pipelne
 
 var trainDataDf = DataFrame(from: trainData, name: "main")
 let testDataDf = DataFrame(from: testData, name: "main")
@@ -154,16 +156,18 @@ let toGPUTrain = batchedTrainData["jittered", "c"].toGPU()
 batchedTrainData["jitteredGPU"] = toGPUTrain["jittered"]
 batchedTrainData["cGPU"] = toGPUTrain["c"]
 
-/**
- * MARK - Training Loop
- */
+/// MARK - Training Loop
 
 let graph = DynamicGraph()
 let cifar = CIFAR10Dawn()
 var overallAccuracy = 0.0
-var sgd0 = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0.001, momentum: 0.9, dampening: 0)
+var sgd0 = SGDOptimizer(
+  graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0.001, momentum: 0.9,
+  dampening: 0)
 sgd0.parameters = [cifar.parameters]
-var sgd1 = SGDOptimizer(graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0, momentum: 0.9, dampening: 0)
+var sgd1 = SGDOptimizer(
+  graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0, momentum: 0.9,
+  dampening: 0)
 sgd1.parameters = [cifar.parameters(for: .bias)]
 for epoch in 0..<35 {
   batchedTrainData.shuffle()
@@ -174,7 +178,9 @@ for epoch in 0..<35 {
     if overallIndex + 1 < 5 * batchedTrainData.count {
       learnRate = 0.4 * Float(overallIndex + 1) / Float(5 * batchedTrainData.count)
     } else {
-      learnRate = 0.4 * Float(30 * batchedTrainData.count - (overallIndex + 1)) / Float((30 - 5) * batchedTrainData.count)
+      learnRate =
+        0.4 * Float(30 * batchedTrainData.count - (overallIndex + 1))
+        / Float((30 - 5) * batchedTrainData.count)
     }
     learnRate = max(learnRate, 0.0001)
     sgd0.rate = learnRate
@@ -207,7 +213,7 @@ for epoch in 0..<35 {
     }
     let accuracy = Double(correct) / Double(batchSize)
     overallAccuracy = overallAccuracy * 0.9 + accuracy * 0.1
-    if (i + 1) % 50  == 0 {
+    if (i + 1) % 50 == 0 {
       print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")
     }
   }

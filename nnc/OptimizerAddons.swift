@@ -35,7 +35,10 @@ public struct SGDOptimizer: Optimizer, OptimizerAddons {
     return ccv_nnc_cmd(CCV_NNC_SGD_FORWARD, nil, params, 0)
   }
 
-  public init(_ graph: DynamicGraph, nesterov: Bool, rate: Float, scale: Float, decay: Float, momentum: Float, dampening: Float) {
+  public init(
+    _ graph: DynamicGraph, nesterov: Bool, rate: Float, scale: Float, decay: Float, momentum: Float,
+    dampening: Float
+  ) {
     self.graph = graph
     self.nesterov = nesterov
     self.rate = rate
@@ -46,7 +49,9 @@ public struct SGDOptimizer: Optimizer, OptimizerAddons {
   }
 
   public func step(streamContext: StreamContext?) {
-    optimizerStep(graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux, streamContext: streamContext)
+    optimizerStep(
+      graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux,
+      streamContext: streamContext)
   }
 }
 
@@ -85,7 +90,10 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
     return ccv_nnc_cmd(CCV_NNC_ADAM_FORWARD, nil, params, 0)
   }
 
-  public init(_ graph: DynamicGraph, step: Int, rate: Float, beta1: Float, beta2: Float, decay: Float, epsilon: Float) {
+  public init(
+    _ graph: DynamicGraph, step: Int, rate: Float, beta1: Float, beta2: Float, decay: Float,
+    epsilon: Float
+  ) {
     self.graph = graph
     self.step = step
     self.rate = rate
@@ -96,6 +104,8 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
   }
 
   public func step(streamContext: StreamContext?) {
-    optimizerStep(graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux, streamContext: streamContext)
+    optimizerStep(
+      graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux,
+      streamContext: streamContext)
   }
 }

@@ -1,8 +1,8 @@
 #if os(Linux)
-import XCTest
+  import XCTest
 
-XCTMain([
-  testCase(NumpyTests.allTests)
-])
+  XCTMain([
+    testCase(NumpyTests.allTests)
+  ])
 
 #endif

@@ -1,33 +1,33 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_test")
 
 swift_test(
-	name = "nnc",
-	srcs = [
-		"dataframe.swift",
-		"graph.swift",
-		"loss.swift",
-		"main.swift",
-		"model.swift",
-		"optimizer.swift",
-		"store.swift",
-		"tensor.swift"
-	],
-	deps = [
-		"//nnc:nnc"
-	],
-	data = [
-		"scaled_data.csv",
-		"some_variables.db"
-	]
+    name = "nnc",
+    srcs = [
+        "dataframe.swift",
+        "graph.swift",
+        "loss.swift",
+        "main.swift",
+        "model.swift",
+        "optimizer.swift",
+        "store.swift",
+        "tensor.swift",
+    ],
+    data = [
+        "scaled_data.csv",
+        "some_variables.db",
+    ],
+    deps = [
+        "//nnc",
+    ],
 )
 
 swift_test(
-	name = "nnc_python",
-	srcs = [
-		"python/numpy.swift",
-		"python/main.swift"
-	],
-	deps = [
-		"//nnc:nnc_python"
-	]
+    name = "nnc_python",
+    srcs = [
+        "python/main.swift",
+        "python/numpy.swift",
+    ],
+    deps = [
+        "//nnc:nnc_python",
+    ],
 )

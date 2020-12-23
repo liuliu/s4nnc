@@ -1,5 +1,5 @@
-import XCTest
 import NNC
+import XCTest
 
 final class LossTests: XCTestCase {
 
@@ -25,6 +25,6 @@ final class LossTests: XCTestCase {
 
   static let allTests = [
     ("testLoss", testLoss),
-    ("testTargetLoss", testTargetLoss)
+    ("testTargetLoss", testTargetLoss),
   ]
 }

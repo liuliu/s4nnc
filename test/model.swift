@@ -1,5 +1,5 @@
-import XCTest
 import NNC
+import XCTest
 
 final class ModelTests: XCTestCase {
 
@@ -47,6 +47,6 @@ final class ModelTests: XCTestCase {
 
   static let allTests = [
     ("testModel", testModel),
-    ("testModelBuilder", testModelBuilder)
+    ("testModelBuilder", testModelBuilder),
   ]
 }

@@ -1,5 +1,5 @@
-import XCTest
 import NNC
+import XCTest
 
 final class GraphTests: XCTestCase {
 

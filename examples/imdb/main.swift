@@ -1,12 +1,9 @@
-import NNC
 import Foundation
+import NNC
 
-/**
- * MARK - Setup the Transformer Model
- */
+/// MARK - Setup the Transformer Model
 
-func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model
-{
+func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model {
   let x = Input()
   let mask = Input()
   let multiheads = x.reshape([b * t, k])
@@ -32,8 +29,7 @@ func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model
   return Model([x, mask], [out])
 }
 
-func TransformerBlock(k: Int, h: Int, b: Int, t: Int, ff: Int, dropout: Float) -> Model
-{
+func TransformerBlock(k: Int, h: Int, b: Int, t: Int, ff: Int, dropout: Float) -> Model {
   let x = Input()
   let mask = Input()
   let selfAttention = SelfAttention(k: k, h: h, b: b, t: t, dropout: dropout)
@@ -58,7 +54,8 @@ func TransformerBlock(k: Int, h: Int, b: Int, t: Int, ff: Int, dropout: Float) -
   return Model([x, mask], [out])
 }
 
-func ClassicTransformer(layers: Int, k: Int, h: Int, b: Int, t: Int, ff: Int, dropout: Float) -> Model
+func ClassicTransformer(layers: Int, k: Int, h: Int, b: Int, t: Int, ff: Int, dropout: Float)
+  -> Model
 {
   let x = Input()
   let mask = Input()
@@ -80,9 +77,7 @@ struct TransformerParameter {
   var dropout: Float
 }
 
-/**
- * MARK - The Training Program
- */
+/// MARK - The Training Program
 
 let parameters = TransformerParameter(ff: 4, layers: 2, h: 8, dropout: 0.1)
 
@@ -90,7 +85,9 @@ let transformer: ModelBuilder = ModelBuilder { inputs in
   let b = inputs[0].dimensions[0]
   let t = inputs[0].dimensions[1]
   let k = inputs[0].dimensions[2]
-  return ClassicTransformer(layers: parameters.layers, k: k, h: parameters.h, b: b, t: t, ff: parameters.ff * k, dropout: parameters.dropout)
+  return ClassicTransformer(
+    layers: parameters.layers, k: k, h: parameters.h, b: b, t: t, ff: parameters.ff * k,
+    dropout: parameters.dropout)
 }
 
 let trainListFile = "/fast/Data/IMDB_Movie_Reviews/aclImdb/train.txt"
@@ -107,9 +104,7 @@ for (i, word) in vocabList.enumerated() {
   dict[lowercasedWord] = i
 }
 
-/**
- * MARK - Data Processing
- */
+/// MARK - Data Processing
 
 let unknownFlag = Int32(vocabList.count)
 let endFlag = Int32(vocabList.count + 1)
@@ -135,7 +130,9 @@ func dataFromDisk(filePath trainListFile: String) -> DataFrame {
     let filePath = parts[1...].joined(separator: " ")
     let trainText = try! String(contentsOfFile: "\(baseDir)/\(filePath)", encoding: .utf8)
     let lowercasedTrainText = trainText.lowercased()
-    let separators: Set<Character> = [" ", ".", ",", "<", ">", "/", "~", "`", "@", "#", "$", "%", "^", "&", "*", "+", "\\", "\""]
+    let separators: Set<Character> = [
+      " ", ".", ",", "<", ">", "/", "~", "`", "@", "#", "$", "%", "^", "&", "*", "+", "\\", "\"",
+    ]
     let tokens = lowercasedTrainText.split(whereSeparator: { character in
       return separators.contains(character)
     })
@@ -156,9 +153,7 @@ func dataFromDisk(filePath trainListFile: String) -> DataFrame {
   return DataFrame(from: trainData, name: "main")
 }
 
-/**
- * MARK - Setup the Data Feeder Pipeline
- */
+/// MARK - Setup the Data Feeder Pipeline
 
 var trainData = dataFromDisk(filePath: trainListFile)
 var testData = dataFromDisk(filePath: testListFile)
@@ -176,11 +171,14 @@ testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
 
 let deviceCount = DeviceKind.GPUInfo.count
 
-// Batching tensors together. 
-var batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)
+// Batching tensors together.
+var batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(
+  size: batchSize, repeating: deviceCount)
 for i in 0..<deviceCount {
-  batchedTrainData["truncTensor_\(i)"] = batchedTrainData["tensor_\(i)"]!.toTruncate(batchedTrainData["mask_\(i)"]!)
-  batchedTrainData["squaredMask_\(i)"] = batchedTrainData["mask_\(i)"]!.toOneSquared(maxLength: maxLength)
+  batchedTrainData["truncTensor_\(i)"] = batchedTrainData["tensor_\(i)"]!.toTruncate(
+    batchedTrainData["mask_\(i)"]!)
+  batchedTrainData["squaredMask_\(i)"] = batchedTrainData["mask_\(i)"]!.toOneSquared(
+    maxLength: maxLength)
   // Move the tensors from CPU to GPU.
   let toGPUTrain = batchedTrainData["truncTensor_\(i)", "oneHot_\(i)", "squaredMask_\(i)"].toGPU(i)
   batchedTrainData["tensorGPU_\(i)"] = toGPUTrain["truncTensor_\(i)"]
@@ -188,14 +186,14 @@ for i in 0..<deviceCount {
   batchedTrainData["squaredMaskGPU_\(i)"] = toGPUTrain["squaredMask_\(i)"]
 }
 
-/**
- * MARK - The Training Loop
- */
+/// MARK - The Training Loop
 
 let graph = DynamicGraph()
 
-let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
-let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
+let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group(
+  (0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
+let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group(
+  (0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
 vocabVec.rand(-1, 1)
 seqVec.rand(-1, 1)
 graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
@@ -203,7 +201,8 @@ graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
   store.read("seq", variable: seqVec)
   store.read("transformer", model: transformer)
 }
-var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
+var adamOptimizer = AdamOptimizer(
+  graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec, transformer.parameters]
 var overallAccuracy = 0.0
 for epoch in 0..<10 {
@@ -215,7 +214,9 @@ for epoch in 0..<10 {
   let computeStream = StreamContext(.GPU(0))
   for (i, batch) in batchedTrainData[columns].enumerated() {
     adamOptimizer.step = epoch * batchedTrainData.count + i + 1
-    adamOptimizer.rate = 0.0001 * min(Float(adamOptimizer.step - 1) / (10000.0 / Float(batchSize)), 1) * Float(deviceCount)
+    adamOptimizer.rate =
+      0.0001 * min(Float(adamOptimizer.step - 1) / (10000.0 / Float(batchSize)), 1)
+      * Float(deviceCount)
     let tensorGPU = (0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
     let oneHotGPU = (0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
     let squaredMaskGPU = (0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
@@ -258,7 +259,7 @@ for epoch in 0..<10 {
     }
     let accuracy = Double(correct) / Double(batchSize * deviceCount)
     overallAccuracy = overallAccuracy * 0.9 + accuracy * 0.1
-    if adamOptimizer.step % 50  == 0 {
+    if adamOptimizer.step % 50 == 0 {
       print("epoch \(epoch) (\(i)/\(batchedTrainData.count)), training accuracy \(overallAccuracy)")
     }
   }

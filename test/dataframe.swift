@@ -1,5 +1,5 @@
-import XCTest
 import NNC
+import XCTest
 
 final class DataFrameTests: XCTestCase {
 
@@ -55,14 +55,17 @@ final class DataFrameTests: XCTestCase {
       var string: String
     }
 
-    let df = DataFrame(from: [MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2")])
+    let df = DataFrame(from: [
+      MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2"),
+    ])
     var newArray = [MyStruct?]()
 
     for i in df["0"]! {
       let s = i as? MyStruct
       newArray.append(s)
     }
-    XCTAssertEqual(newArray, [MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2")])
+    XCTAssertEqual(
+      newArray, [MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2")])
   }
 
   func testEnum() throws {
@@ -111,7 +114,9 @@ final class DataFrameTests: XCTestCase {
     df["6"] = .from([1, 1, 1, 1, 1])
     df["9"] = .from([1, 1, 1, 1, 1])
     df["10"] = .from([1, 1, 1, 1, 1])
-    df["z"] = df["0", "+1", "++", "2", "3", "4", "5", "6", "9", "10"].map { (c0: Int, c1: Int, c2: Int, c3: Int, c4: Int, c5: Int, c6: Int, c7: Int, c8: Int, c9: Int) -> Int in
+    df["z"] = df["0", "+1", "++", "2", "3", "4", "5", "6", "9", "10"].map {
+      (c0: Int, c1: Int, c2: Int, c3: Int, c4: Int, c5: Int, c6: Int, c7: Int, c8: Int, c9: Int)
+        -> Int in
       return c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9
     }
 
@@ -178,7 +183,7 @@ final class DataFrameTests: XCTestCase {
       "0.160254357051892",
       "0.0506895539858365",
       "-0.01033458071889",
-      "-0.12347980825132"
+      "-0.12347980825132",
     ]
     XCTAssertEqual(newArray, truthArray)
   }
@@ -287,7 +292,8 @@ final class DataFrameTests: XCTestCase {
       var str: String
       var val: Int
     }
-    var df = DataFrame(from: [Holder(str: "abc", val: 1), Holder(str: "happy", val: 2)], name: "main")
+    var df = DataFrame(
+      from: [Holder(str: "abc", val: 1), Holder(str: "happy", val: 2)], name: "main")
     df["c"] = df["main", Holder.self].map(\.val)
     df["oneHot"] = df["c", Int.self].toOneHot(Float32.self, count: 3)
     var i: Int = 1
@@ -484,7 +490,8 @@ final class DataFrameTests: XCTestCase {
     var tensor4 = Tensor<Float32>(.CPU, .C(1))
     tensor4[0] = 3.3
     let df = DataFrame(from: [tensor0, tensor1, tensor2, tensor3, tensor4], name: "main")
-    let sampled = df["main", Tensor<Float32>.self].sample(size: 2, repeating: 2) { input -> Tensor<Float32> in
+    let sampled = df["main", Tensor<Float32>.self].sample(size: 2, repeating: 2) {
+      input -> Tensor<Float32> in
       var tensor = Tensor<Float32>(.CPU, .C(1))
       tensor[0] = input.last![0]
       return tensor
@@ -507,7 +514,10 @@ final class DataFrameTests: XCTestCase {
       var string: String
     }
 
-    let df = DataFrame(from: [MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2"), MyStruct(value: 1.3, string: "1.3")])
+    let df = DataFrame(from: [
+      MyStruct(value: 1.0, string: "1.0"), nil, MyStruct(value: 1.2, string: "1.2"),
+      MyStruct(value: 1.3, string: "1.3"),
+    ])
     let sampled = df["0", MyStruct?.self].sample(size: 2) { input -> Float32 in
       return input[0]!.value
     }
@@ -524,7 +534,8 @@ final class DataFrameTests: XCTestCase {
     df["1"] = df["0", Float.self].map { input -> Float in
       return input + 1.2
     }
-    let sampled = df["0", "1"].sample(size: 2) { (f: [(Float, Float)]) -> (Tensor<Float32>, Float) in
+    let sampled = df["0", "1"].sample(size: 2) {
+      (f: [(Float, Float)]) -> (Tensor<Float32>, Float) in
       let sum = f[0].0 + f[0].1
       var tensor = Tensor<Float32>(.CPU, .C(1))
       tensor[0] = sum
@@ -534,12 +545,16 @@ final class DataFrameTests: XCTestCase {
     for i in sampled["0", Tensor<Float32>.self] {
       newArray.append(i[0])
     }
-    XCTAssertEqual(newArray, [Float(1.1) + Float(1.1) + 1.2, Float(1.2) + Float(1.2) + 1.2, Float(2.3) + Float(2.3) + 1.2])
+    XCTAssertEqual(
+      newArray,
+      [Float(1.1) + Float(1.1) + 1.2, Float(1.2) + Float(1.2) + 1.2, Float(2.3) + Float(2.3) + 1.2])
     newArray.removeAll()
     for i in sampled["1", Float.self] {
       newArray.append(i)
     }
-    XCTAssertEqual(newArray, [Float(1.1) + Float(1.1) + 1.2, Float(1.2) + Float(1.2) + 1.2, Float(2.3) + Float(2.3) + 1.2])
+    XCTAssertEqual(
+      newArray,
+      [Float(1.1) + Float(1.1) + 1.2, Float(1.2) + Float(1.2) + 1.2, Float(2.3) + Float(2.3) + 1.2])
   }
 
   func testManyRepeatingSampler() throws {
@@ -550,7 +565,8 @@ final class DataFrameTests: XCTestCase {
     df["2"] = df["1", Float.self].map { input -> Float in
       return input + 0.2
     }
-    let sampled = df["0", "1", "2"].sample(size: 2, repeating: 2) { (f: [(Float, Float, Float)]) -> (Tensor<Float32>, Float, Float) in
+    let sampled = df["0", "1", "2"].sample(size: 2, repeating: 2) {
+      (f: [(Float, Float, Float)]) -> (Tensor<Float32>, Float, Float) in
       let sum = f[0].0 + f[0].1
       var tensor = Tensor<Float32>(.CPU, .C(1))
       tensor[0] = sum
@@ -565,7 +581,9 @@ final class DataFrameTests: XCTestCase {
     for i in sampled["2_1", Float.self] {
       newArray.append(i)
     }
-    XCTAssertEqual(newArray, [Float(1.2) + Float(1.2) + 1.2 + 1.2 + 0.2, Float(2.3) + Float(2.3) + 1.2 + 1.2 + 0.2])
+    XCTAssertEqual(
+      newArray,
+      [Float(1.2) + Float(1.2) + 1.2 + 1.2 + 0.2, Float(2.3) + Float(2.3) + 1.2 + 1.2 + 0.2])
   }
 
   func testMany4Sampler() throws {
@@ -579,7 +597,8 @@ final class DataFrameTests: XCTestCase {
     df["3"] = df["2", Float.self].map { input -> Float in
       return input + 1.0
     }
-    let sampled = df["0", "1", "2", "3"].sample(size: 2) { (f: [(Float, Float, Float, Float)]) -> (Tensor<Float32>, Float, Float, Float) in
+    let sampled = df["0", "1", "2", "3"].sample(size: 2) {
+      (f: [(Float, Float, Float, Float)]) -> (Tensor<Float32>, Float, Float, Float) in
       let sum = f[0].0 + f[0].1
       var tensor = Tensor<Float32>(.CPU, .C(1))
       tensor[0] = sum
@@ -589,7 +608,10 @@ final class DataFrameTests: XCTestCase {
     for i in sampled["3", Float.self] {
       newArray.append(i)
     }
-    let truth: [Float] = [1.1 + 1.2 + 0.2 + 1.1 + 1.2 + 0.2 + 1.0, 1.2 + 1.2 + 1.2 + 1.2 + 0.2 + 0.2 + 1.0, 2.3 + 2.3 + 1.2 + 1.2 + 0.2 + 0.2 + 1.0]
+    let truth: [Float] = [
+      1.1 + 1.2 + 0.2 + 1.1 + 1.2 + 0.2 + 1.0, 1.2 + 1.2 + 1.2 + 1.2 + 0.2 + 0.2 + 1.0,
+      2.3 + 2.3 + 1.2 + 1.2 + 0.2 + 0.2 + 1.0,
+    ]
     XCTAssertEqual(newArray[0], truth[0], accuracy: 1e-4)
     XCTAssertEqual(newArray[1], truth[1], accuracy: 1e-4)
     XCTAssertEqual(newArray[2], truth[2], accuracy: 1e-4)

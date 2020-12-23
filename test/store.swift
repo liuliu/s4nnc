@@ -1,5 +1,5 @@
-import XCTest
 import NNC
+import XCTest
 
 final class StoreTests: XCTestCase {
 
@@ -102,6 +102,6 @@ final class StoreTests: XCTestCase {
     ("testReadExistRawTensor", testReadExistRawTensor),
     ("testReadExistTensorGroupWithoutShape", testReadExistTensorGroupWithoutShape),
     ("testWriteTensorAndReadBack", testWriteTensorAndReadBack),
-    ("testWriteTensorConstantAndReadBack", testWriteTensorConstantAndReadBack)
+    ("testWriteTensorConstantAndReadBack", testWriteTensorConstantAndReadBack),
   ]
 }

@@ -11,13 +11,16 @@ protocol OptimizerAddons {
   var minimizer: ccv_nnc_cmd_t { get }
 }
 
-public extension Optimizer {
-  func step() {
+extension Optimizer {
+  public func step() {
     step(streamContext: nil)
   }
 }
 
-fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph.AnyTensor], savedAux: [DynamicGraph.AnyTensor], streamContext: StreamContext?) {
+fileprivate func _step(
+  graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph.AnyTensor],
+  savedAux: [DynamicGraph.AnyTensor], streamContext: StreamContext?
+) {
   for parameter in parameters {
     assert(parameter.graph === graph)
   }
@@ -25,18 +28,22 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
     assert(aux.graph === graph)
   }
   let _gradients: [ccv_nnc_tensor_variable_t?] = parameters.map { $0.grad?._tensor }
-  let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: parameters.count)
+  let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+    capacity: parameters.count)
   for (i, variable) in parameters.enumerated() {
     (_parameters + i).initialize(to: variable._tensor)
   }
-  let _savedAux = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: savedAux.count)
+  let _savedAux = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+    capacity: savedAux.count)
   for (i, variable) in savedAux.enumerated() {
     (_savedAux + i).initialize(to: variable._tensor)
   }
   let parameterSize = Int32(parameters.count)
   let _graph = graph._graph
   let _streamContext = (streamContext ?? graph.streamContext)?._stream
-  ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, _gradients, parameterSize, _parameters, parameterSize, _savedAux, 0, _streamContext)
+  ccv_nnc_dynamic_graph_apply_gradients(
+    _graph, minimizer, _gradients, parameterSize, _parameters, parameterSize, _savedAux, 0,
+    _streamContext)
   _parameters.deallocate()
   _savedAux.deallocate()
   for parameter in parameters {
@@ -44,7 +51,10 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
   }
 }
 
-fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph.AnyGroup], savedAux: [DynamicGraph.AnyGroup], streamContext: StreamContext?) {
+fileprivate func _step(
+  graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph.AnyGroup],
+  savedAux: [DynamicGraph.AnyGroup], streamContext: StreamContext?
+) {
   precondition(parameters.count > 0)
   let parallel = parameters[0].underlying.count
   precondition(parallel > 0)
@@ -60,7 +70,8 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
   }
   let parameterSize = parameters.count
   var _gradients = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * parameterSize)
-  let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: parameterSize * parallel)
+  let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+    capacity: parameterSize * parallel)
   for (i, group) in parameters.enumerated() {
     for (j, variable) in group.underlying.enumerated() {
       _gradients[j * parameterSize + i] = variable.grad?._tensor
@@ -68,7 +79,8 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
     }
   }
   let savedAuxSize = savedAux.count
-  let _savedAux = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(capacity: savedAuxSize * parallel)
+  let _savedAux = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+    capacity: savedAuxSize * parallel)
   for (i, group) in savedAux.enumerated() {
     for (j, variable) in group.underlying.enumerated() {
       (_savedAux + j * savedAuxSize + i).initialize(to: variable._tensor)
@@ -76,7 +88,9 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
   }
   let _graph = graph._graph
   let _streamContext = (streamContext ?? graph.streamContext)?._stream
-  ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, _gradients, Int32(parameterSize * parallel), _parameters, Int32(parameterSize * parallel), _savedAux, Int32(parallel), _streamContext)
+  ccv_nnc_dynamic_graph_apply_gradients(
+    _graph, minimizer, _gradients, Int32(parameterSize * parallel), _parameters,
+    Int32(parameterSize * parallel), _savedAux, Int32(parallel), _streamContext)
   _parameters.deallocate()
   _savedAux.deallocate()
   for group in parameters {
@@ -86,9 +100,14 @@ fileprivate func _step(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters
   }
 }
 
-func optimizerStep(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph_AnyParameters], savedAux: [DynamicGraph_Any], streamContext: StreamContext?) {
+func optimizerStep(
+  graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph_AnyParameters],
+  savedAux: [DynamicGraph_Any], streamContext: StreamContext?
+) {
   let modelParameters = parameters.compactMap { $0 as? Model.Parameters }
-  let primaryModelParameters = modelParameters.filter { $0._io == $0.model!._parameters && $0.model!.owner == nil }
+  let primaryModelParameters = modelParameters.filter {
+    $0._io == $0.model!._parameters && $0.model!.owner == nil
+  }
   var models = Set(modelParameters.map { $0.model!.owner ?? $0.model! })
   // Reset these models with primary parameters with the new minimizer.
   for parameter in primaryModelParameters {
@@ -105,8 +124,8 @@ func optimizerStep(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [D
   // Set minimizers on other models.
   var modelParametersMap = [Model: [Model.Parameters]]()
   for parameter in modelParameters
-    // If parameter is not primary
-    where parameter._io != parameter.model!._parameters || parameter.model!.owner != nil {
+  // If parameter is not primary
+  where parameter._io != parameter.model!._parameters || parameter.model!.owner != nil {
     let model = parameter.model!.owner ?? parameter.model!
     modelParametersMap[model, default: [Model.Parameters]()].append(parameter)
   }
@@ -124,9 +143,13 @@ func optimizerStep(graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [D
   }
   switch tensorParameters[0] {
   case is DynamicGraph.AnyTensor:
-    _step(graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyTensor], savedAux: savedAux as! [DynamicGraph.AnyTensor], streamContext: streamContext)
+    _step(
+      graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyTensor],
+      savedAux: savedAux as! [DynamicGraph.AnyTensor], streamContext: streamContext)
   case is DynamicGraph.AnyGroup:
-    _step(graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyGroup], savedAux: savedAux as! [DynamicGraph.AnyGroup], streamContext: streamContext)
+    _step(
+      graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyGroup],
+      savedAux: savedAux as! [DynamicGraph.AnyGroup], streamContext: streamContext)
   default:
     fatalError("Cannot support the given type")
   }
@@ -157,15 +180,17 @@ extension Optimizer {
         }
       }
       let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
-      return (0..<(groupParameters.count * size)).map { _ in DynamicGraph.Group((0..<parallel).map { _ in graph.variable() }) }
+      return (0..<(groupParameters.count * size)).map { _ in
+        DynamicGraph.Group((0..<parallel).map { _ in graph.variable() })
+      }
     default:
       fatalError("Cannot support the given type")
     }
   }
 }
 
-public extension Collection where Element: Optimizer {
-  func step(streamContext: StreamContext? = nil) {
+extension Collection where Element: Optimizer {
+  public func step(streamContext: StreamContext? = nil) {
     // This is different from calling step on individual element is to set all parameters on models first
     // before calling step individually. In this way, we can make sure whenever we step through, we will
     // have all model parameters setup properly.
@@ -179,7 +204,7 @@ public extension Collection where Element: Optimizer {
       var primaryModelParameters = [Model.Parameters]()
       var secondaryModelParameters = [Model.Parameters]()
       for parameter in modelParameters {
-        if (parameter._io == parameter.model!._parameters && parameter.model!.owner == nil) {
+        if parameter._io == parameter.model!._parameters && parameter.model!.owner == nil {
           primaryModelParameters.append(parameter)
         } else {
           secondaryModelParameters.append(parameter)
@@ -209,14 +234,17 @@ public extension Collection where Element: Optimizer {
       }
       for (model, parameters) in modelParametersMap {
         let _parameters: [ccv_cnnp_model_io_t?] = parameters.map { $0._io }
-        ccv_cnnp_model_set_minimizer(model._model, minimizer, 0, _parameters, Int32(_parameters.count))
+        ccv_cnnp_model_set_minimizer(
+          model._model, minimizer, 0, _parameters, Int32(_parameters.count))
       }
     }
     // All done! Now run through optimizer!
     for optimizer in self {
       let tensorParameters = optimizer.parameters.compactMap { $0 as? DynamicGraph_Any }
       let addons = (optimizer as! OptimizerAddons)
-      optimizerStep(graph: optimizer.graph, minimizer: addons.minimizer, parameters: tensorParameters, savedAux: addons.savedAux, streamContext: streamContext)
+      optimizerStep(
+        graph: optimizer.graph, minimizer: addons.minimizer, parameters: tensorParameters,
+        savedAux: addons.savedAux, streamContext: streamContext)
     }
   }
 }

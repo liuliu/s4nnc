@@ -47,10 +47,12 @@ extension DynamicGraph {
         let anyTensor = _AnyTensor(underlying!)
         ccv_nnc_tensor_variable_set(_graph, _tensor, anyTensor._tensor)
         // Retain the tensor until we freed the variable.
-        ccv_nnc_tensor_variable_destructor_hook(_graph, _tensor, { _, _, ctx in
-          // No longer need to retain the tensor.
-          Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
-        }, Unmanaged.passRetained(anyTensor).toOpaque())
+        ccv_nnc_tensor_variable_destructor_hook(
+          _graph, _tensor,
+          { _, _, ctx in
+            // No longer need to retain the tensor.
+            Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
+          }, Unmanaged.passRetained(anyTensor).toOpaque())
       case let group as DynamicGraph.AnyGroup:
         for (i, tensor) in group.underlying.enumerated() {
           guard read("\(key)(\(i))", variable: tensor) else {

@@ -1,6 +1,6 @@
-import XCTest
 import Foundation
 import NNC
+import XCTest
 
 final class TensorTests: XCTestCase {
 
