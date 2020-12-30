@@ -13,10 +13,18 @@ extension DynamicGraph {
     }
   }
 
+  /**
+   * A key-value based parameter store.
+   */
   public struct Store {
     private let graph: DynamicGraph
     private let store: _Store
 
+    /**
+     * Read a type-erased tensor from the store.
+     *
+     * - Parameter key: The key corresponding to that particular tensor.
+     */
     public func read(_ key: String) -> NNC.AnyTensor? {
       var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
       let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
@@ -25,6 +33,14 @@ extension DynamicGraph {
       return anyTensor.toAnyTensor()
     }
 
+    /**
+     * Read a tensor from the store into tensor variable from dynamic graph.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to that particular tensor.
+     *   - variable: The tensor variable to be initialized with.
+     * - Returns whether we successfully initialized the tensor variable.
+     */
     @discardableResult
     public func read(_ key: String, variable: DynamicGraph_Any) -> Bool {
       switch variable {
@@ -64,16 +80,44 @@ extension DynamicGraph {
       }
       return true
     }
+    /**
+     * Read parameters into a given model.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model to be initialized with parameters from a given key.
+     */
     public func read(_ key: String, model: Model) {
       ccv_cnnp_model_read(store.sqlite, key, model._model)
     }
+    /**
+     * Read parameters into a given model builder.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model builder to be initialized with parameters from a given key.
+     */
     public func read(_ key: String, model: AnyModelBuilder) {
       model.read(key, from: store)
     }
 
+    /**
+     * Write a tensor to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular tensor.
+     *   - tensor: The tensor to be persisted.
+     */
     public func write(_ key: String, tensor: NNC.AnyTensor) {
       ccv_nnc_tensor_write(tensor.underlying._tensor, store.sqlite, key)
     }
+    /**
+     * Write a tensor variable to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular tensor.
+     *   - variable: The tensor variable to be persisted.
+     */
     public func write(_ key: String, variable: DynamicGraph_Any) {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
@@ -90,9 +134,23 @@ extension DynamicGraph {
         fatalError("Cannot recognize the variable")
       }
     }
+    /**
+     * Write a model to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model where its parameters to be persisted.
+     */
     public func write(_ key: String, model: Model) {
       ccv_cnnp_model_write(model._model, store.sqlite, key)
     }
+    /**
+     * Write a model builder to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model builder.
+     *   - model builder: The model where its parameters to be persisted.
+     */
     public func write(_ key: String, model: AnyModelBuilder) {
       write(key, model: model.model!)
     }
@@ -104,6 +162,14 @@ extension DynamicGraph {
 
   }
 
+  /**
+   * Open the store from a file.
+   *
+   * - Parameters:
+   *   - filePath: The file path for the store.
+   *   - procedure: When the store is open, you can access it from this closure.
+   * - Returns: Wether this store can be successfully open or not.
+   */
   @discardableResult
   public func openStore(_ filePath: String, procedure: (_ store: Store) -> Void) -> Bool {
     var _sqlite: OpaquePointer? = nil

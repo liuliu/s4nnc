@@ -12,6 +12,7 @@ final class CmdParamsFactory {
   }
 }
 
+/// The kind of devices the tensor resides on.
 public enum DeviceKind {
   case CPU
   case GPU(Int)
@@ -27,13 +28,20 @@ public enum DeviceKind {
     }
   }
 
+  /**
+   * GPU device related information.
+   */
   public enum GPUInfo {
+    /**
+     * Number of available GPU devices.
+     */
     public static var count: Int {
       Int(ccv_nnc_device_count(Int32(CCV_STREAM_CONTEXT_GPU)))
     }
   }
 }
 
+/// Tensor arrangements.
 public enum TensorFormat {
   case NHWC
   case NCHW
@@ -64,6 +72,7 @@ public enum TensorFormat {
   }
 }
 
+/// Tensor dimensions and its arrangements.
 public enum TensorDimensionFormat {
   case C(Int)  // Assuming NCHW
   case NC(Int, Int)  // Assuming NCHW
@@ -133,6 +142,7 @@ public enum TensorDimensionFormat {
   }
 }
 
+/// Data types for a given tensor.
 public enum DataType {
   case Float64
   case Int64
@@ -390,6 +400,7 @@ extension _AnyTensor {
   }
 }
 
+/// A type-erased tensor.
 public protocol AnyTensor {
   var underlying: _AnyTensor { get }
 }
@@ -434,6 +445,7 @@ extension Tensor {
   }
 }
 
+/// Basic tensor type.
 public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
   private var _tensor: _AnyTensor
@@ -458,6 +470,11 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     _tensor = tensor
   }
 
+  /**
+   * Create a typed tensor from a type-erased tensor.
+   *
+   * - Parameter tensor: A type-erased tensor.
+   */
   public init(_ tensor: AnyTensor) {
     assert(tensor.dataType == Element.dataType)
     _tensor = tensor.underlying
@@ -467,6 +484,13 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     self.init(kind, dataType: Element.dataType, format: format, dimensions: dimensions)
   }
 
+  /**
+   * Create a new uninitialized tensor.
+   *
+   * - Parameters:
+   *   - kind: Which device this new tensor is on.
+   *   - dimensionFormat: The format and dimensions of the new tensor.
+   */
   public init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) {
     self.init(kind, Element.dataType, dimensionFormat)
   }
@@ -480,6 +504,13 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     }
   }
 
+  /**
+   * Create a new tensor and initialize with content from a sequence.
+   *
+   * - Parameters:
+   *   - sequence: The sequence to initialize the new tensor with.
+   *   - dimensionFormat: The format and dimensions of the new tensor.
+   */
   public init<S: Sequence>(_ sequence: S, _ dimensionFormat: TensorDimensionFormat)
   where S.Element == Element {
     self.init(sequence, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
@@ -593,6 +624,14 @@ extension Tensor {
 
 extension Tensor {
 
+  /**
+   * Move this tensor from CPU to GPU.
+   *
+   * - Parameters:
+   *   - ordinal: Which GPU the new tensor will reside.
+   *   - streamContext: Run the operation on the given stream context.
+   * - Returns: A new tensor on GPU.
+   */
   public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(
       nil,
@@ -606,6 +645,13 @@ extension Tensor {
     return Self(_AnyTensor(_output!))
   }
 
+  /**
+   * Move this tensor from GPU to CPU.
+   *
+   * - Parameters:
+   *   - streamContext: Run the operation on the given stream context.
+   * - Returns: A new tensor on CPU.
+   */
   public func toCPU(streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(
       nil,
@@ -652,6 +698,15 @@ extension Tensor {
     return Self(anyTensor)
   }
 
+  /**
+   * Create a new tensor pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensor with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
@@ -670,6 +725,15 @@ extension Collection where Element == Tensor<Float64> {
       $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
+  /**
+   * Create new tensors pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensors with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
@@ -685,6 +749,15 @@ extension Collection where Element == Tensor<Int64> {
       $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
+  /**
+   * Create new tensors pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensors with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
@@ -700,6 +773,15 @@ extension Collection where Element == Tensor<Float32> {
       $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
+  /**
+   * Create new tensors pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensors with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
@@ -715,6 +797,15 @@ extension Collection where Element == Tensor<Int32> {
       $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
+  /**
+   * Create new tensors pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensors with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
@@ -730,6 +821,15 @@ extension Collection where Element == Tensor<Float16> {
       $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
+  /**
+   * Create new tensors pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensors with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
@@ -745,6 +845,15 @@ extension Collection where Element == Tensor<UInt8> {
       $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
+  /**
+   * Create new tensors pointing to the same memory region but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensors with different format but the same memory content.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {

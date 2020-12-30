@@ -1,7 +1,13 @@
 import C_nnc
 
+/// A model is a base class for stateful operations on a dynamic graph. It can be
+/// use to construct computations statically, thus, more efficient.
 public class Model {
 
+  /**
+   * A IO class represent the abstract input / output for a model. It can correspond
+   * to one or more tensors when the model is materialized.
+   */
   public class IO {
 
     let _io: ccv_cnnp_model_io_t
@@ -15,6 +21,9 @@ public class Model {
     }
   }
 
+  /**
+   * Whether the existing model is for testing or training.
+   */
   public var isTest: Bool = false
 
   var dataParallel: Int? = nil  // Keep track of whether we applied data parallel to the model or not.
@@ -64,6 +73,9 @@ public class Model {
 
   var _parameters: ccv_cnnp_model_io_t? = nil
 
+  /**
+   * Abstract representation of the stateful components from the model.
+   */
   public var parameters: Parameters {
     guard let _parameters = _parameters else {
       let parameters = ccv_cnnp_model_parameters(_model, -1, -1)!
@@ -81,6 +93,13 @@ public class Model {
   private var _biasParameters: ccv_cnnp_model_io_t? = nil
   private var _weightParameters: ccv_cnnp_model_io_t? = nil
 
+  /**
+   * Broadly speaking, you can have two types of parameters, weight and bias.
+   * You can get them in abstract fashion with this method.
+   *
+   * - Parameter type: Whether it is weight or bias.
+   * - Returns: An abstract representation of parameters.
+   */
   public func parameters(for type: ParametersType) -> Parameters {
     switch type {
     case .weight:
@@ -108,6 +127,14 @@ public class Model {
 
 extension Model {
 
+  /**
+   * You can compose a new model from old models when applying IO on them.
+   *
+   * - Parameters:
+   *   - inputs: The input IOs for the new model, usually it is some set of Input objects.
+   *   - outputs: The output IOs for the new model, usually it is outputs of some other models.
+   *   - name: The name of the new model.
+   */
   public convenience init(_ inputs: [IO], _ outputs: [IO], name: String = "") {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _outputs: [ccv_cnnp_model_io_t?] = outputs.map { $0._io }
@@ -116,6 +143,13 @@ extension Model {
     self.init(_model)
   }
 
+  /**
+   * You can compose a new model of a list of models assuming one's output is another's input.
+   *
+   * - Parameters:
+   *   - models: The array of models.
+   *   - name: The name of the new model.
+   */
   public convenience init(_ models: [Model], name: String = "") {
     let _models: [OpaquePointer?] = models.map { $0._model }
     let _model = ccv_cnnp_sequential_new(_models, Int32(models.count), name)!

@@ -58,6 +58,10 @@ final class _DataFrame {
   }
 }
 
+/// A pandas-inspired dataframe. Dataframe is a tabular data representation. This particular
+/// Dataframe implementation is most useful to implement data feeder pipeline. You need some
+/// transformations so some text or images can be transformed into tensors for a model to consume.
+/// Dataframe can be used to implement that pipeline.
 public struct DataFrame {
 
   final class Wrapped<T> {
@@ -78,6 +82,9 @@ public struct DataFrame {
 
   var columnProperties: [String: ColumnProperty]
 
+  /**
+   * List of columns within this dataframe.
+   */
   public var columns: [String] {
     return Array(columnProperties.keys)
   }
@@ -90,6 +97,9 @@ public struct DataFrame {
     self.columnProperties = columnProperties
   }
 
+  /**
+   * Initialize a dataframe from a sequence of objects.
+   */
   public init<S: Sequence>(from sequence: S, name: String = "0") {
     CmdParamsFactory.factory.sink()
     let underlying = Wrapped(Array(sequence) as [AnyObject])
@@ -140,6 +150,9 @@ public struct DataFrame {
     _dataframe = _DataFrame(dataframe: dataframe, underlying: underlying)
   }
 
+  /**
+   * Shuffle the dataframe.
+   */
   public mutating func shuffle() {
     _dataframe.shuffle()
   }
@@ -201,6 +214,9 @@ public struct DataFrame {
     return TypedSeries(count: Int(rowCount), property: columnProperty, dataframe: _dataframe)
   }
 
+  /**
+   * How many rows in the dataframe.
+   */
   public var count: Int {
     return _dataframe.count
   }
@@ -482,6 +498,7 @@ extension DataFrame {
 // MARK - Sequence support
 
 extension DataFrame.UntypedSeries {
+  /// Create a new column from a sequence of objects.
   public static func from<S: Sequence>(_ sequence: S) -> DataFrame.UntypedSeries {
     return DataFrame.UntypedSeries(.sequence(DataFrame.Wrapped(Array(sequence) as [AnyObject])))
   }
@@ -545,6 +562,7 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /// Create a new column by applying some transformations on an existing column.
   public func map<T, U>(_ mapper: @escaping (T) -> U) -> DataFrame.UntypedSeries {
     let wrappedMapper = { (obj: AnyObject) -> AnyObject in
       return mapper(obj as! T) as AnyObject
@@ -560,6 +578,7 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries {
+  /// Create a new column by applying some transformations on an existing column.
   public func map<U>(_ mapper: @escaping (Element) -> U) -> DataFrame.UntypedSeries {
     let wrappedMapper = { (obj: AnyObject) -> AnyObject in
       return mapper(obj as! Element) as AnyObject
@@ -662,6 +681,7 @@ extension DataFrame {
 }
 
 extension DataFrame.ManyUntypedSeries {
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, U>(_ mapper: @escaping (C0, C1) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 2)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
@@ -673,6 +693,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, U>(_ mapper: @escaping (C0, C1, C2) -> U) -> DataFrame.UntypedSeries {
     assert(properties.count == 3)
     let wrappedMapper = { (objs: [AnyObject]) -> AnyObject in
@@ -684,6 +705,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, U>(_ mapper: @escaping (C0, C1, C2, C3) -> U)
     -> DataFrame.UntypedSeries
   {
@@ -697,6 +719,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, C4, U>(_ mapper: @escaping (C0, C1, C2, C3, C4) -> U)
     -> DataFrame.UntypedSeries
   {
@@ -711,6 +734,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, C4, C5, U>(_ mapper: @escaping (C0, C1, C2, C3, C4, C5) -> U)
     -> DataFrame.UntypedSeries
   {
@@ -726,6 +750,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, C4, C5, C6, U>(
     _ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6) -> U
   ) -> DataFrame.UntypedSeries {
@@ -741,6 +766,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, C4, C5, C6, C7, U>(
     _ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7) -> U
   ) -> DataFrame.UntypedSeries {
@@ -756,6 +782,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, C4, C5, C6, C7, C8, U>(
     _ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7, C8) -> U
   ) -> DataFrame.UntypedSeries {
@@ -771,6 +798,7 @@ extension DataFrame.ManyUntypedSeries {
       return DataFrame.UntypedSeries(.multimap(properties, wrappedMapper, .object))
     }
   }
+  /// Create a new column by applying some transformations on some existing columns.
   public func map<C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, U>(
     _ mapper: @escaping (C0, C1, C2, C3, C4, C5, C6, C7, C8, C9) -> U
   ) -> DataFrame.UntypedSeries {

@@ -1,5 +1,6 @@
 import C_nnc
 
+/// A generic loss function protocol.
 public protocol Loss {
   func callAsFunction<T: DynamicGraph.AnyTensorGroup, U: DynamicGraph.AnyTensorGroup>(
     _ input: T, target: U, streamContext: StreamContext?
@@ -14,6 +15,8 @@ extension Loss {
   }
 }
 
+/// Softmax cross-entropy loss. This combines softmax with cross-entropy loss to maximize
+/// numerical stability.
 public struct SoftmaxCrossEntropyLoss: Loss {
   public var trim0: Float
   public var trim1: Float
@@ -35,6 +38,8 @@ public struct SoftmaxCrossEntropyLoss: Loss {
   }
 }
 
+/// Sigmoid cross-entropy loss. This combines sigmoid with binary cross-entropy loss to maximize
+/// numerical stability.
 public struct SigmoidBinaryCrossEntropyLoss: Loss {
   public var posWeight: Float
   public init(posWeight: Float = 1) {
@@ -53,6 +58,7 @@ public struct SigmoidBinaryCrossEntropyLoss: Loss {
   }
 }
 
+/// Binary cross-entropy loss.
 public struct BinaryCrossEntropyLoss: Loss {
   public var posWeight: Float
   public init(posWeight: Float = 1) {
@@ -71,6 +77,7 @@ public struct BinaryCrossEntropyLoss: Loss {
   }
 }
 
+/// Multi-class cross-entropy loss.
 public struct CategoricalCrossEntropyLoss: Loss {
   public var trim0: Float
   public var trim1: Float
@@ -92,6 +99,7 @@ public struct CategoricalCrossEntropyLoss: Loss {
   }
 }
 
+/// Smooth L1 loss (for object detection).
 public struct SmoothL1Loss: Loss {
   public func callAsFunction<T: DynamicGraph.AnyTensorGroup, U: DynamicGraph.AnyTensorGroup>(
     _ input: T, target: U, streamContext: StreamContext?

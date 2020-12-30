@@ -3,6 +3,15 @@ import C_nnc
 // MARK - Load CSV
 
 extension DataFrame {
+  /**
+   * Load CSV file into dataframe. This may use multi-threads when available.
+   *
+   * - Parameters:
+   *   - fromCSV: The file path for the CSV file.
+   *   - automaticUseHeader: Whether the first line will be the header or not.
+   *   - delimiter: What's the delimiter for the CSV file, default ,
+   *   - quotation: What's the quotation mark for the CSV file, default "
+   */
   public init?(
     fromCSV filePath: String, automaticUseHeader: Bool = true, delimiter: String = ",",
     quotation: String = "\""
@@ -104,6 +113,14 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /**
+   * Combine tensors into one tensor. This is useful for GPU batching.
+   *
+   * - Parameters:
+   *   - size: How many tensors to group together.
+   *   - repeating: How many new columns to be created.
+   * - Returns: A new dataframe with combined tensors.
+   */
   public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
     guard let property = property,
       let dataframe = dataframe
@@ -117,6 +134,14 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries where Element: AnyTensor {
+  /**
+   * Combine tensors into one tensor. This is useful for GPU batching.
+   *
+   * - Parameters:
+   *   - size: How many tensors to group together.
+   *   - repeating: How many new columns to be created.
+   * - Returns: A new dataframe with combined tensors.
+   */
   public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
     precondition(property.type == .tensor)
     return DataFrame(dataframe: dataframe, properties: [property], size: size, repeating: repeating)
@@ -124,6 +149,14 @@ extension DataFrame.TypedSeries where Element: AnyTensor {
 }
 
 extension DataFrame.ManyUntypedSeries {
+  /**
+   * Combine tensors into one tensor. This is useful for GPU batching.
+   *
+   * - Parameters:
+   *   - size: How many tensors to group together.
+   *   - repeating: How many new columns to be created.
+   * - Returns: A new dataframe with combined tensors.
+   */
   public func combine(size: Int, repeating: Int? = nil) -> DataFrame {
     for property in properties {
       precondition(property.type == .tensor)
@@ -178,6 +211,7 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /// Load images into tensors. It is expected to be called from a column with file paths.
   public func toLoadImage() -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
@@ -188,6 +222,7 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries where Element == String {
+  /// Load images into tensors. It is expected to be called from a column with file paths.
   public func toLoadImage() -> DataFrame.UntypedSeries {
     precondition(property.type == .object)
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToLoadImage, nil))
@@ -244,6 +279,7 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /// Create one-hot tensors. It is expected to be called from a column with Int.
   public func toOneHot<Element: TensorNumeric>(
     _ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0
   ) -> DataFrame.UntypedSeries {
@@ -259,6 +295,7 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries where Element == Int {
+  /// Create one-hot tensors. It is expected to be called from a column with Int.
   public func toOneHot<Element: TensorNumeric>(
     _ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0
   ) -> DataFrame.UntypedSeries {
@@ -286,6 +323,7 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /// Copy tensor to GPU. It is expected to be called from a column of tensors.
   public func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
     guard let property = property else {
       fatalError("Can only load from series from DataFrame")
@@ -296,6 +334,7 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries where Element: AnyTensor {
+  /// Copy tensor to GPU. It is expected to be called from a column of tensors.
   public func toGPU(_ ordinal: Int = 0) -> DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
     return DataFrame.UntypedSeries(.native(property, DataFrame.addToOneGPU, ordinal as AnyObject))
@@ -600,6 +639,7 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /// Apply some jitter to loaded images.
   public func toImageJitter<Element: TensorNumeric>(
     _ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0,
     saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0,
@@ -623,6 +663,7 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries where Element: AnyTensor {
+  /// Apply some jitter to loaded images.
   public func toImageJitter<Element: TensorNumeric>(
     _ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0,
     saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0,

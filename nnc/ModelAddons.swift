@@ -1,5 +1,6 @@
 import C_nnc
 
+/// Sum inputs.
 public final class Sum: Model {
   public init(name: String = "") {
     super.init(ccv_cnnp_sum(name))
@@ -15,6 +16,7 @@ public final class Sum: Model {
   }
 }
 
+/// Add two inputs together. It will do broadcast if needed.
 public final class Add: Model {
   public init(leftScalar: Float = 1, rightScalar: Float = 1, name: String = "") {
     super.init(ccv_cnnp_add(leftScalar, rightScalar, name))
@@ -28,6 +30,7 @@ public final class Add: Model {
   }
 }
 
+/// Multiply two inputs together. It will do broadcast if needed.
 public final class Mul: Model {
   public init(scalar: Float = 1, name: String = "") {
     super.init(ccv_cnnp_mul(scalar, name))
@@ -41,6 +44,7 @@ public final class Mul: Model {
   }
 }
 
+/// Matrix-multiplication over two inputs.
 public final class Matmul: Model {
   public init(transposeA: (Int, Int) = (0, 0), transposeB: (Int, Int) = (0, 0), name: String = "") {
     let a = [Int32(transposeA.0), Int32(transposeA.1)]
@@ -56,6 +60,7 @@ public final class Matmul: Model {
   }
 }
 
+/// A linear layer model.
 public final class Dense: Model {
   public init(count: Int, noBias: Bool = false, name: String = "") {
     super.init(ccv_cnnp_dense(Int32(count), noBias ? 1 : 0, name))
@@ -69,6 +74,7 @@ public final class Dense: Model {
   }
 }
 
+/// A reshape model.
 public final class Reshape: Model {
   public init(dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil, name: String = "")
   {
@@ -87,6 +93,14 @@ public final class Reshape: Model {
 }
 
 extension Model.IO {
+  /**
+   * Reshape an IO to a new dimension. You cannot reshape data types.
+   *
+   * - Parameters:
+   *   - dimensions: The new dimensions for the input.
+   *   - offset: Whether apply certain offset for each dimension.
+   *   - increments: What's the step size for each dimension.
+   */
   public func reshape(_ dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil)
     -> Model.IO
   {
@@ -94,6 +108,7 @@ extension Model.IO {
   }
 }
 
+/// A ReLU activation model.
 public final class RELU: Model {
   public init(name: String = "") {
     super.init(ccv_cnnp_relu(name))
@@ -107,6 +122,7 @@ public final class RELU: Model {
   }
 }
 
+/// A softmax activation model.
 public final class Softmax: Model {
   public init(name: String = "") {
     super.init(ccv_cnnp_softmax(name))
@@ -120,6 +136,7 @@ public final class Softmax: Model {
   }
 }
 
+/// A sigmoid activation model.
 public final class Sigmoid: Model {
   public init(name: String = "") {
     super.init(ccv_cnnp_sigmoid(name))
@@ -133,6 +150,7 @@ public final class Sigmoid: Model {
   }
 }
 
+/// A swish activation model.
 public final class Swish: Model {
   public init(name: String = "") {
     super.init(ccv_cnnp_swish(name))
@@ -165,6 +183,7 @@ extension Model.IO {
   }
 }
 
+/// The masked fill model. If the value equal to a given constant, fill with another constant.
 public final class MaskedFill: Model {
   public init(equalTo: Float, fillWith: Float, name: String = "") {
     super.init(ccv_cnnp_masked_fill(equalTo, fillWith, name))
@@ -178,6 +197,7 @@ public final class MaskedFill: Model {
   }
 }
 
+/// The dropout model.
 public final class Dropout: Model {
   public init(probability: Float, entirety: Bool = false, name: String = "") {
     super.init(ccv_cnnp_dropout(probability, entirety ? 1 : 0, name))
@@ -191,6 +211,7 @@ public final class Dropout: Model {
   }
 }
 
+/// Multiply all values with a constant.
 public final class Scalmul: Model {
   public init(_ a: Float, name: String = "") {
     super.init(ccv_cnnp_scalar_mul(a, name))
@@ -204,6 +225,7 @@ public final class Scalmul: Model {
   }
 }
 
+/// Batch normalization model.
 public final class BatchNorm: Model {
   public init(momentum: Float, epsilon: Float, name: String = "") {
     super.init(ccv_cnnp_batch_norm(momentum, epsilon, name))
@@ -217,6 +239,7 @@ public final class BatchNorm: Model {
   }
 }
 
+/// Layer normalization model.
 public final class LayerNorm: Model {
   public init(epsilon: Float, axis: [Int], name: String = "") {
     let axis32: [Int32] = axis.map { Int32($0) }
@@ -231,6 +254,7 @@ public final class LayerNorm: Model {
   }
 }
 
+/// Make the input tensor to be 1-D tensor (respecting N).
 public final class Flatten: Model {
   public init(name: String = "") {
     super.init(ccv_cnnp_flatten(name))
@@ -244,6 +268,7 @@ public final class Flatten: Model {
   }
 }
 
+/// Convolution model.
 public final class Convolution: Model {
   public init(
     groups: Int, filters: Int, filterSize: [Int], noBias: Bool = false, hint: Hint = Hint(),
@@ -263,6 +288,7 @@ public final class Convolution: Model {
   }
 }
 
+/// max pooling model.
 public final class MaxPool: Model {
   public init(filterSize: [Int] = [], hint: Hint = Hint(), name: String = "") {
     let kdim = toCDimensionsArray(filterSize)
@@ -277,6 +303,7 @@ public final class MaxPool: Model {
   }
 }
 
+/// average pooling model.
 public final class AveragePool: Model {
   public init(filterSize: [Int] = [], hint: Hint = Hint(), name: String = "") {
     let kdim = toCDimensionsArray(filterSize)

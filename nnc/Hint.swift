@@ -1,5 +1,7 @@
 import C_nnc
 
+/// Hint are parameters to these operations that changes shape from input
+/// to output. It given proper stride / padding parameters for these operations.
 public struct Hint {
   public var stride: [Int]
 

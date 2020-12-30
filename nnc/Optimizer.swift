@@ -1,8 +1,14 @@
 import C_nnc
 
+/// An optimizer encapsulated the logic to update parameters in order to minimize the loss.
 public protocol Optimizer {
   var graph: DynamicGraph { get }
   var parameters: [DynamicGraph_AnyParameters] { get set }
+  /**
+   * Update parameters.
+   *
+   * - Parameter streamContext: The stream context to execute the update operation.
+   */
   func step(streamContext: StreamContext?)
 }
 
@@ -12,6 +18,9 @@ protocol OptimizerAddons {
 }
 
 extension Optimizer {
+  /**
+   * Update parameters.
+   */
   public func step() {
     step(streamContext: nil)
   }
@@ -190,6 +199,11 @@ extension Optimizer {
 }
 
 extension Collection where Element: Optimizer {
+  /**
+   * Update parameters together for a collection of optimizers.
+   *
+   * - Parameter streamContext: The stream context to have update operation on.
+   */
   public func step(streamContext: StreamContext? = nil) {
     // This is different from calling step on individual element is to set all parameters on models first
     // before calling step individually. In this way, we can make sure whenever we step through, we will

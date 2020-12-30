@@ -1,5 +1,7 @@
 import C_nnc
 
+/// A dynamic graph is a workspace for computations. All tensor variables can be tracked
+/// from a dynamic graph.
 public final class DynamicGraph {
 
   fileprivate class _AnyTensor {
@@ -25,6 +27,9 @@ public final class DynamicGraph {
     var requiresGrad: Bool
   }
 
+  /**
+   * A type-erased tensor variable.
+   */
   public class AnyTensor {
 
     internal(set) public var grad: AnyTensor? = nil
@@ -76,16 +81,26 @@ public final class DynamicGraph {
       return fromCDimensions(info.dim)
     }
 
+    /**
+     * A constant tensor can only be used as input, you cannot compute gradients
+     * for a constant tensor.
+     */
     public var isConstant: Bool {
       let _graph = graph._graph
       return ccv_nnc_tensor_variable_is_constant(_graph, _tensor) == 1
     }
   }
 
+  /**
+   * A typed tensor variable.
+   */
   public final class Tensor<Element: TensorNumeric>: AnyTensor {
     // This is to help speed up, there is no need to have only one rawValue.
     private weak var _rawValue: NNC._AnyTensor? = nil
 
+    /**
+     * Get the underlying tensor. If not available, create one.
+     */
     public var rawValue: NNC.Tensor<Element> {
       if let rawValue = _rawValue {
         return NNC.Tensor<Element>(rawValue)
@@ -176,6 +191,9 @@ extension DynamicGraph {
     case info
     case error
   }
+  /**
+   * Set the log level on a dynamic graph.
+   */
   public var logLevel: LogLevel {
     get {
       let cliLevels = ccv_cli_get_output_levels()
@@ -208,6 +226,10 @@ extension DynamicGraph {
     var variables: Int
     var computations: Int
   }
+  /**
+   * Collect statistics from a dynamic graph. It computes how many variables and computations
+   * are still tracked. If you have memory leaks, this is useful to track down that.
+   */
   public var statistics: Statistics {
     let variables = ccv_nnc_dynamic_graph_bookkeeping_count(_graph, Int32(CCV_NNC_SYMBOL_TENSOR))
     let computations = ccv_nnc_dynamic_graph_bookkeeping_count(
@@ -247,6 +269,15 @@ extension DynamicGraph.Tensor {
     return Self(graph: underlying.graph, tensor: _alias, original: self)
   }
 
+  /**
+   * Create a new tensor representing the same variable but with different sizes.
+   *
+   * - Parameters:
+   *   - dimensionFormat: New format and dimensions for the tensor.
+   *   - offset: Whether offset on each dimensions.
+   *   - increments: The step on each dimensions.
+   * - Returns: The new tensor with different format but the same underlying variable.
+   */
   public func reshape(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
@@ -276,17 +307,31 @@ extension DynamicGraph.AnyTensor: CustomStringConvertible {
 
 extension DynamicGraph {
 
+  /**
+   * Create a placeholder variable. It doesn't have shape and can only
+   * be used as output.
+   */
   public func variable() -> AnyTensor {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
     let tensor = AnyTensor(graph: self, tensor: _tensor)
     return tensor
   }
 
+  /**
+   * Create a placeholder constant. It doesn't have shape and can only
+   * be used as output.
+   */
   public func constant() -> AnyTensor {
     let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
     return AnyTensor(graph: self, tensor: _tensor)
   }
 
+  /**
+   * Create a new variable from an existing tensor.
+   *
+   * - Parameter tensor: The existing tensor.
+   * - Returns: Created new tensor variable.
+   */
   public func variable<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
     ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
@@ -301,6 +346,12 @@ extension DynamicGraph {
     return tensor
   }
 
+  /**
+   * Create a new constant from an existing tensor.
+   *
+   * - Parameter tensor: The existing tensor.
+   * - Returns: Created new tensor constant.
+   */
   public func constant<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
     ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
@@ -314,6 +365,12 @@ extension DynamicGraph {
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
+  /**
+   * Create a grouped variable from an array of existing tensors.
+   *
+   * - Parameter tensors: The array of existing tensors.
+   * - Returns: Newly created grouped variable.
+   */
   public func variable<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>]) -> Group<
     Tensor<Element>
   > {
@@ -321,6 +378,12 @@ extension DynamicGraph {
     return Group(tensors.map { self.variable($0) })
   }
 
+  /**
+   * Create a grouped constant from an array of existing tensors.
+   *
+   * - Parameter tensors: The array of existing tensors.
+   * - Returns: Newly created grouped constant.
+   */
   public func constant<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>]) -> Group<
     Tensor<Element>
   > {
@@ -361,6 +424,10 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /**
+   * Turn off gradient tracking within the given closure. This may be useful during testing, we can
+   * make more aggressive optimizations if we gradient tracking is off.
+   */
   public func withNoGrad<Result>(_ closure: () throws -> Result) rethrows -> Result {
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
     let result = try closure()
@@ -370,6 +437,11 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /**
+   * Perform operations on a given stream within the closure. Each operation can take a stream context
+   * parameter, however, that often error-prune. This method make sure all operations within the closure
+   * will be dispatched to the given stream context, making it easier to organize.
+   */
   public func withStream<Result>(_ streamContext: StreamContext, _ closure: () throws -> Result)
     rethrows -> Result
   {

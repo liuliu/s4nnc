@@ -1,7 +1,7 @@
 import C_nnc
 
 extension Functional {
-  // Element-wise addition
+  /// Element-wise addition
   public static func sum<T: DynamicGraph.TensorGroup>(
     _ inputs: T..., streamContext: StreamContext? = nil
   ) -> T {
@@ -14,7 +14,7 @@ extension Functional {
     return T(outputs[0])
   }
 
-  // Broadcast element-wise multiplication
+  /// Broadcast element-wise multiplication
   public static func mul<T: DynamicGraph.TensorGroup>(
     left: T, right: T, scalar: Float32 = 1, streamContext: StreamContext? = nil
   ) -> T {
@@ -28,7 +28,7 @@ extension Functional {
     return T(outputs[0])
   }
 
-  // Broadcast element-wise addition
+  /// Broadcast element-wise addition
   public static func add<T: DynamicGraph.TensorGroup>(
     left: T, right: T, leftScalar: Float32 = 1, rightScalar: Float32 = 1,
     streamContext: StreamContext? = nil
@@ -43,7 +43,7 @@ extension Functional {
     return T(outputs[0])
   }
 
-  // Element-wise log
+  /// Element-wise log
   public static func log<T: DynamicGraph.TensorGroup>(_ one: T, streamContext: StreamContext? = nil)
     -> T
   {
@@ -54,7 +54,7 @@ extension Functional {
     return T(outputs[0])
   }
 
-  // Matrix multiplication
+  /// Matrix multiplication
   public static func matmul<T: DynamicGraph.TensorGroup>(
     left: T, right: T, leftTranspose: (Int, Int) = (0, 0), rightTranspose: (Int, Int) = (0, 0),
     streamContext: StreamContext? = nil
@@ -71,7 +71,7 @@ extension Functional {
     return T(outputs[0])
   }
 
-  // Scalar-matrix multiplication
+  /// Scalar-matrix multiplication.
   public static func scalmul<T: DynamicGraph.TensorGroup>(
     left: Float, right: T, streamContext: StreamContext? = nil
   ) -> T {
@@ -84,7 +84,7 @@ extension Functional {
     return T(outputs[0])
   }
 
-  // Copy
+  /// Make a copy.
   public static func copy<T: DynamicGraph.TensorGroup>(
     from: T, to: T, streamContext: StreamContext? = nil
   ) {
@@ -93,6 +93,7 @@ extension Functional {
     exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: from, outputs: [to], streamContext: streamContext)
   }
 
+  /// Select input tensor with another index tensor.
   public static func indexSelect<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
     input: T, index: U, streamContext: StreamContext? = nil
   ) -> T {
@@ -107,6 +108,7 @@ extension Functional {
 }
 
 extension DynamicGraph.Tensor {
+  /// Transpose from axisA to axisB.
   public func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
     -> DynamicGraph.Tensor<Element>
   {
@@ -121,6 +123,7 @@ extension DynamicGraph.Tensor {
 }
 
 extension DynamicGraph.Group {
+  /// Transpose from axisA to axisB.
   public func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
     -> DynamicGraph.Group<Element>
   {
@@ -135,6 +138,7 @@ extension DynamicGraph.Group {
 }
 
 extension DynamicGraph.Tensor {
+  /// Fill the given tensor with uniform random values.
   public func rand(
     _ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil
   ) {
@@ -151,6 +155,7 @@ extension DynamicGraph.Tensor {
 }
 
 extension DynamicGraph.Group {
+  /// Fill the given tensor with uniform random values.
   public func rand(
     _ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil
   ) {
@@ -178,6 +183,7 @@ extension DynamicGraph.Group {
 }
 
 extension DynamicGraph.Tensor {
+  /// Copy the given tensor to GPU.
   public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil)
     -> DynamicGraph.Tensor<Element>
   {
@@ -196,6 +202,7 @@ extension DynamicGraph.Tensor {
     return output
   }
 
+  /// Copy the given tensor to CPU.
   public func toCPU(streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)

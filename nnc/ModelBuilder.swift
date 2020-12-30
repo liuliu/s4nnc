@@ -1,5 +1,6 @@
 import C_nnc
 
+/// A type-erased model builder.
 public class AnyModelBuilder {
 
   public var isTest: Bool = false
@@ -36,10 +37,20 @@ public class AnyModelBuilder {
     return outputSize
   }
 
+  /**
+   * Abstract representation of the stateful components from the model builder.
+   */
   public var parameters: Model.Parameters {
     model!.parameters
   }
 
+  /**
+   * Broadly speaking, you can have two types of parameters, weight and bias.
+   * You can get them in abstract fashion with this method.
+   *
+   * - Parameter type: Whether it is weight or bias.
+   * - Returns: An abstract representation of parameters.
+   */
   public func parameters(for type: Model.ParametersType) -> Model.Parameters {
     return model!.parameters(for: type)
   }
@@ -96,6 +107,18 @@ public class AnyModelBuilder {
 
 }
 
+/// A model builder is a more generic type of model. A model can be quite static,
+/// thus, you have to be quite careful to have a model work with dynamic inputs.
+/// You cannot use reshape, or anything that can generate fixed tensor outputs from
+/// a fixed inputs.
+///
+/// A model builder on the other hand doesn't have that restriction. When input changes,
+/// it simply calls the given builder closure to construct a new model. In such way,
+/// you can continue to use reshape etc to assume fixed inputs and outputs, it will just
+/// work for dynamic inputs. The newly built model will carry over stateful components
+/// (parameters) from the old models, thus, it doesn't reset your training. This also means
+/// you need to make sure parameter shape won't change when input changes, otherwise we
+/// will fatal.
 public final class ModelBuilder<T>: AnyModelBuilder {
   public init(_ builder: @escaping (_: T, _: [DynamicGraph_Any]) -> Model, name: String = "") {
     super.init(

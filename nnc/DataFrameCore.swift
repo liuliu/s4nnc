@@ -181,6 +181,15 @@ extension DataFrame {
 }
 
 extension DataFrame.UntypedSeries {
+  /**
+   * Sample existing column to create a new dataframe.
+   *
+   * - Parameters:
+   *   - size: How many rows to be sampled together.
+   *   - repeating: Will we repeat the sampling to create more columns?
+   *   - sampler: The sampling function, for example, averaging, max, first, last etc.
+   * - Returns: A new dataframe.
+   */
   public func sample<T, U>(size: Int, repeating: Int? = nil, sampler: @escaping ([T]) -> U)
     -> DataFrame
   {
@@ -222,6 +231,15 @@ extension DataFrame.UntypedSeries {
 }
 
 extension DataFrame.TypedSeries {
+  /**
+   * Sample existing column to create a new dataframe.
+   *
+   * - Parameters:
+   *   - size: How many rows to be sampled together.
+   *   - repeating: Will we repeat the sampling to create more columns?
+   *   - sampler: The sampling function, for example, averaging, max, first, last etc.
+   * - Returns: A new dataframe.
+   */
   public func sample<U>(size: Int, repeating: Int? = nil, sampler: @escaping ([Element]) -> U)
     -> DataFrame
   {
@@ -257,6 +275,15 @@ extension DataFrame.TypedSeries {
 }
 
 extension DataFrame.ManyUntypedSeries {
+  /**
+   * Sample existing columns to create a new dataframe.
+   *
+   * - Parameters:
+   *   - size: How many rows to be sampled together.
+   *   - repeating: Will we repeat the sampling to create more columns?
+   *   - sampler: The sampling function, for example, averaging, max, first, last etc.
+   * - Returns: A new dataframe.
+   */
   public func sample<C0, C1, U0, U1>(
     size: Int, repeating: Int? = nil, sampler: @escaping ([(C0, C1)]) -> (U0, U1)
   ) -> DataFrame {
@@ -327,6 +354,15 @@ extension DataFrame.ManyUntypedSeries {
       columnProperties: columnProperties)
   }
 
+  /**
+   * Sample existing columns to create a new dataframe.
+   *
+   * - Parameters:
+   *   - size: How many rows to be sampled together.
+   *   - repeating: Will we repeat the sampling to create more columns?
+   *   - sampler: The sampling function, for example, averaging, max, first, last etc.
+   * - Returns: A new dataframe.
+   */
   public func sample<C0, C1, C2, U0, U1, U2>(
     size: Int, repeating: Int? = nil, sampler: @escaping ([(C0, C1, C2)]) -> (U0, U1, U2)
   ) -> DataFrame {
@@ -412,6 +448,15 @@ extension DataFrame.ManyUntypedSeries {
       columnProperties: columnProperties)
   }
 
+  /**
+   * Sample existing columns to create a new dataframe.
+   *
+   * - Parameters:
+   *   - size: How many rows to be sampled together.
+   *   - repeating: Will we repeat the sampling to create more columns?
+   *   - sampler: The sampling function, for example, averaging, max, first, last etc.
+   * - Returns: A new dataframe.
+   */
   public func sample<C0, C1, C2, C3, U0, U1, U2, U3>(
     size: Int, repeating: Int? = nil, sampler: @escaping ([(C0, C1, C2, C3)]) -> (U0, U1, U2, U3)
   ) -> DataFrame {

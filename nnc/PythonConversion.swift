@@ -6,6 +6,9 @@ private let np = Python.import("numpy")
 private let ctypes = Python.import("ctypes")
 
 extension Tensor where Element: NumpyScalarCompatible {
+  /**
+   * Initialize a tensor from numpy object.
+   */
   public init?(numpy numpyArray: PythonObject) {
     // Check if input is a `numpy.ndarray` instance.
     guard Python.isinstance(numpyArray, np.ndarray) == true else {
@@ -37,6 +40,9 @@ extension Tensor where Element: NumpyScalarCompatible {
 }
 
 extension Tensor where Element: NumpyScalarCompatible {
+  /**
+   * Make a numpy object from a typed tensor.
+   */
   public func makeNumpyArray() -> PythonObject {
     precondition(!isTensorView)
     return withUnsafeBytes { bytes in

@@ -1,6 +1,13 @@
 import C_nnc
 
 extension DynamicGraph.AnyTensor {
+  /**
+   * Compute gradients from this tensor to the source tensors.
+   *
+   * - Parameters:
+   *   - to: The source tensors to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil)
   where S.Element: DynamicGraph.AnyTensor {
     let _graph = graph._graph
@@ -36,12 +43,26 @@ extension DynamicGraph.AnyTensor {
     _outputs.deallocate()
   }
 
+  /**
+   * Compute gradients from this tensor to the source tensor.
+   *
+   * - Parameters:
+   *   - to: The source tensor to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward(to tensor: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil) {
     backward(to: [tensor], streamContext: streamContext)
   }
 }
 
 extension DynamicGraph.Group {
+  /**
+   * Compute gradients from this tensor to the source tensors.
+   *
+   * - Parameters:
+   *   - to: The source tensors to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil)
   where S.Element: DynamicGraph.AnyGroup {
     precondition(underlyingArray.count > 0)
@@ -74,6 +95,13 @@ extension DynamicGraph.Group {
     _outputs.deallocate()
   }
 
+  /**
+   * Compute gradients from this tensor to the source tensor.
+   *
+   * - Parameters:
+   *   - to: The source tensor to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward<Group: DynamicGraph.AnyGroup>(
     to tensor: Group, streamContext: StreamContext? = nil
   ) {
@@ -82,6 +110,13 @@ extension DynamicGraph.Group {
 }
 
 extension Collection where Element: DynamicGraph.AnyTensor {
+  /**
+   * Compute gradients from this tensor to the source tensors.
+   *
+   * - Parameters:
+   *   - to: The source tensors to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil)
   where S.Element: DynamicGraph.AnyTensor {
     precondition(self.count > 0)
@@ -117,12 +152,26 @@ extension Collection where Element: DynamicGraph.AnyTensor {
     _outputs.deallocate()
   }
 
+  /**
+   * Compute gradients from this tensor to the source tensor.
+   *
+   * - Parameters:
+   *   - to: The source tensor to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward(to tensor: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil) {
     backward(to: [tensor], streamContext: streamContext)
   }
 }
 
 extension Collection where Element: DynamicGraph.AnyGroup {
+  /**
+   * Compute gradients from this tensor to the source tensors.
+   *
+   * - Parameters:
+   *   - to: The source tensors to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil)
   where S.Element: DynamicGraph.AnyGroup {
     precondition(self.count > 0)
@@ -160,6 +209,13 @@ extension Collection where Element: DynamicGraph.AnyGroup {
     _outputs.deallocate()
   }
 
+  /**
+   * Compute gradients from this tensor to the source tensor.
+   *
+   * - Parameters:
+   *   - to: The source tensor to this tensor.
+   *   - streamContext: The stream context to perform such operation.
+   */
   public func backward<Group: DynamicGraph.AnyGroup>(
     to tensor: Group, streamContext: StreamContext? = nil
   ) {

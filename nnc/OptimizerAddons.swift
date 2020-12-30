@@ -1,5 +1,6 @@
 import C_nnc
 
+/// Stochastic gradient descent optimizer.
 public struct SGDOptimizer: Optimizer, OptimizerAddons {
   public let graph: DynamicGraph
   public var nesterov: Bool
@@ -55,6 +56,7 @@ public struct SGDOptimizer: Optimizer, OptimizerAddons {
   }
 }
 
+/// Adam optimizer.
 public struct AdamOptimizer: Optimizer, OptimizerAddons {
   public let graph: DynamicGraph
   public var step: Int
