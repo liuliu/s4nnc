@@ -32,7 +32,7 @@ public final class DynamicGraph {
    */
   public class AnyTensor {
 
-    internal(set) public var grad: AnyTensor? = nil
+    public var grad: AnyTensor? = nil
 
     fileprivate let underlying: _AnyTensor
 
