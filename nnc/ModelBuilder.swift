@@ -82,7 +82,7 @@ public class AnyModelBuilder {
       ccv_cnnp_model_compile(model!._model, inputParams, Int32(inputParams.count), noop, noop)
     case is DynamicGraph.AnyGroup:
       let groupInputs = inputs as! [DynamicGraph.AnyGroup]
-      let parallel = groupInputs[0].underlying.count
+      let parallel = groupInputs[0].untyped.count
       if let dataParallel = model!.dataParallel {
         // You cannot run a model previously parallel and then not.
         assert(dataParallel == parallel)
@@ -90,7 +90,7 @@ public class AnyModelBuilder {
         ccv_cnnp_model_set_data_parallel(model!._model, Int32(parallel))
       }
       let inputParams: [ccv_nnc_tensor_param_t] = groupInputs.map {
-        let tensor = $0.underlying[0]
+        let tensor = $0.untyped[0]
         return ccv_nnc_tensor_variable_params(tensor.graph._graph, tensor._tensor)
       }
       ccv_cnnp_model_compile(model!._model, inputParams, Int32(inputParams.count), noop, noop)

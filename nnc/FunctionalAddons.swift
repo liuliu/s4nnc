@@ -159,21 +159,21 @@ extension DynamicGraph.Group {
   public func rand(
     _ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil
   ) {
-    guard underlying.count > 0 else { return }
+    guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (lowerBound, upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
-    let graph = underlying[0].graph
+    let graph = underlyingArray[0].graph
     let _graph = graph._graph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
-    var _output: ccv_nnc_tensor_variable_t? = underlying[0]._tensor
+    var _output: ccv_nnc_tensor_variable_t? = underlyingArray[0]._tensor
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, ccv_nnc_no_hint, 0, nil, 0, &_output, 1, 0, _streamContext)
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
     let copy = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
     // Init the rest of them to be the same.
-    for rest in underlying.suffix(from: 1) {
+    for rest in underlyingArray.suffix(from: 1) {
       var _target: ccv_nnc_tensor_variable_t? = rest._tensor
       ccv_nnc_dynamic_graph_exec(
         _graph, copy, ccv_nnc_no_hint, 0, &_output, 1, &_target, 1, 0, _streamContext)

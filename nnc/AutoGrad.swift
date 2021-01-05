@@ -69,7 +69,7 @@ extension DynamicGraph.Group {
     let graph = underlyingArray[0].graph
     var gradients = graph.gradients(for: underlyingArray)
     var gradientsSet = Set(gradients)
-    for tensor in tensors.flatMap({ $0.underlying }) {
+    for tensor in tensors.flatMap({ $0.untyped }) {
       if !gradientsSet.contains(tensor) {
         gradients.append(tensor)
         gradientsSet.insert(tensor)
@@ -175,16 +175,16 @@ extension Collection where Element: DynamicGraph.AnyGroup {
   public func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil)
   where S.Element: DynamicGraph.AnyGroup {
     precondition(self.count > 0)
-    let graph = self.first!.underlying[0].graph
+    let graph = self.first!.untyped[0].graph
     for group in self {
-      for f in group.underlying {
+      for f in group.untyped {
         assert(f.graph === graph)
       }
     }
     let _graph = graph._graph
-    var gradients = graph.gradients(for: self.flatMap { $0.underlying })
+    var gradients = graph.gradients(for: self.flatMap { $0.untyped })
     var gradientsSet = Set(gradients)
-    for tensor in tensors.flatMap({ $0.underlying }) {
+    for tensor in tensors.flatMap({ $0.untyped }) {
       if !gradientsSet.contains(tensor) {
         gradients.append(tensor)
         gradientsSet.insert(tensor)
@@ -202,8 +202,8 @@ extension Collection where Element: DynamicGraph.AnyGroup {
       (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
     let _streamContext = streamContext?._stream
-    let f: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.underlying.map { $0._tensor } }
-    let g: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.underlying.map { $0.grad?._tensor } }
+    let f: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.untyped.map { $0._tensor } }
+    let g: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.untyped.map { $0.grad?._tensor } }
     ccv_nnc_dynamic_graph_backward(
       _graph, f, Int32(f.count), g, _inputs, inputSize, _outputs, inputSize, _streamContext)
     _outputs.deallocate()

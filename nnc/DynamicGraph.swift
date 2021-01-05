@@ -96,7 +96,7 @@ public final class DynamicGraph {
    */
   public final class Tensor<Element: TensorNumeric>: AnyTensor {
     // This is to help speed up, there is no need to have only one rawValue.
-    private weak var _rawValue: NNC._AnyTensor? = nil
+    private weak var _rawValue: NNC.AnyTensorStorage? = nil
 
     /**
      * Get the underlying tensor. If not available, create one.
@@ -107,7 +107,7 @@ public final class DynamicGraph {
       }
       let _graph = graph._graph
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-      let rawValue = NNC._AnyTensor(tensor, original: self)  // To enforce copy-on-write syntax.
+      let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
       _rawValue = rawValue
       return NNC.Tensor<Element>(rawValue)
     }
@@ -120,7 +120,7 @@ public final class DynamicGraph {
         }
         let _graph = graph._graph
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        let rawValue = NNC._AnyTensor(tensor, original: self)  // To enforce copy-on-write syntax.
+        let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
         _rawValue = rawValue
         return rawValue[indices, Element.self]
       }
@@ -130,7 +130,7 @@ public final class DynamicGraph {
         }
         let _graph = graph._graph
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        let rawValue = NNC._AnyTensor(tensor, original: self)  // To enforce copy-on-write syntax.
+        let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
         _rawValue = rawValue
         rawValue[indices, Element.self] = v
       }
@@ -334,14 +334,14 @@ extension DynamicGraph {
    */
   public func variable<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
-    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
+    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.cTensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_destructor_hook(
       _graph, _tensor,
       { _, _, ctx in
         // No longer need to retain the tensor.
-        Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
-      }, Unmanaged.passRetained(tensor.underlying).toOpaque())
+        Unmanaged<NNC.AnyTensorStorage>.fromOpaque(ctx!).release()
+      }, Unmanaged.passRetained(tensor.storage).toOpaque())
     let tensor = Tensor<Element>(graph: self, tensor: _tensor)
     return tensor
   }
@@ -354,14 +354,14 @@ extension DynamicGraph {
    */
   public func constant<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
-    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.underlying._tensor)
+    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.cTensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_destructor_hook(
       _graph, _tensor,
       { _, _, ctx in
         // No longer need to retain the tensor.
-        Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
-      }, Unmanaged.passRetained(tensor.underlying).toOpaque())
+        Unmanaged<NNC.AnyTensorStorage>.fromOpaque(ctx!).release()
+      }, Unmanaged.passRetained(tensor.storage).toOpaque())
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 

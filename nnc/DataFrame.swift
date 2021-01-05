@@ -113,7 +113,7 @@ public struct DataFrame {
         for i in 0..<Int(row_size) {
           let idx = Int((row_idxs + i).pointee)
           let tensor = underlying.value[idx] as! AnyTensor
-          (data + i).initialize(to: tensor.underlying._tensor)
+          (data + i).initialize(to: tensor.cTensor)
         }
       }
       propertyType = .tensor
@@ -292,8 +292,10 @@ extension DataFrame {
         case .object:
           return Unmanaged<AnyObject>.fromOpaque(data!).takeUnretainedValue()
         case .tensor:
-          return _AnyTensor(data!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false)
-            .toAnyTensor() as AnyObject
+          return AnyTensorStorage(
+            data!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false
+          )
+          .toAnyTensor() as AnyObject
         }
       default:
         fatalError()
@@ -365,7 +367,7 @@ extension DataFrame {
           object = Unmanaged<AnyObject>.fromOpaque(data).takeUnretainedValue()
         case .tensor:
           object =
-            _AnyTensor(data.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false)
+            AnyTensorStorage(data.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false)
             .toAnyTensor() as AnyObject
         }
         columnData.append(object)
@@ -423,8 +425,10 @@ extension DataFrame {
       case .object:
         return Unmanaged<AnyObject>.fromOpaque(data!).takeUnretainedValue() as? Element
       case .tensor:
-        return _AnyTensor(data!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false)
-          .toTensor(Element.self)
+        return AnyTensorStorage(
+          data!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false
+        )
+        .toTensor(Element.self)
       }
     }
 
@@ -469,7 +473,7 @@ extension DataFrame {
           guard let data = data else { return }
           let tensor = Unmanaged<AnyObject>.fromOpaque(context!).takeUnretainedValue() as! AnyTensor
           for i in 0..<Int(row_size) {
-            (data + i).initialize(to: tensor.underlying._tensor)
+            (data + i).initialize(to: tensor.cTensor)
           }
         }, 0, nil, Unmanaged.passRetained(scalar).toOpaque(),
         { context in
@@ -519,7 +523,7 @@ extension DataFrame {
           for i in 0..<Int(row_size) {
             let idx = Int((row_idxs + i).pointee)
             let tensor = underlying.value[idx] as! AnyTensor
-            (data + i).initialize(to: tensor.underlying._tensor)
+            (data + i).initialize(to: tensor.cTensor)
           }
         }, 0,
         { data, _ in
@@ -598,7 +602,7 @@ extension DataFrame {
     let property: ColumnProperty
     let map: (AnyObject) -> AnyObject
     let outputType: ColumnProperty.PropertyType
-    var tensors: [OpaquePointer: _AnyTensor]?
+    var tensors: [OpaquePointer: AnyTensorStorage]?
     init(
       property: ColumnProperty, map: @escaping (AnyObject) -> AnyObject,
       outputType: ColumnProperty.PropertyType
@@ -610,7 +614,7 @@ extension DataFrame {
       case .object:
         tensors = nil
       case .tensor:
-        tensors = [OpaquePointer: _AnyTensor]()
+        tensors = [OpaquePointer: AnyTensorStorage]()
       }
     }
   }
@@ -633,7 +637,7 @@ extension DataFrame {
             object = Unmanaged<AnyObject>.fromOpaque(inputData[i]!).takeUnretainedValue()
           case .tensor:
             object =
-              _AnyTensor(
+              AnyTensorStorage(
                 inputData[i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false
               ).toAnyTensor() as AnyObject
           }
@@ -649,8 +653,8 @@ extension DataFrame {
               wrappedMapper.tensors![OpaquePointer(opaque)] = nil
             }
             let tensor = output as! AnyTensor
-            wrappedMapper.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
-            (data + i).initialize(to: tensor.underlying._tensor)
+            wrappedMapper.tensors![OpaquePointer(tensor.cTensor)] = tensor.storage
+            (data + i).initialize(to: tensor.cTensor)
           }
         }
       }, 0,
@@ -821,7 +825,7 @@ extension DataFrame {
     let properties: [ColumnProperty]
     let map: ([AnyObject]) -> AnyObject
     let outputType: ColumnProperty.PropertyType
-    var tensors: [OpaquePointer: _AnyTensor]?
+    var tensors: [OpaquePointer: AnyTensorStorage]?
     init(
       properties: [ColumnProperty], map: @escaping ([AnyObject]) -> AnyObject,
       outputType: ColumnProperty.PropertyType
@@ -833,7 +837,7 @@ extension DataFrame {
       case .object:
         tensors = nil
       case .tensor:
-        tensors = [OpaquePointer: _AnyTensor]()
+        tensors = [OpaquePointer: AnyTensorStorage]()
       }
     }
   }
@@ -858,7 +862,7 @@ extension DataFrame {
               object = Unmanaged<AnyObject>.fromOpaque(input[j]![i]!).takeUnretainedValue()
             case .tensor:
               object =
-                _AnyTensor(
+                AnyTensorStorage(
                   input[j]![i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false
                 ).toAnyTensor() as AnyObject
             }
@@ -876,8 +880,8 @@ extension DataFrame {
               wrappedManyMapper.tensors![OpaquePointer(opaque)] = nil
             }
             let tensor = output as! AnyTensor
-            wrappedManyMapper.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
-            (data + i).initialize(to: tensor.underlying._tensor)
+            wrappedManyMapper.tensors![OpaquePointer(tensor.cTensor)] = tensor.storage
+            (data + i).initialize(to: tensor.cTensor)
           }
         }
       }, 0,

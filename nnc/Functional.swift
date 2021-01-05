@@ -117,7 +117,7 @@ extension DynamicGraph.Group: DynamicGraph_AnyTensor where Element: DynamicGraph
     guard let from = from as? DynamicGraph.AnyGroup else {
       fatalError("This will not be needed.")
     }
-    return DynamicGraph.Group<DynamicGraph.AnyTensor>(from.underlying)
+    return DynamicGraph.Group<DynamicGraph.AnyTensor>(from.untyped)
   }
 }
 

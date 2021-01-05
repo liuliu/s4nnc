@@ -216,44 +216,44 @@ extension UInt8: TensorNumeric {
   public static var dataType: DataType { .UInt8 }
 }
 
-public final class _AnyTensor {
-  let _tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
+public final class AnyTensorStorage {
+  fileprivate let cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
   fileprivate let original: Any?
   private let selfOwned: Bool
 
   init(
-    _ tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true
+    _ cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true
   ) {
     self.original = original
     self.selfOwned = selfOwned
-    _tensor = tensor
+    self.cTensor = cTensor
   }
 
   deinit {
     guard original == nil else { return }
     guard selfOwned else { return }
-    ccv_nnc_tensor_free(_tensor)
+    ccv_nnc_tensor_free(cTensor)
   }
 
   var dataType: DataType {
-    DataType.from(cTensorParams: _tensor.pointee.info)
+    DataType.from(cTensorParams: cTensor.pointee.info)
   }
 
-  func copy() -> _AnyTensor {
-    var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = _tensor
-    var output = ccv_nnc_tensor_new(nil, _tensor.pointee.info, 0)
+  func copy() -> AnyTensorStorage {
+    var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
+    var output = ccv_nnc_tensor_new(nil, cTensor.pointee.info, 0)
     ccv_nnc_cmd_exec(
       ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
       ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
-    return _AnyTensor(output!)
+    return AnyTensorStorage(output!)
   }
 
   var increments: [Int] {
-    let type = Int(_tensor.pointee.type)
+    let type = Int(cTensor.pointee.type)
     guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
-      return fromCDimensions(_tensor.pointee.info.dim)
+      return fromCDimensions(cTensor.pointee.info.dim)
     }
-    let inc = UnsafeMutableRawPointer(_tensor).bindMemory(
+    let inc = UnsafeMutableRawPointer(cTensor).bindMemory(
       to: ccv_nnc_tensor_view_t.self, capacity: 1
     ).pointee.inc
     return fromCDimensions(inc)
@@ -264,7 +264,7 @@ public final class _AnyTensor {
       let increments = self.increments
       assert(increments.count == indices.count)
       let count = increments.reduce(1, *)
-      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       var offset = 0
       for (i, increment) in increments.enumerated() {
         offset *= increment
@@ -277,7 +277,7 @@ public final class _AnyTensor {
       assert(increments.count == indices.count)
       let count = increments.reduce(1, *)
       // We need to deal with GPU memory.
-      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       var offset = 0
       for (i, increment) in increments.enumerated() {
         offset *= increment
@@ -288,11 +288,11 @@ public final class _AnyTensor {
   }
 }
 
-extension _AnyTensor {
-  subscript<Element: TensorNumeric>(ranges: [Range<Int>], type: Element.Type) -> _AnyTensor {
+extension AnyTensorStorage {
+  subscript<Element: TensorNumeric>(ranges: [Range<Int>], type: Element.Type) -> AnyTensorStorage {
     get {
       // This is a restricted form a reshape.
-      let cTensorParams = _tensor.pointee.info
+      let cTensorParams = cTensor.pointee.info
       let device = DeviceKind.from(cTensorParams: cTensorParams)
       let format = TensorFormat.from(cTensorParams: cTensorParams)
       let increments = self.increments
@@ -308,18 +308,18 @@ extension _AnyTensor {
       let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
         withUnsafePointer(to: &cIncrements.0) { cIncrements in
           ccv_nnc_tensor_view_new(
-            _tensor,
+            cTensor,
             toCTensorParams(
               device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset,
             cIncrements)!
         }
       }
       return newt.withMemoryRebound(to: ccv_nnc_tensor_t.self, capacity: 1) {
-        _AnyTensor($0, original: self)
+        AnyTensorStorage($0, original: self)
       }
     }
     set(v) {
-      let cTensorParams = _tensor.pointee.info
+      let cTensorParams = cTensor.pointee.info
       let device = DeviceKind.from(cTensorParams: cTensorParams)
       let format = TensorFormat.from(cTensorParams: cTensorParams)
       let increments = self.increments
@@ -335,17 +335,17 @@ extension _AnyTensor {
       var newt = withUnsafePointer(to: &cOffset.0) { cOffset in
         withUnsafePointer(to: &cIncrements.0) { cIncrements in
           ccv_nnc_tensor_view(
-            _tensor,
+            cTensor,
             toCTensorParams(
               device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset,
             cIncrements)
         }
       }
-      let inputDim = fromCDimensions(v._tensor.pointee.info.dim)
+      let inputDim = fromCDimensions(v.cTensor.pointee.info.dim)
       for (i, dimension) in dimensions.enumerated() {
         assert(dimension == inputDim[i])
       }
-      var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = v._tensor
+      var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = v.cTensor
       withUnsafeMutablePointer(to: &newt) { newt in
         var output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = UnsafeMutableRawPointer(newt)
           .bindMemory(to: ccv_nnc_tensor_t.self, capacity: 1)
@@ -358,7 +358,7 @@ extension _AnyTensor {
   }
 }
 
-extension _AnyTensor {
+extension AnyTensorStorage {
   subscript<Element: TensorNumeric>(indices: [Int], range: Range<Int>, type: Element.Type)
     -> [Element]
   {
@@ -366,7 +366,7 @@ extension _AnyTensor {
       let increments = self.increments
       assert(increments.count == indices.count + 1)
       let count = increments.reduce(1, *)
-      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
       assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
       var offset = 0
@@ -382,7 +382,7 @@ extension _AnyTensor {
       let increments = self.increments
       assert(increments.count == indices.count + 1)
       let count = increments.reduce(1, *)
-      let pointer = _tensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+      let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
       assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
       assert(range.count == v.count)
@@ -402,28 +402,29 @@ extension _AnyTensor {
 
 /// A type-erased tensor.
 public protocol AnyTensor {
-  var underlying: _AnyTensor { get }
+  var storage: AnyTensorStorage { get }
+  var cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t> { get }
 }
 
 extension AnyTensor {
   public var dataType: DataType {
-    DataType.from(cTensorParams: underlying._tensor.pointee.info)
+    DataType.from(cTensorParams: cTensor.pointee.info)
   }
 
   public var kind: DeviceKind {
-    DeviceKind.from(cTensorParams: underlying._tensor.pointee.info)
+    DeviceKind.from(cTensorParams: cTensor.pointee.info)
   }
 
   public var format: TensorFormat {
-    TensorFormat.from(cTensorParams: underlying._tensor.pointee.info)
+    TensorFormat.from(cTensorParams: cTensor.pointee.info)
   }
 
   public var dimensions: [Int] {
-    fromCDimensions(underlying._tensor.pointee.info.dim)
+    fromCDimensions(cTensor.pointee.info.dim)
   }
 
   public var isTensorView: Bool {
-    let type = Int(underlying._tensor.pointee.type)
+    let type = Int(cTensor.pointee.type)
     return (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW
   }
 
@@ -431,7 +432,7 @@ extension AnyTensor {
     guard isTensorView else {
       return dimensions
     }
-    let inc = UnsafeMutableRawPointer(underlying._tensor).bindMemory(
+    let inc = UnsafeMutableRawPointer(cTensor).bindMemory(
       to: ccv_nnc_tensor_view_t.self, capacity: 1
     ).pointee.inc
     return fromCDimensions(inc)
@@ -441,23 +442,22 @@ extension AnyTensor {
 extension Tensor {
   public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
     let count = increments.reduce(MemoryLayout<Element>.size, *)
-    return try body(UnsafeRawBufferPointer(start: underlying._tensor.pointee.data.u8, count: count))
+    return try body(UnsafeRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
   }
 }
 
 /// Basic tensor type.
 public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
-  private var _tensor: _AnyTensor
-
-  public var underlying: _AnyTensor { _tensor }
+  public private(set) var storage: AnyTensorStorage
+  public var cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t> { storage.cTensor }
 
   private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
-    let underlying = ccv_nnc_tensor_new(
+    let cTensor = ccv_nnc_tensor_new(
       nil,
       toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
       0)!
-    _tensor = _AnyTensor(underlying)
+    storage = AnyTensorStorage(cTensor)
   }
 
   private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
@@ -466,8 +466,8 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       dimensions: dimensionFormat.dimensions)
   }
 
-  init(_ tensor: _AnyTensor) {
-    _tensor = tensor
+  init(_ tensor: AnyTensorStorage) {
+    storage = tensor
   }
 
   /**
@@ -477,7 +477,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
    */
   public init(_ tensor: AnyTensor) {
     assert(tensor.dataType == Element.dataType)
-    _tensor = tensor.underlying
+    storage = tensor.storage
   }
 
   public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
@@ -500,7 +500,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     self.init(.CPU, format: format, dimensions: dimensions)
     let cArray = ContiguousArray(sequence)
     cArray.withUnsafeBytes { bytes -> Void in
-      memcpy(_tensor._tensor.pointee.data.u8, bytes.baseAddress!, bytes.count)
+      memcpy(cTensor.pointee.data.u8, bytes.baseAddress!, bytes.count)
     }
   }
 
@@ -520,58 +520,58 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     _ kind: DeviceKind, format: TensorFormat, dimensions: [Int],
     unsafeMutablePointer: UnsafeMutablePointer<Element>, keepAlive: Any
   ) {
-    let underlying = ccv_nnc_tensor_new(
+    let cTensor = ccv_nnc_tensor_new(
       unsafeMutablePointer,
       toCTensorParams(kind, dataType: Element.dataType, format: format, dimensions: dimensions),
       0)!
-    self.init(_AnyTensor(underlying, original: keepAlive))
+    self.init(AnyTensorStorage(cTensor, original: keepAlive))
   }
 
   public subscript(indices: Int...) -> Element {
     get {
-      return _tensor[indices, Element.self]
+      return storage[indices, Element.self]
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&_tensor) {
+      if !isKnownUniquelyReferenced(&storage) {
         // Make a copy (copy-on-write).
-        _tensor = _tensor.copy()
+        storage = storage.copy()
       }
-      _tensor[indices, Element.self] = v
+      storage[indices, Element.self] = v
     }
   }
 
   public subscript(ranges: Range<Int>...) -> Tensor<Element> {
     get {
-      return Tensor<Element>(_tensor[ranges, Element.self])
+      return Tensor<Element>(storage[ranges, Element.self])
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&_tensor) {
+      if !isKnownUniquelyReferenced(&storage) {
         // Make a copy (copy-on-write).
-        _tensor = _tensor.copy()
+        storage = storage.copy()
       }
-      _tensor[ranges, Element.self] = v._tensor
+      storage[ranges, Element.self] = v.storage
     }
   }
 
   private subscript(indices: [Int], range: Range<Int>) -> [Element] {
     get {
-      return _tensor[indices, range, Element.self]
+      return storage[indices, range, Element.self]
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&_tensor) {
+      if !isKnownUniquelyReferenced(&storage) {
         // Make a copy (copy-on-write).
-        _tensor = _tensor.copy()
+        storage = storage.copy()
       }
-      _tensor[indices, range, Element.self] = v
+      storage[indices, range, Element.self] = v
     }
   }
 }
@@ -640,9 +640,9 @@ extension Tensor {
     let cmd = ccv_nnc_cmd(
       CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
     let _streamContext = streamContext?._stream
-    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
+    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
     ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
-    return Self(_AnyTensor(_output!))
+    return Self(AnyTensorStorage(_output!))
   }
 
   /**
@@ -660,9 +660,9 @@ extension Tensor {
     let cmd = ccv_nnc_cmd(
       CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
     let _streamContext = streamContext?._stream
-    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = underlying._tensor
+    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
     ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
-    return Self(_AnyTensor(_output!))
+    return Self(AnyTensorStorage(_output!))
   }
 
 }
@@ -672,28 +672,28 @@ extension Tensor {
   public func reshape(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    let cTensorParams = _tensor._tensor.pointee.info
+    let cTensorParams = cTensor.pointee.info
     let device = DeviceKind.from(cTensorParams: cTensorParams)
     guard let offset = offset, let increments = increments else {
       let newt = ccv_nnc_tensor_new(
-        _tensor._tensor.pointee.data.ptr,
+        cTensor.pointee.data.ptr,
         toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions),
         0)!
-      return Self(_AnyTensor(newt, original: _tensor))
+      return Self(AnyTensorStorage(newt, original: storage))
     }
     var cOffset = toCDimensions(offset)
     var cIncrements = toCDimensions(increments)
     let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
       withUnsafePointer(to: &cIncrements.0) { cIncrements in
         ccv_nnc_tensor_view_new(
-          _tensor._tensor,
+          cTensor,
           toCTensorParams(
             device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset,
           cIncrements)!
       }
     }
     let anyTensor = newt.withMemoryRebound(to: ccv_nnc_tensor_t.self, capacity: 1) {
-      _AnyTensor($0, original: _tensor)
+      AnyTensorStorage($0, original: storage)
     }
     return Self(anyTensor)
   }
@@ -861,7 +861,7 @@ extension Collection where Element == Tensor<UInt8> {
   }
 }
 
-extension _AnyTensor {
+extension AnyTensorStorage {
 
   func toAnyTensor() -> AnyTensor {
     switch dataType {

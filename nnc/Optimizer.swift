@@ -65,15 +65,15 @@ fileprivate func _step(
   savedAux: [DynamicGraph.AnyGroup], streamContext: StreamContext?
 ) {
   precondition(parameters.count > 0)
-  let parallel = parameters[0].underlying.count
+  let parallel = parameters[0].untyped.count
   precondition(parallel > 0)
   for group in parameters {
-    for parameter in group.underlying {
+    for parameter in group.untyped {
       assert(parameter.graph === graph)
     }
   }
   for group in savedAux {
-    for aux in group.underlying {
+    for aux in group.untyped {
       assert(aux.graph === graph)
     }
   }
@@ -82,7 +82,7 @@ fileprivate func _step(
   let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
     capacity: parameterSize * parallel)
   for (i, group) in parameters.enumerated() {
-    for (j, variable) in group.underlying.enumerated() {
+    for (j, variable) in group.untyped.enumerated() {
       _gradients[j * parameterSize + i] = variable.grad?._tensor
       (_parameters + j * parameterSize + i).initialize(to: variable._tensor)
     }
@@ -91,7 +91,7 @@ fileprivate func _step(
   let _savedAux = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
     capacity: savedAuxSize * parallel)
   for (i, group) in savedAux.enumerated() {
-    for (j, variable) in group.underlying.enumerated() {
+    for (j, variable) in group.untyped.enumerated() {
       (_savedAux + j * savedAuxSize + i).initialize(to: variable._tensor)
     }
   }
@@ -103,7 +103,7 @@ fileprivate func _step(
   _parameters.deallocate()
   _savedAux.deallocate()
   for group in parameters {
-    for parameter in group.underlying {
+    for parameter in group.untyped {
       parameter.grad = nil
     }
   }
@@ -180,11 +180,11 @@ extension Optimizer {
       return (0..<(tensorParameters.count * size)).map { _ in graph.variable() }
     case is DynamicGraph.AnyGroup:
       let groupParameters = parameters as! [DynamicGraph.AnyGroup]
-      let parallel = groupParameters[0].underlying.count
+      let parallel = groupParameters[0].untyped.count
       precondition(parallel > 0)
-      let graph = groupParameters[0].underlying[0].graph
+      let graph = groupParameters[0].untyped[0].graph
       for group in groupParameters {
-        for parameter in group.underlying {
+        for parameter in group.untyped {
           assert(parameter.graph === graph)
         }
       }

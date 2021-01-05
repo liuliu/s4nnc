@@ -9,7 +9,7 @@ extension DataFrame {
     let repeating: Int?
     let sample: ([AnyObject]) -> AnyObject
     let outputType: ColumnProperty.PropertyType
-    var tensors: [OpaquePointer: _AnyTensor]?
+    var tensors: [OpaquePointer: AnyTensorStorage]?
     init(
       property: ColumnProperty, size: Int, repeating: Int?,
       sample: @escaping ([AnyObject]) -> AnyObject, outputType: ColumnProperty.PropertyType
@@ -23,7 +23,7 @@ extension DataFrame {
       case .object:
         tensors = nil
       case .tensor:
-        tensors = [OpaquePointer: _AnyTensor]()
+        tensors = [OpaquePointer: AnyTensorStorage]()
       }
     }
   }
@@ -52,8 +52,10 @@ extension DataFrame {
         case .tensor:
           for i in 0..<Int(inputSize) {
             inputObjects.append(
-              _AnyTensor(input[i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false)
-                .toAnyTensor() as AnyObject)
+              AnyTensorStorage(
+                input[i]!.assumingMemoryBound(to: ccv_nnc_tensor_t.self), selfOwned: false
+              )
+              .toAnyTensor() as AnyObject)
           }
         }
         let output = wrappedSampler.sample(inputObjects)
@@ -68,8 +70,8 @@ extension DataFrame {
             wrappedSampler.tensors![OpaquePointer(opaque)] = nil
           }
           let tensor = output as! AnyTensor
-          wrappedSampler.tensors![OpaquePointer(tensor.underlying._tensor)] = tensor.underlying
-          data.initialize(to: tensor.underlying._tensor)
+          wrappedSampler.tensors![OpaquePointer(tensor.cTensor)] = tensor.storage
+          data.initialize(to: tensor.cTensor)
         }
       },
       { object, context in
@@ -131,7 +133,7 @@ extension DataFrame {
           case .tensor:
             for j in 0..<size {
               inputObjects.append(
-                _AnyTensor(
+                AnyTensorStorage(
                   input[(i * size + j) % Int(inputSize)]!.assumingMemoryBound(
                     to: ccv_nnc_tensor_t.self), selfOwned: false
                 ).toAnyTensor() as AnyObject)

@@ -29,7 +29,7 @@ extension DynamicGraph {
       var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
       let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
       guard result == CCV_IO_FINAL else { return nil }
-      let anyTensor = _AnyTensor(underlying!)
+      let anyTensor = AnyTensorStorage(underlying!)
       return anyTensor.toAnyTensor()
     }
 
@@ -60,17 +60,17 @@ extension DynamicGraph {
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
         let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
         guard result == CCV_IO_FINAL else { return false }
-        let anyTensor = _AnyTensor(underlying!)
-        ccv_nnc_tensor_variable_set(_graph, _tensor, anyTensor._tensor)
+        let anyTensor = AnyTensorStorage(underlying!)
+        ccv_nnc_tensor_variable_set(_graph, _tensor, underlying)
         // Retain the tensor until we freed the variable.
         ccv_nnc_tensor_variable_destructor_hook(
           _graph, _tensor,
           { _, _, ctx in
             // No longer need to retain the tensor.
-            Unmanaged<NNC._AnyTensor>.fromOpaque(ctx!).release()
+            Unmanaged<NNC.AnyTensorStorage>.fromOpaque(ctx!).release()
           }, Unmanaged.passRetained(anyTensor).toOpaque())
       case let group as DynamicGraph.AnyGroup:
-        for (i, tensor) in group.underlying.enumerated() {
+        for (i, tensor) in group.untyped.enumerated() {
           guard read("\(key)(\(i))", variable: tensor) else {
             return false
           }
@@ -109,7 +109,7 @@ extension DynamicGraph {
      *   - tensor: The tensor to be persisted.
      */
     public func write(_ key: String, tensor: NNC.AnyTensor) {
-      ccv_nnc_tensor_write(tensor.underlying._tensor, store.sqlite, key)
+      ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key)
     }
     /**
      * Write a tensor variable to the store.
@@ -127,7 +127,7 @@ extension DynamicGraph {
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
         ccv_nnc_tensor_write(raw, store.sqlite, key)
       case let group as DynamicGraph.AnyGroup:
-        for (i, tensor) in group.underlying.enumerated() {
+        for (i, tensor) in group.untyped.enumerated() {
           write("\(key)(\(i))", variable: tensor)
         }
       default:

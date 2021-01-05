@@ -9,34 +9,34 @@ public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
 }
 
 public protocol DynamicGraph_AnyGroup: DynamicGraph_Any {
-  var underlying: [DynamicGraph.AnyTensor] { get }
+  var untyped: [DynamicGraph.AnyTensor] { get }
 }
 
 extension DynamicGraph_AnyGroup {
   public var dimensions: [Int] {
-    let dimensions = underlying[0].dimensions
-    for tensor in underlying {
+    let dimensions = untyped[0].dimensions
+    for tensor in untyped {
       assert(dimensions == tensor.dimensions)
     }
     return dimensions
   }
   public var isConstant: Bool {
-    let isConstant = underlying[0].isConstant
-    for tensor in underlying {
+    let isConstant = untyped[0].isConstant
+    for tensor in untyped {
       assert(isConstant == tensor.isConstant)
     }
     return isConstant
   }
   public var requiresGrad: Bool {
     get {
-      let requiresGrad = underlying[0].requiresGrad
-      for tensor in underlying {
+      let requiresGrad = untyped[0].requiresGrad
+      for tensor in untyped {
         assert(requiresGrad == tensor.requiresGrad)
       }
       return requiresGrad
     }
     set(v) {
-      for tensor in underlying {
+      for tensor in untyped {
         tensor.requiresGrad = v
       }
     }
@@ -56,7 +56,7 @@ extension DynamicGraph {
   public struct Group<Element: DynamicGraph.AnyTensor>: RandomAccessCollection, DynamicGraph
       .AnyGroup
   {
-    public var underlying: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
+    public var untyped: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
     var underlyingArray: [Element]
 
     public typealias Element = Element
