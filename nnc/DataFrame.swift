@@ -224,14 +224,26 @@ public struct DataFrame {
 
 extension DataFrame {
   final class _Iterator {
-    let iterator: OpaquePointer
-    init(iterator: OpaquePointer) {
-      self.iterator = iterator
+    private let properties: [Int32]
+    private let dataframe: OpaquePointer
+    private var _iterator: OpaquePointer?
+    var iterator: OpaquePointer {
+      guard let iterator = _iterator else {
+        let iterator = ccv_cnnp_dataframe_iter_new(dataframe, properties, Int32(properties.count))!
+        _iterator = iterator
+        return iterator
+      }
+      return iterator
+    }
+    init(properties: [Int32], dataframe: OpaquePointer) {
+      self.properties = properties
+      self.dataframe = dataframe
     }
     func setZero() {
       ccv_cnnp_dataframe_iter_set_cursor(iterator, 0)
     }
     deinit {
+      guard let iterator = _iterator else { return }
       ccv_cnnp_dataframe_iter_free(iterator)
     }
   }
@@ -255,14 +267,14 @@ enum UntypedSeriesAction {
 
 extension DataFrame {
 
-  public final class UntypedSeries: DataSeries {
+  public struct UntypedSeries: DataSeries {
 
     public typealias Element = AnyObject
 
     public func makeIterator() -> DataSeriesIterator<UntypedSeries> {
       switch action {
       case .iterator:
-        iterator.setZero()
+        iterator!.setZero()
       default:
         fatalError()
       }
@@ -272,7 +284,7 @@ extension DataFrame {
     public func prefetch(_ i: Int, streamContext: StreamContext?) {
       switch action {
       case .iterator:
-        ccv_cnnp_dataframe_iter_prefetch(iterator.iterator, Int32(i), streamContext?._stream)
+        ccv_cnnp_dataframe_iter_prefetch(iterator!.iterator, Int32(i), streamContext?._stream)
       default:
         fatalError()
       }
@@ -283,7 +295,7 @@ extension DataFrame {
       case .iterator:
         var data: UnsafeMutableRawPointer? = nil
         let retval = ccv_cnnp_dataframe_iter_next(
-          iterator.iterator, &data, 1, streamContext?._stream)
+          iterator!.iterator, &data, 1, streamContext?._stream)
         guard retval == 0 else { return nil }
         if data == nil {
           return nil
@@ -307,18 +319,14 @@ extension DataFrame {
     }
 
     public let count: Int
-    private lazy var iterator: _Iterator = {
-      var i: Int32 = Int32(property!.index)
-      let _dataframe = dataframe!.dataframe
-      let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
-      return _Iterator(iterator: iter)
-    }()
+
+    let property: ColumnProperty?
+    let dataframe: _DataFrame?
 
     fileprivate let action: UntypedSeriesAction
     fileprivate let name: String?
 
-    let property: ColumnProperty?
-    let dataframe: _DataFrame?
+    private let iterator: _Iterator?
 
     fileprivate init(count: Int, name: String, property: ColumnProperty, dataframe: _DataFrame) {
       action = .iterator
@@ -326,6 +334,7 @@ extension DataFrame {
       self.name = name
       self.property = property
       self.dataframe = dataframe
+      iterator = _Iterator(properties: [Int32(property.index)], dataframe: dataframe.dataframe)
     }
 
     init(_ action: UntypedSeriesAction) {
@@ -334,12 +343,13 @@ extension DataFrame {
       name = nil
       property = nil
       dataframe = nil
+      iterator = nil
     }
   }
 }
 
 extension DataFrame {
-  public final class ManyUntypedSeries: DataSeries {
+  public struct ManyUntypedSeries: DataSeries {
 
     public typealias Element = [AnyObject]
 
@@ -382,26 +392,23 @@ extension DataFrame {
 
     public let count: Int
 
-    private lazy var iterator: _Iterator = {
-      let i: [Int32] = properties.map { Int32($0.index) }
-      let _dataframe = dataframe.dataframe
-      let iter = ccv_cnnp_dataframe_iter_new(_dataframe, i, Int32(i.count))!
-      return _Iterator(iterator: iter)
-    }()
-
     let properties: [ColumnProperty]
     let dataframe: _DataFrame
+
+    private let iterator: _Iterator
 
     fileprivate init(count: Int, properties: [ColumnProperty], dataframe: _DataFrame) {
       self.count = count
       self.properties = properties
       self.dataframe = dataframe
+      iterator = _Iterator(
+        properties: properties.map { Int32($0.index) }, dataframe: dataframe.dataframe)
     }
   }
 }
 
 extension DataFrame {
-  public final class TypedSeries<Element>: DataSeries {
+  public struct TypedSeries<Element>: DataSeries {
 
     public typealias Element = Element
 
@@ -438,19 +445,16 @@ extension DataFrame {
 
     public let count: Int
 
-    private lazy var iterator: _Iterator = {
-      var i: Int32 = Int32(property.index)
-      let _dataframe = dataframe.dataframe
-      let iter = ccv_cnnp_dataframe_iter_new(_dataframe, &i, 1)!
-      return _Iterator(iterator: iter)
-    }()
     let property: ColumnProperty
     let dataframe: _DataFrame
+
+    private let iterator: _Iterator
 
     fileprivate init(count: Int, property: ColumnProperty, dataframe: _DataFrame) {
       self.count = count
       self.property = property
       self.dataframe = dataframe
+      iterator = _Iterator(properties: [Int32(property.index)], dataframe: dataframe.dataframe)
     }
   }
 }
