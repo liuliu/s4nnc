@@ -239,6 +239,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
 
 }
 
+/// Represent a type-checked parameters that encapsulate both tensor and group of tensors.
 public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   associatedtype ElementNumeric: TensorNumeric
   init(_: AnyTensor)
@@ -248,6 +249,7 @@ extension DynamicGraph {
   public typealias TensorGroup = DynamicGraph_TensorGroup
 }
 
+/// Internal type for type-checking purpose.
 public protocol _DynamicGraph_TensorGroup {
   associatedtype _Element: TensorNumeric
   init(_: DynamicGraph.AnyTensor)

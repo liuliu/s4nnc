@@ -12,11 +12,11 @@ extension DynamicGraph.AnyTensor {
   where S.Element: DynamicGraph.AnyTensor {
     let _graph = graph._graph
     var gradients = graph.gradients(for: [self])
-    var gradientsSet = Set(gradients)
+    var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors {
-      if !gradientsSet.contains(tensor) {
+      if !gradientsSet.contains(ObjectIdentifier(tensor)) {
         gradients.append(tensor)
-        gradientsSet.insert(tensor)
+        gradientsSet.insert(ObjectIdentifier(tensor))
       }
     }
     let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
@@ -68,11 +68,11 @@ extension DynamicGraph.Group {
     precondition(underlyingArray.count > 0)
     let graph = underlyingArray[0].graph
     var gradients = graph.gradients(for: underlyingArray)
-    var gradientsSet = Set(gradients)
+    var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors.flatMap({ $0.untyped }) {
-      if !gradientsSet.contains(tensor) {
+      if !gradientsSet.contains(ObjectIdentifier(tensor)) {
         gradients.append(tensor)
-        gradientsSet.insert(tensor)
+        gradientsSet.insert(ObjectIdentifier(tensor))
       }
     }
     let _graph = graph._graph
@@ -126,11 +126,11 @@ extension Collection where Element: DynamicGraph.AnyTensor {
     }
     let _graph = graph._graph
     var gradients = graph.gradients(for: self)
-    var gradientsSet = Set(gradients)
+    var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors {
-      if !gradientsSet.contains(tensor) {
+      if !gradientsSet.contains(ObjectIdentifier(tensor)) {
         gradients.append(tensor)
-        gradientsSet.insert(tensor)
+        gradientsSet.insert(ObjectIdentifier(tensor))
       }
     }
     let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
@@ -183,11 +183,11 @@ extension Collection where Element: DynamicGraph.AnyGroup {
     }
     let _graph = graph._graph
     var gradients = graph.gradients(for: self.flatMap { $0.untyped })
-    var gradientsSet = Set(gradients)
+    var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors.flatMap({ $0.untyped }) {
-      if !gradientsSet.contains(tensor) {
+      if !gradientsSet.contains(ObjectIdentifier(tensor)) {
         gradients.append(tensor)
-        gradientsSet.insert(tensor)
+        gradientsSet.insert(ObjectIdentifier(tensor))
       }
     }
     let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }

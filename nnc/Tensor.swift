@@ -31,7 +31,7 @@ public enum DeviceKind {
   /**
    * GPU device related information.
    */
-  public enum GPUInfo {
+  public enum GPUs {
     /**
      * Number of available GPU devices.
      */

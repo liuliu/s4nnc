@@ -158,7 +158,7 @@ extension Model {
 
 }
 
-/// MARK - Model Inputs for Functional Model
+/// Model Inputs for Functional Model
 
 public final class Input: Model.IO {
   public init() {

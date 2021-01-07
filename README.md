@@ -176,7 +176,7 @@ trainData["c"] = trainData["main", ImdbText.self].map(\.c)
 // Create one hot tensor out of the scalar.
 trainData["oneHot"] = trainData["c", Int.self].toOneHot(Float32.self, count: 2)
 
-let deviceCount = DeviceKind.GPUInfo.count
+let deviceCount = DeviceKind.GPUs.count
 
 // Batching tensors together. 
 var batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(size: batchSize, repeating: deviceCount)

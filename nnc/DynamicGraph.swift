@@ -140,7 +140,7 @@ public final class DynamicGraph {
   let _graph: OpaquePointer
   var streamContext: StreamContext? = nil
 
-  struct WeakAnyTensor: Equatable, Hashable {
+  struct WeakAnyTensor {
     weak var value: AnyTensor?
   }
   var trackGrads = [ObjectIdentifier: WeakAnyTensor]()
@@ -186,9 +186,13 @@ extension DynamicGraph {
 
 extension DynamicGraph {
   public enum LogLevel {
+    /// No log output (the default).
     case none
+    /// Verbose, show all computations and its values.
     case verbose
+    /// Show all computations.
     case info
+    /// Only show errors if encountered any.
     case error
   }
   /**
@@ -222,9 +226,12 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /// Statistics about the graph.
   public struct Statistics {
-    var variables: Int
-    var computations: Int
+    /// How many variables (including constants) in this graph.
+    public var variables: Int
+    /// How many computation units in this graph.
+    public var computations: Int
   }
   /**
    * Collect statistics from a dynamic graph. It computes how many variables and computations
@@ -238,13 +245,14 @@ extension DynamicGraph {
   }
 }
 
-public func == (lhs: DynamicGraph.AnyTensor, rhs: DynamicGraph.AnyTensor) -> Bool {
-  return lhs === rhs
+func == (lhs: DynamicGraph.WeakAnyTensor, rhs: DynamicGraph.WeakAnyTensor) -> Bool {
+  return lhs.value === rhs.value
 }
 
-extension DynamicGraph.AnyTensor: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    ObjectIdentifier(self).hash(into: &hasher)
+extension DynamicGraph.WeakAnyTensor: Hashable {
+  func hash(into hasher: inout Hasher) {
+    guard let value = value else { return }
+    ObjectIdentifier(value).hash(into: &hasher)
   }
 }
 
@@ -426,7 +434,7 @@ extension DynamicGraph {
 extension DynamicGraph {
   /**
    * Turn off gradient tracking within the given closure. This may be useful during testing, we can
-   * make more aggressive optimizations if we gradient tracking is off.
+   * make more aggressive optimizations if the gradient tracking is off.
    */
   public func withNoGrad<Result>(_ closure: () throws -> Result) rethrows -> Result {
     ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)

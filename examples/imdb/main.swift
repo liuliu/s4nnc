@@ -169,7 +169,7 @@ testData["mask"] = testData["main", ImdbText.self].map(\.mask)
 testData["c"] = testData["main", ImdbText.self].map(\.c)
 testData["oneHot"] = testData["c", Int.self].toOneHot(Float32.self, count: 2)
 
-let deviceCount = DeviceKind.GPUInfo.count
+let deviceCount = DeviceKind.GPUs.count
 
 // Batching tensors together.
 var batchedTrainData = trainData["tensor", "mask", "oneHot"].combine(

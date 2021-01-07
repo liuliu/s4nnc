@@ -1,13 +1,15 @@
-// Empty protocol for other places to recognize AnyTensor and AnyGroup with dynamic dispatch.
+/// Empty protocol for other places to recognize AnyTensor and AnyGroup with dynamic dispatch.
 public protocol DynamicGraph_AnyParameters {
 }
 
+/// Protocol for other places to recognize AnyTensor and AnyGroup with static dispatch.
 public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var dimensions: [Int] { get }
   var isConstant: Bool { get }
   var requiresGrad: Bool { get set }
 }
 
+/// Protocol for group of tensors.
 public protocol DynamicGraph_AnyGroup: DynamicGraph_Any {
   var untyped: [DynamicGraph.AnyTensor] { get }
 }
@@ -53,6 +55,7 @@ extension DynamicGraph {
 
   public typealias AnyGroup = DynamicGraph_AnyGroup
 
+  /// Type-aware group of tensors.
   public struct Group<Element: DynamicGraph.AnyTensor>: RandomAccessCollection, DynamicGraph
       .AnyGroup
   {

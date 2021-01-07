@@ -342,7 +342,8 @@ extension DataFrame.TypedSeries where Element: AnyTensor {
 }
 
 extension DataFrame {
-  public struct ManyUntypedSeriesToGPU {
+  /// Result represent a tuple of tensors that you can access either by name or by tuple index.
+  public struct ManyUntypedSeriesTensorResult {
     var index: Int
     var namedIndex: [String: Int]
   }
@@ -359,7 +360,7 @@ extension DataFrame {
   }
 }
 
-extension DataFrame.ManyUntypedSeriesToGPU {
+extension DataFrame.ManyUntypedSeriesTensorResult {
   public subscript(name: String) -> DataFrame.UntypedSeries {
     let tupleIndex = namedIndex[name]!
     let property = DataFrame.ColumnProperty(index: index, type: .tensor)
@@ -375,7 +376,7 @@ extension DataFrame.ManyUntypedSeriesToGPU {
 }
 
 extension DataFrame.ManyUntypedSeries {
-  public func toGPU(_ ordinal: Int = 0) -> DataFrame.ManyUntypedSeriesToGPU {
+  public func toGPU(_ ordinal: Int = 0) -> DataFrame.ManyUntypedSeriesTensorResult {
     for property in properties {
       precondition(property.type == .tensor)
     }
@@ -390,7 +391,7 @@ extension DataFrame.ManyUntypedSeries {
       let name = ccv_cnnp_dataframe_column_name(_dataframe, Int32(property.index))!
       namedIndex[String(cString: name)] = i
     }
-    return DataFrame.ManyUntypedSeriesToGPU(index: Int(copyIndex), namedIndex: namedIndex)
+    return DataFrame.ManyUntypedSeriesTensorResult(index: Int(copyIndex), namedIndex: namedIndex)
   }
 }
 
