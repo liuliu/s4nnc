@@ -30,7 +30,7 @@ extension DynamicGraph.AnyTensor {
       }
       (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var f: ccv_nnc_tensor_variable_t? = self._tensor
     var g: ccv_nnc_tensor_variable_t? = self.grad?._tensor
     if g == nil {
@@ -87,7 +87,7 @@ extension DynamicGraph.Group {
       }
       (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.underlyingArray.map { $0._tensor }
     let g: [ccv_nnc_tensor_variable_t?] = self.underlyingArray.map { $0.grad?._tensor }
     ccv_nnc_dynamic_graph_backward(
@@ -144,7 +144,7 @@ extension Collection where Element: DynamicGraph.AnyTensor {
       }
       (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.map { $0._tensor }
     let g: [ccv_nnc_tensor_variable_t?] = self.map { $0.grad?._tensor }
     ccv_nnc_dynamic_graph_backward(
@@ -201,7 +201,7 @@ extension Collection where Element: DynamicGraph.AnyGroup {
       }
       (_outputs + i).initialize(to: tensor.grad?._tensor)
     }
-    let _streamContext = streamContext?._stream
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let f: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.untyped.map { $0._tensor } }
     let g: [ccv_nnc_tensor_variable_t?] = self.flatMap { $0.untyped.map { $0.grad?._tensor } }
     ccv_nnc_dynamic_graph_backward(

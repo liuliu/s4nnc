@@ -35,7 +35,7 @@ public final class StreamContext {
   public func async(_ closure: @escaping () -> Void) {
     ccv_nnc_stream_context_add_callback(
       _stream,
-      { _, context in
+      { context in
         let closure = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! (() -> Void)
         closure()
       }, Unmanaged.passRetained(closure as AnyObject).toOpaque())

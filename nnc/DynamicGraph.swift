@@ -106,7 +106,8 @@ public final class DynamicGraph {
         return NNC.Tensor<Element>(rawValue)
       }
       let _graph = graph._graph
-      let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
+      let _streamContext = graph.streamContext?._stream
+      let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
       let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
       _rawValue = rawValue
       return NNC.Tensor<Element>(rawValue)
@@ -119,7 +120,8 @@ public final class DynamicGraph {
           return rawValue[indices, Element.self]
         }
         let _graph = graph._graph
-        let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
+        let _streamContext = graph.streamContext?._stream
+        let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
         let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
         _rawValue = rawValue
         return rawValue[indices, Element.self]
@@ -129,7 +131,8 @@ public final class DynamicGraph {
           rawValue[indices, Element.self] = v
         }
         let _graph = graph._graph
-        let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
+        let _streamContext = graph.streamContext?._stream
+        let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
         let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
         _rawValue = rawValue
         rawValue[indices, Element.self] = v
