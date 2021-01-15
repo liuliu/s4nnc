@@ -7,7 +7,12 @@ if result == true {
   print(sys.version_info)
 }
 
-let a = PythonObject(1)
-var b = PythonObject(3)
-b &= a
-print(b)
+let gc = Python.import("gc")
+
+let y = PythonObject(10)
+let lambda1 = PythonFunction { x in x * y }
+let lambda2 = PythonFunction { x in x + y }
+print(Python.list(Python.map(lambda1, [10, 12, 14])))
+print(Python.list(Python.map(lambda1, [2, 3, 4])))
+print(Python.list(Python.map(lambda2, [2, 3, 4])))
+print(gc.get_stats())

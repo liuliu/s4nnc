@@ -24,8 +24,8 @@ def s4nnc_deps():
     _maybe(
         new_git_repository,
         name = "PythonKit",
-        remote = "https://github.com/pvieito/PythonKit.git",
-        commit = "59a868e84e1d6a5e01569cf92086554033415fa4",
-        shallow_since = "1604702703 -0800",
+        remote = "https://github.com/liuliu/PythonKit.git",
+        commit = "748065275789748bc3e416d572d3014e75b901eb",
+        shallow_since = "1610682240 -0800",
         build_file = "@s4nnc//:external/PythonKit.BUILD",
     )
