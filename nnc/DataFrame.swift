@@ -208,7 +208,9 @@ public struct DataFrame {
     }
   }
 
-  public subscript<Element>(index: String, type: Element.Type) -> TypedSeries<Element> {
+  public subscript<Element>(index: String, type: Element.Type = Element.self) -> TypedSeries<
+    Element
+  > {
     let columnProperty = columnProperties[index]!
     let rowCount = ccv_cnnp_dataframe_row_count(_dataframe.dataframe)
     return TypedSeries(count: Int(rowCount), property: columnProperty, dataframe: _dataframe)
