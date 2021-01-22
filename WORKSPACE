@@ -39,9 +39,9 @@ ccv_setting(
 
 git_repository(
     name = "build_bazel_rules_swift",
-    commit = "6ae82f57ebefa13df5ce1daf7a2fd3080e41df55",
+    commit = "08e3036c6511dd5a0f0fe6b52e9a95a13e1a471c",
     remote = "https://github.com/bazelbuild/rules_swift.git",
-    shallow_since = "1599689969 -0700",
+    shallow_since = "1611278652 -0800",
 )
 
 load("@build_bazel_rules_swift//swift:repositories.bzl", "swift_rules_dependencies")
