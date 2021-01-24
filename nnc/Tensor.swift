@@ -17,6 +17,7 @@ public enum DeviceKind {
   case CPU
   case GPU(Int)
 
+  @usableFromInline
   static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DeviceKind {
     let type = Int(cTensorParams.type)
     if (type & CCV_TENSOR_CPU_MEMORY) == CCV_TENSOR_CPU_MEMORY {
@@ -47,6 +48,7 @@ public enum TensorFormat {
   case NCHW
   case CHWN
 
+  @usableFromInline
   static func from(cTensorParams: ccv_nnc_tensor_param_t) -> TensorFormat {
     switch Int(cTensorParams.format) {
     case CCV_TENSOR_FORMAT_NCHW:
@@ -60,6 +62,7 @@ public enum TensorFormat {
     }
   }
 
+  @usableFromInline
   var toC: Int32 {
     switch self {
     case .NHWC:
@@ -82,6 +85,7 @@ public enum TensorDimensionFormat {
   case NCHW(Int, Int, Int, Int)
   case CHWN(Int, Int, Int, Int)
 
+  @usableFromInline
   var format: TensorFormat {
     switch self {
     case .C:
@@ -101,6 +105,7 @@ public enum TensorDimensionFormat {
     }
   }
 
+  @usableFromInline
   var dimensions: [Int] {
     switch self {
     case let .C(c):
@@ -151,6 +156,7 @@ public enum DataType {
   case Float16
   case UInt8
 
+  @usableFromInline
   static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DataType {
     switch Int(cTensorParams.datatype) {
     case CCV_64F:
@@ -170,6 +176,7 @@ public enum DataType {
     }
   }
 
+  @usableFromInline
   var toC: Swift.Int32 {
     switch self {
     case .Float64:
@@ -235,10 +242,12 @@ public final class AnyTensorStorage {
     ccv_nnc_tensor_free(cTensor)
   }
 
+  @usableFromInline
   var dataType: DataType {
     DataType.from(cTensorParams: cTensor.pointee.info)
   }
 
+  @usableFromInline
   func copy() -> AnyTensorStorage {
     var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
     var output = ccv_nnc_tensor_new(nil, cTensor.pointee.info, 0)
@@ -248,6 +257,7 @@ public final class AnyTensorStorage {
     return AnyTensorStorage(output!)
   }
 
+  @usableFromInline
   var increments: [Int] {
     let type = Int(cTensor.pointee.type)
     guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
@@ -259,6 +269,7 @@ public final class AnyTensorStorage {
     return fromCDimensions(inc)
   }
 
+  @usableFromInline
   subscript<Element: TensorNumeric>(indices: [Int], type: Element.Type) -> Element {
     get {
       let increments = self.increments
@@ -289,6 +300,7 @@ public final class AnyTensorStorage {
 }
 
 extension AnyTensorStorage {
+  @usableFromInline
   subscript<Element: TensorNumeric>(ranges: [Range<Int>], type: Element.Type) -> AnyTensorStorage {
     get {
       // This is a restricted form a reshape.
@@ -359,6 +371,7 @@ extension AnyTensorStorage {
 }
 
 extension AnyTensorStorage {
+  @usableFromInline
   subscript<Element: TensorNumeric>(indices: [Int], range: Range<Int>, type: Element.Type)
     -> [Element]
   {
@@ -407,27 +420,33 @@ public protocol AnyTensor {
 }
 
 extension AnyTensor {
+  @inlinable
   public var dataType: DataType {
     DataType.from(cTensorParams: cTensor.pointee.info)
   }
 
+  @inlinable
   public var kind: DeviceKind {
     DeviceKind.from(cTensorParams: cTensor.pointee.info)
   }
 
+  @inlinable
   public var format: TensorFormat {
     TensorFormat.from(cTensorParams: cTensor.pointee.info)
   }
 
+  @inlinable
   public var dimensions: [Int] {
     fromCDimensions(cTensor.pointee.info.dim)
   }
 
+  @inlinable
   public var isTensorView: Bool {
     let type = Int(cTensor.pointee.type)
     return (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW
   }
 
+  @inlinable
   public var increments: [Int] {
     guard isTensorView else {
       return dimensions
@@ -449,15 +468,18 @@ extension Tensor {
 /// Basic tensor type.
 public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
-  public private(set) var storage: AnyTensorStorage
-  public var cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t> { storage.cTensor }
+  public var storage: AnyTensorStorage { _storage }
+  public var cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t> { _storage.cTensor }
+
+  @usableFromInline
+  var _storage: AnyTensorStorage
 
   private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
     let cTensor = ccv_nnc_tensor_new(
       nil,
       toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
       0)!
-    storage = AnyTensorStorage(cTensor)
+    _storage = AnyTensorStorage(cTensor)
   }
 
   private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
@@ -466,8 +488,9 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       dimensions: dimensionFormat.dimensions)
   }
 
+  @usableFromInline
   init(_ tensor: AnyTensorStorage) {
-    storage = tensor
+    _storage = tensor
   }
 
   /**
@@ -477,7 +500,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
    */
   public init(_ tensor: AnyTensor) {
     assert(tensor.dataType == Element.dataType)
-    storage = tensor.storage
+    _storage = tensor.storage
   }
 
   public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
@@ -527,104 +550,115 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     self.init(AnyTensorStorage(cTensor, original: keepAlive))
   }
 
+  @inlinable
   public subscript(indices: Int...) -> Element {
     get {
-      return storage[indices, Element.self]
+      return _storage[indices, Element.self]
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&storage) {
+      if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
-        storage = storage.copy()
+        _storage = _storage.copy()
       }
-      storage[indices, Element.self] = v
+      _storage[indices, Element.self] = v
     }
   }
 
+  @inlinable
   public subscript(ranges: Range<Int>...) -> Tensor<Element> {
     get {
-      return Tensor<Element>(storage[ranges, Element.self])
+      return Tensor<Element>(_storage[ranges, Element.self])
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&storage) {
+      if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
-        storage = storage.copy()
+        _storage = _storage.copy()
       }
-      storage[ranges, Element.self] = v.storage
+      _storage[ranges, Element.self] = v._storage
     }
   }
 
-  private subscript(indices: [Int], range: Range<Int>) -> [Element] {
+  @usableFromInline
+  subscript(indices: [Int], range: Range<Int>) -> [Element] {
     get {
-      return storage[indices, range, Element.self]
+      return _storage[indices, range, Element.self]
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&storage) {
+      if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
-        storage = storage.copy()
+        _storage = _storage.copy()
       }
-      storage[indices, range, Element.self] = v
+      _storage[indices, range, Element.self] = v
     }
   }
 
-  private subscript(indices: [Int], range: UnboundedRange) -> [Element] {
+  @usableFromInline
+  subscript(indices: [Int], range: UnboundedRange) -> [Element] {
     get {
       let dimensions = self.dimensions
-      return storage[indices, 0..<dimensions[indices.count], Element.self]
+      return _storage[indices, 0..<dimensions[indices.count], Element.self]
     }
     set(v) {
       guard case .CPU = kind else {
         fatalError("cannot modify non-CPU tensor")
       }
-      if !isKnownUniquelyReferenced(&storage) {
+      if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
-        storage = storage.copy()
+        _storage = _storage.copy()
       }
       let dimensions = self.dimensions
-      storage[indices, 0..<dimensions[indices.count], Element.self] = v
+      _storage[indices, 0..<dimensions[indices.count], Element.self] = v
     }
   }
 }
 
 extension Tensor {
+  @inlinable
   public subscript(range: Range<Int>) -> [Element] {
     get { self[[], range] }
     set { self[[], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, range: Range<Int>) -> [Element] {
     get { self[[i0], range] }
     set { self[[i0], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, range: Range<Int>) -> [Element] {
     get { self[[i0, i1], range] }
     set { self[[i0, i1], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> [Element] {
     get { self[[i0, i1, i2], range] }
     set { self[[i0, i1, i2], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>) -> [Element] {
     get { self[[i0, i1, i2, i3], range] }
     set { self[[i0, i1, i2, i3], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>) -> [Element] {
     get { self[[i0, i1, i2, i3, i4], range] }
     set { self[[i0, i1, i2, i3, i4], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>)
     -> [Element]
   {
@@ -632,6 +666,7 @@ extension Tensor {
     set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
     -> [Element]
   {
@@ -641,37 +676,44 @@ extension Tensor {
 }
 
 extension Tensor {
+  @inlinable
   public subscript(range: UnboundedRange) -> [Element] {
     get { self[[], range] }
     set { self[[], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, range: UnboundedRange) -> [Element] {
     get { self[[i0], range] }
     set { self[[i0], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, range: UnboundedRange) -> [Element] {
     get { self[[i0, i1], range] }
     set { self[[i0, i1], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> [Element] {
     get { self[[i0, i1, i2], range] }
     set { self[[i0, i1, i2], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange) -> [Element] {
     get { self[[i0, i1, i2, i3], range] }
     set { self[[i0, i1, i2, i3], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange) -> [Element]
   {
     get { self[[i0, i1, i2, i3, i4], range] }
     set { self[[i0, i1, i2, i3, i4], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
     -> [Element]
   {
@@ -679,6 +721,7 @@ extension Tensor {
     set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
   }
 
+  @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
     range: UnboundedRange
   )
@@ -746,7 +789,7 @@ extension Tensor {
         cTensor.pointee.data.ptr,
         toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions),
         0)!
-      return Self(AnyTensorStorage(newt, original: storage))
+      return Self(AnyTensorStorage(newt, original: _storage))
     }
     var cOffset = toCDimensions(offset)
     var cIncrements = toCDimensions(increments)
@@ -760,7 +803,7 @@ extension Tensor {
       }
     }
     let anyTensor = newt.withMemoryRebound(to: ccv_nnc_tensor_t.self, capacity: 1) {
-      AnyTensorStorage($0, original: storage)
+      AnyTensorStorage($0, original: _storage)
     }
     return Self(anyTensor)
   }
@@ -973,6 +1016,7 @@ extension Tensor: CustomStringConvertible {
   }
 }
 
+@usableFromInline
 func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
 {
   guard let dimensions = dimensions else {
@@ -1016,6 +1060,7 @@ func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, 
   }
 }
 
+@usableFromInline
 func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
   guard let dimensions = dimensions else {
     return [0, 0, 0, 0, 0, 0, 0, 0]
@@ -1058,6 +1103,7 @@ func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
   }
 }
 
+@usableFromInline
 func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)) -> [Int] {
   if dim.0 == 0 {
     return []
@@ -1083,6 +1129,7 @@ func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, In
   }
 }
 
+@usableFromInline
 func toCTensorParams(
   _ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]
 ) -> ccv_nnc_tensor_param_t {
