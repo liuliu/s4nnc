@@ -43,8 +43,25 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual([1, 2], tensor[1, 0..<2])
   }
 
+  func testGetSetUnboundedPartTensorFromArray() throws {
+    var tensor = Tensor<Int32>(.CPU, .NC(2, 3))
+    tensor[1, ...] = [1, 2, 3]
+    tensor[0, ...] = [-1, -2, -3]
+    XCTAssertEqual(-1, tensor[0, 0])
+    XCTAssertEqual(-2, tensor[0, 1])
+    XCTAssertEqual(-3, tensor[0, 2])
+    XCTAssertEqual(1, tensor[1, 0])
+    XCTAssertEqual(2, tensor[1, 1])
+    XCTAssertEqual(3, tensor[1, 2])
+    XCTAssertEqual([-2, -3], tensor[0, 1..<3])
+    XCTAssertEqual([1, 2], tensor[1, 0..<2])
+    XCTAssertEqual([-1, -2, -3], tensor[0, ...])
+    XCTAssertEqual([1, 2, 3], tensor[1, ...])
+  }
+
   static let allTests = [
     ("testGetSetPartTensor", testGetSetPartTensor),
     ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
+    ("testGetSetUnboundedPartTensorFromArray", testGetSetUnboundedPartTensorFromArray),
   ]
 }

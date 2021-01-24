@@ -574,6 +574,24 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       storage[indices, range, Element.self] = v
     }
   }
+
+  private subscript(indices: [Int], range: UnboundedRange) -> [Element] {
+    get {
+      let dimensions = self.dimensions
+      return storage[indices, 0..<dimensions[indices.count], Element.self]
+    }
+    set(v) {
+      guard case .CPU = kind else {
+        fatalError("cannot modify non-CPU tensor")
+      }
+      if !isKnownUniquelyReferenced(&storage) {
+        // Make a copy (copy-on-write).
+        storage = storage.copy()
+      }
+      let dimensions = self.dimensions
+      storage[indices, 0..<dimensions[indices.count], Element.self] = v
+    }
+  }
 }
 
 extension Tensor {
@@ -615,6 +633,55 @@ extension Tensor {
   }
 
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
+    -> [Element]
+  {
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+  }
+}
+
+extension Tensor {
+  public subscript(range: UnboundedRange) -> [Element] {
+    get { self[[], range] }
+    set { self[[], range] = newValue }
+  }
+
+  public subscript(i0: Int, range: UnboundedRange) -> [Element] {
+    get { self[[i0], range] }
+    set { self[[i0], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> [Element] {
+    get { self[[i0, i1], range] }
+    set { self[[i0, i1], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> [Element] {
+    get { self[[i0, i1, i2], range] }
+    set { self[[i0, i1, i2], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange) -> [Element] {
+    get { self[[i0, i1, i2, i3], range] }
+    set { self[[i0, i1, i2, i3], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange) -> [Element]
+  {
+    get { self[[i0, i1, i2, i3, i4], range] }
+    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
+    -> [Element]
+  {
+    get { self[[i0, i1, i2, i3, i4, i5], range] }
+    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+  }
+
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
+    range: UnboundedRange
+  )
     -> [Element]
   {
     get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
