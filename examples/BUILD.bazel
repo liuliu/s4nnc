@@ -24,3 +24,12 @@ swift_binary(
         "@PythonKit",
     ],
 )
+
+swift_binary(
+    name = "gym",
+    srcs = ["gym/main.swift"],
+    deps = [
+        "//nnc",
+        "@PythonKit",
+    ],
+)
