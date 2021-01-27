@@ -40,7 +40,7 @@ public class Model {
       }, Unmanaged.passUnretained(self).toOpaque())
   }
 
-  init(_ model: OpaquePointer) {
+  required init(_ model: OpaquePointer) {
     _model = model
     ccv_cnnp_model_notify(_model, 0, Unmanaged.passUnretained(self).toOpaque())
     ownerHook()
@@ -121,6 +121,33 @@ public class Model {
     }
   }
 
+}
+
+extension Model.Parameters {
+  /**
+   * Copy parameters from one model to another.
+   *
+   * - Parameter parameters: The parameters of another model, it must match the parameters copy to.
+   */
+  public func copy(from parameters: Model.Parameters) {
+    guard let fromModel = parameters.model,
+      let toModel = model
+    else {
+      fatalError()
+    }
+    ccv_cnnp_model_set_parameters(toModel._model, _io, fromModel._model, parameters._io)
+  }
+}
+
+extension Model {
+  /**
+   * Make a copy of the model. This won't copy over the parameters. If you want, you need to copy
+   * parameters over explicitly.
+   */
+  public func copy() -> Self {
+    let newModel = Self(ccv_cnnp_model_copy(_model))
+    return newModel
+  }
 }
 
 /// MARK - Functional and Sequential Models

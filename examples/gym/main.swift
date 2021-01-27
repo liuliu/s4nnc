@@ -1,6 +1,16 @@
 import NNC
 import PythonKit
 
+func Net() -> Model {
+  return Model([
+    Dense(count: 128), RELU(),
+    Dense(count: 128), RELU(),
+    Dense(count: 128), RELU(),
+    Dense(count: 128), RELU(),
+    Dense(count: 2),
+  ])
+}
+
 let gym = Python.import("gym")
 
 let env = gym.make("CartPole-v0")
@@ -8,6 +18,8 @@ let env = gym.make("CartPole-v0")
 env.seed(0)
 
 let action_space = env.action_space
+
+let graph = DynamicGraph()
 
 for _ in 0..<10 {
   let _ = env.reset()

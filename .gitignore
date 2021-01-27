@@ -101,7 +101,8 @@ clang.bazelrc
 *.gcno
 *.out
 
-.ipynb_checkpoints
-.ibzlnb
-.index
-_env
+.ipynb_checkpoints/
+.ibzlnb/
+.index/
+_env/
+compile_commands.json

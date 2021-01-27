@@ -2,6 +2,10 @@ import C_nnc
 
 /// Sum inputs.
 public final class Sum: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(name: String = "") {
     super.init(ccv_cnnp_sum(name))
   }
@@ -18,6 +22,10 @@ public final class Sum: Model {
 
 /// Add two inputs together. It will do broadcast if needed.
 public final class Add: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(leftScalar: Float = 1, rightScalar: Float = 1, name: String = "") {
     super.init(ccv_cnnp_add(leftScalar, rightScalar, name))
   }
@@ -32,6 +40,10 @@ public final class Add: Model {
 
 /// Multiply two inputs together. It will do broadcast if needed.
 public final class Mul: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(scalar: Float = 1, name: String = "") {
     super.init(ccv_cnnp_mul(scalar, name))
   }
@@ -46,6 +58,10 @@ public final class Mul: Model {
 
 /// Matrix-multiplication over two inputs.
 public final class Matmul: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(transposeA: (Int, Int) = (0, 0), transposeB: (Int, Int) = (0, 0), name: String = "") {
     let a = [Int32(transposeA.0), Int32(transposeA.1)]
     let b = [Int32(transposeB.0), Int32(transposeB.1)]
@@ -62,6 +78,10 @@ public final class Matmul: Model {
 
 /// A linear layer model.
 public final class Dense: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(count: Int, noBias: Bool = false, name: String = "") {
     super.init(ccv_cnnp_dense(Int32(count), noBias ? 1 : 0, name))
   }
@@ -76,6 +96,10 @@ public final class Dense: Model {
 
 /// A reshape model.
 public final class Reshape: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil, name: String = "")
   {
     var dimensions = toCDimensions(dimensions)
@@ -110,6 +134,10 @@ extension Model.IO {
 
 /// A ReLU activation model.
 public final class RELU: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(name: String = "") {
     super.init(ccv_cnnp_relu(name))
   }
@@ -124,6 +152,10 @@ public final class RELU: Model {
 
 /// A softmax activation model.
 public final class Softmax: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(name: String = "") {
     super.init(ccv_cnnp_softmax(name))
   }
@@ -138,6 +170,10 @@ public final class Softmax: Model {
 
 /// A sigmoid activation model.
 public final class Sigmoid: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(name: String = "") {
     super.init(ccv_cnnp_sigmoid(name))
   }
@@ -152,6 +188,10 @@ public final class Sigmoid: Model {
 
 /// A swish activation model.
 public final class Swish: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(name: String = "") {
     super.init(ccv_cnnp_swish(name))
   }
@@ -165,6 +205,10 @@ public final class Swish: Model {
 }
 
 public final class Transpose: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(_ axisA: Int, _ axisB: Int, name: String = "") {
     super.init(ccv_cnnp_transpose(Int32(axisA), Int32(axisB), name))
   }
@@ -185,6 +229,10 @@ extension Model.IO {
 
 /// The masked fill model. If the value equal to a given constant, fill with another constant.
 public final class MaskedFill: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(equalTo: Float, fillWith: Float, name: String = "") {
     super.init(ccv_cnnp_masked_fill(equalTo, fillWith, name))
   }
@@ -199,6 +247,10 @@ public final class MaskedFill: Model {
 
 /// The dropout model.
 public final class Dropout: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(probability: Float, entirety: Bool = false, name: String = "") {
     super.init(ccv_cnnp_dropout(probability, entirety ? 1 : 0, name))
   }
@@ -213,6 +265,10 @@ public final class Dropout: Model {
 
 /// Multiply all values with a constant.
 public final class Scalmul: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(_ a: Float, name: String = "") {
     super.init(ccv_cnnp_scalar_mul(a, name))
   }
@@ -227,6 +283,10 @@ public final class Scalmul: Model {
 
 /// Batch normalization model.
 public final class BatchNorm: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(momentum: Float, epsilon: Float, name: String = "") {
     super.init(ccv_cnnp_batch_norm(momentum, epsilon, name))
   }
@@ -241,6 +301,10 @@ public final class BatchNorm: Model {
 
 /// Layer normalization model.
 public final class LayerNorm: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(epsilon: Float, axis: [Int], name: String = "") {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(ccv_cnnp_layer_norm(epsilon, axis32, Int32(axis.count), name))
@@ -256,6 +320,10 @@ public final class LayerNorm: Model {
 
 /// Make the input tensor to be 1-D tensor (respecting N).
 public final class Flatten: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(name: String = "") {
     super.init(ccv_cnnp_flatten(name))
   }
@@ -270,6 +338,10 @@ public final class Flatten: Model {
 
 /// Convolution model.
 public final class Convolution: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(
     groups: Int, filters: Int, filterSize: [Int], noBias: Bool = false, hint: Hint = Hint(),
     name: String = ""
@@ -290,6 +362,10 @@ public final class Convolution: Model {
 
 /// max pooling model.
 public final class MaxPool: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(filterSize: [Int] = [], hint: Hint = Hint(), name: String = "") {
     let kdim = toCDimensionsArray(filterSize)
     super.init(ccv_cnnp_max_pool(kdim, hint.toCHint(), name))
@@ -305,6 +381,10 @@ public final class MaxPool: Model {
 
 /// average pooling model.
 public final class AveragePool: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
   public init(filterSize: [Int] = [], hint: Hint = Hint(), name: String = "") {
     let kdim = toCDimensionsArray(filterSize)
     super.init(ccv_cnnp_average_pool(kdim, hint.toCHint(), name))
