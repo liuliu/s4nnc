@@ -30,6 +30,7 @@ swift_binary(
     srcs = ["gym/main.swift"],
     deps = [
         "//nnc",
+        "//nnc:nnc_python",
         "@PythonKit",
     ],
 )

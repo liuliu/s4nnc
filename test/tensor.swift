@@ -59,9 +59,23 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual([1, 2, 3], tensor[1, ...])
   }
 
+  func testTensorTypeConversion() throws {
+    var tensor = Tensor<Float32>(.CPU, .NC(2, 3))
+    tensor[1, ...] = [1, 2, 3]
+    tensor[0, ...] = [-1, -2, -3]
+    let tensor64 = Tensor<Float64>(from: tensor)
+    for tuple in zip([-1.0, -2.0, -3.0], tensor64[0, ...]) {
+      XCTAssertEqual(tuple.0, tuple.1, accuracy: 1e-5)
+    }
+    for tuple in zip([1.0, 2.0, 3.0], tensor64[1, ...]) {
+      XCTAssertEqual(tuple.0, tuple.1, accuracy: 1e-5)
+    }
+  }
+
   static let allTests = [
     ("testGetSetPartTensor", testGetSetPartTensor),
     ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
     ("testGetSetUnboundedPartTensorFromArray", testGetSetUnboundedPartTensorFromArray),
+    ("testTensorTypeConversion", testTensorTypeConversion),
   ]
 }

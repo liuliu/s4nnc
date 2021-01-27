@@ -499,8 +499,31 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
    * - Parameter tensor: A type-erased tensor.
    */
   public init(_ tensor: AnyTensor) {
-    assert(tensor.dataType == Element.dataType)
+    precondition(tensor.dataType == Element.dataType)
     _storage = tensor.storage
+  }
+
+  /**
+   * Convert from a different type tensor to this tensor.
+   * - Parameter tensor: A type-erased tensor.
+   */
+  public init(from tensor: AnyTensor) {
+    if tensor.dataType == Element.dataType {
+      _storage = tensor.storage
+    } else {
+      var cTensor = ccv_nnc_tensor_new(
+        nil,
+        toCTensorParams(
+          tensor.kind, dataType: Element.dataType, format: tensor.format,
+          dimensions: tensor.dimensions),
+        0)
+      var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = tensor.cTensor
+      ccv_nnc_cmd_exec(
+        ccv_nnc_cmd(
+          CCV_NNC_DATATYPE_CONVERSION_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
+        ccv_nnc_no_hint, 0, &input, 1, &cTensor, 1, nil)
+      _storage = AnyTensorStorage(cTensor!)
+    }
   }
 
   public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
