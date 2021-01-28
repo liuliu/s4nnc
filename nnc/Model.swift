@@ -130,10 +130,18 @@ extension Model.Parameters {
    * - Parameter parameters: The parameters of another model, it must match the parameters copy to.
    */
   public func copy(from parameters: Model.Parameters) {
-    guard let fromModel = parameters.model,
-      let toModel = model
+    guard var fromModel = parameters.model,
+      var toModel = model
     else {
       fatalError()
+    }
+    // We can only copy parameters from fully compiled model, i.e., the owner of the sub-models.
+    // Try to find them.
+    while let owner = fromModel.owner {
+      fromModel = owner
+    }
+    while let owner = toModel.owner {
+      toModel = owner
     }
     ccv_cnnp_model_set_parameters(toModel._model, _io, fromModel._model, parameters._io)
   }
