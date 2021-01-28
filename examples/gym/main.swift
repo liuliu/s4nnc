@@ -39,12 +39,15 @@ let alpha = 0.6
 let beta = 0.4
 
 struct Replay {
-  var obs: Tensor<Float32>
-  var obs_next: Tensor<Float32>
+  var obs: Tensor<Float32>  // The state before action.
+  var obs_next: Tensor<Float32>  // The state n_step ahead.
+  var step: Int  // The step in the episode.
+  var step_count: Int  // How many steps til the end, step < step_count.
 }
 
 let lastNet = net.copy()
-lastNet.parameters.copy(from: net.parameters)
+var replays = [Replay]()
+var netIter = 0
 
 env.reset()
 for epoch in 0..<max_epoch {
@@ -64,11 +67,38 @@ for epoch in 0..<max_epoch {
         env.reset()
         episodes += 1
         env_step_count += buffer.count
-        // Organizing data into ReplayBuffer.
-        buffer.removeAll()
         last_obs = Tensor<Float32>([0, 0, 0, 0], .C(4))
+        // Organizing data into ReplayBuffer.
+        for (i, _) in buffer.enumerated() {
+          let obs: Tensor<Float32> = i > 0 ? buffer[i - 1].obs : last_obs
+          let replay = Replay(
+            obs: obs, obs_next: buffer[min(i + n_step - 1, buffer.count - 1)].obs, step: i,
+            step_count: buffer.count)
+          replays.append(replay)
+        }
+        buffer.removeAll()
       }
     }
+    // Only update target network at intervals.
+    if netIter % target_update_freq == 0 {
+      lastNet.parameters.copy(from: net.parameters)
+    }
+    // Now update the model. First, get some samples out of replay buffer.
+    replays.shuffled()
+    var obs = Tensor<Float32>(.CPU, .NC(64, 4))
+    var obs_next = Tensor<Float32>(.CPU, .NC(64, 4))
+    for i in 0..<batch_size {
+      let replay = replays[i % replays.count]
+      obs[i, ...] = replay.obs[...]
+      obs_next[i, ...] = replay.obs[...]
+    }
+    // Compute the q.
+    let obs_next_v = graph.constant(obs_next)
+    let act = net(inputs: obs_next_v)
+    let target_q = lastNet(inputs: obs_next_v)
+    print(target_q)
+    print(act)
+    netIter += 1
   }
 }
 
