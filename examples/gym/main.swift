@@ -42,6 +42,7 @@ let beta = 0.4
 struct Replay {
   var obs: Tensor<Float32>  // The state before action.
   var obs_next: Tensor<Float32>  // The state n_step ahead.
+  var rewards: [Float32]  // Rewards for 0..<n_step - 1
   var act: Int  // The act taken in the episode.
   var step: Int  // The step in the episode.
   var step_count: Int  // How many steps til the end, step < step_count.
@@ -55,7 +56,7 @@ env.reset()
 var adamOptimizer = AdamOptimizer(
   graph, step: 0, rate: lr, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [net.parameters]
-var buffer = [(obs: Tensor<Float32>, reward: PythonObject, act: Int)]()
+var buffer = [(obs: Tensor<Float32>, reward: Float32, act: Int)]()
 var last_obs = Tensor<Float32>([0, 0, 0, 0], .C(4))
 var env_step = 0
 for epoch in 0..<max_epoch {
@@ -81,7 +82,7 @@ for epoch in 0..<max_epoch {
       }
       let (obs, reward, done, _) = env.step(act).tuple4
       last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
-      buffer.append((obs: last_obs, reward: reward, act: act))
+      buffer.append((obs: last_obs, reward: Float32(reward)!, act: act))
       if Bool(done)! {
         env.reset()
         episodes += 1
@@ -90,9 +91,13 @@ for epoch in 0..<max_epoch {
         // Organizing data into ReplayBuffer.
         for (i, _) in buffer.enumerated() {
           let obs: Tensor<Float32> = i > 0 ? buffer[i - 1].obs : last_obs
+          var rewards = [Float32]()
+          for j in 0..<n_step {
+            rewards.append(i + j < buffer.count ? buffer[i + j].reward : 0)
+          }
           let replay = Replay(
-            obs: obs, obs_next: buffer[min(i + n_step - 1, buffer.count - 1)].obs, act: act,
-            step: i, step_count: buffer.count)
+            obs: obs, obs_next: buffer[min(i + n_step - 1, buffer.count - 1)].obs,
+            rewards: rewards, act: act, step: i, step_count: buffer.count)
           replays.append(replay)
         }
         buffer.removeAll()
@@ -127,15 +132,15 @@ for epoch in 0..<max_epoch {
       obs_next[i, ...] = replay.obs_next[...]
       var rew: Float32 = 0
       var discount: Float32 = 1
-      for j in 0..<n_step - 1 {
+      for j in 0..<n_step {
         if replay.step + j < replay.step_count - 1 {
-          rew += discount  // reward is always 1 in CartPole
+          rew += discount * replay.rewards[j]  // reward is always 1 in CartPole
         }
         discount *= gamma
       }
       act[i] = replay.act == 0 ? Int32(i) * 2 : Int32(i) * 2 + 1
       r[i, 0] = rew
-      d[i, 0] = replay.step + n_step < replay.step_count - 1 ? discount * gamma : 0
+      d[i, 0] = replay.step + n_step < replay.step_count - 1 ? discount : 0
     }
     // Compute the q.
     let obs_next_v = graph.constant(obs_next)
