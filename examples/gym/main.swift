@@ -53,8 +53,7 @@ var replays = [Replay]()
 var netIter = 0
 
 env.reset()
-var adamOptimizer = AdamOptimizer(
-  graph, step: 0, rate: lr, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
+var adamOptimizer = AdamOptimizer(graph, rate: lr)
 adamOptimizer.parameters = [net.parameters]
 var buffer = [(obs: Tensor<Float32>, reward: Float32, act: Int)]()
 var last_obs = Tensor<Float32>([0, 0, 0, 0], .C(4))
@@ -120,7 +119,6 @@ for epoch in 0..<max_epoch {
       let i = Int.random(in: 0..<replays.count)
       batch.append(replays[i])
     }
-    adamOptimizer.step = netIter + 1
     var obs = Tensor<Float32>(.CPU, .NC(batch_size, 4))
     var obs_next = Tensor<Float32>(.CPU, .NC(batch_size, 4))
     var act = Tensor<Int32>(.CPU, .C(batch_size))

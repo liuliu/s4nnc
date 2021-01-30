@@ -199,7 +199,7 @@ let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map 
 let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
 vocabVec.rand(-1, 1)
 seqVec.rand(-1, 1)
-var adamOptimizer = AdamOptimizer(graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
+var adamOptimizer = AdamOptimizer(graph, rate: 0.0001, betas: (0.9, 0.98), decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec, transformer.parameters]
 var overallAccuracy = 0.0
 for epoch in 0..<10 {
@@ -210,7 +210,6 @@ for epoch in 0..<10 {
   }
   let computeStream = StreamContext(.GPU(0))
   for (i, batch) in batchedTrainData[columns].enumerated() {
-    adamOptimizer.step = epoch * batchedTrainData.count + i + 1
     adamOptimizer.rate = 0.0001 * min(Float(adamOptimizer.step - 1) / (10000.0 / Float(batchSize)), 1) * Float(deviceCount)
     let tensorGPU = (0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
     let oneHotGPU = (0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }

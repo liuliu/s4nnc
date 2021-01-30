@@ -202,7 +202,7 @@ graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
   store.read("transformer", model: transformer)
 }
 var adamOptimizer = AdamOptimizer(
-  graph, step: 0, rate: 0.0001, beta1: 0.9, beta2: 0.98, decay: 0, epsilon: 1e-9)
+  graph, rate: 0.0001, betas: (0.9, 0.98), decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec, transformer.parameters]
 var overallAccuracy = 0.0
 for epoch in 0..<10 {
@@ -213,7 +213,6 @@ for epoch in 0..<10 {
   }
   let computeStream = StreamContext(.GPU(0))
   for (i, batch) in batchedTrainData[columns].enumerated() {
-    adamOptimizer.step = epoch * batchedTrainData.count + i + 1
     adamOptimizer.rate =
       0.0001 * min(Float(adamOptimizer.step - 1) / (10000.0 / Float(batchSize)), 1)
       * Float(deviceCount)

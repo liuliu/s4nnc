@@ -9,7 +9,7 @@ public protocol Optimizer {
    *
    * - Parameter streamContext: The stream context to execute the update operation.
    */
-  func step(streamContext: StreamContext?)
+  mutating func step(streamContext: StreamContext?)
 }
 
 protocol OptimizerAddons {
@@ -21,7 +21,7 @@ extension Optimizer {
   /**
    * Update parameters.
    */
-  public func step() {
+  public mutating func step() {
     step(streamContext: nil)
   }
 }

@@ -61,8 +61,7 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
   public let graph: DynamicGraph
   public var step: Int
   public var rate: Float
-  public var beta1: Float
-  public var beta2: Float
+  public var betas: (Float, Float)
   public var decay: Float
   public var epsilon: Float
   public var parameters = [DynamicGraph_AnyParameters]() {
@@ -85,29 +84,30 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
     var params = CmdParamsFactory.factory.newParams()
     params.adam.step = Int32(step)
     params.adam.rate = rate
-    params.adam.beta1 = beta1
-    params.adam.beta2 = beta2
+    params.adam.beta1 = betas.0
+    params.adam.beta2 = betas.1
     params.adam.decay = decay
     params.adam.epsilon = epsilon
     return ccv_nnc_cmd(CCV_NNC_ADAM_FORWARD, nil, params, 0)
   }
 
   public init(
-    _ graph: DynamicGraph, step: Int, rate: Float, beta1: Float, beta2: Float, decay: Float,
-    epsilon: Float
+    _ graph: DynamicGraph, rate: Float, step: Int = 1, betas: (Float, Float) = (0.9, 0.999),
+    decay: Float = 0,
+    epsilon: Float = 1e-8
   ) {
     self.graph = graph
     self.step = step
     self.rate = rate
-    self.beta1 = beta1
-    self.beta2 = beta2
+    self.betas = betas
     self.decay = decay
     self.epsilon = epsilon
   }
 
-  public func step(streamContext: StreamContext?) {
+  public mutating func step(streamContext: StreamContext?) {
     optimizerStep(
       graph: graph, minimizer: minimizer, parameters: parameters, savedAux: savedAux,
       streamContext: streamContext)
+    step += 1
   }
 }
