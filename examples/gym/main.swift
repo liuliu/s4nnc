@@ -32,7 +32,7 @@ let buffer_size = 50_000
 let lr: Float32 = 1e-3
 let gamma: Float32 = 0.95
 let n_step = 5
-let target_update_freq = 160
+let target_update_freq = 80
 let max_epoch = 10000
 let step_per_epoch = 1
 let collect_per_step = 10
@@ -155,7 +155,7 @@ for epoch in 0..<max_epoch {
       let pred_q = DynamicGraph.Tensor<Float32>(net(inputs: obs_v)[0])
       let y_q = Functional.indexSelect(input: pred_q.reshape(.NC(batch_size * 2, 1)), index: act_v)
       let td_q = y_q - r_q
-      let mse = td_q .* td_q
+      let mse = Functional.mul(left: td_q, right: td_q, scalar: 1.0 / Float(batch_size))
       mse.backward(to: obs_v)
       adamOptimizer.step()
     }

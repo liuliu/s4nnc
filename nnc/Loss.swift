@@ -101,6 +101,7 @@ public struct CategoricalCrossEntropyLoss: Loss {
 
 /// Smooth L1 loss (for object detection).
 public struct SmoothL1Loss: Loss {
+  public init() {}
   public func callAsFunction<T: DynamicGraph.AnyTensorGroup, U: DynamicGraph.AnyTensorGroup>(
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
