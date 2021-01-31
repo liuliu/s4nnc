@@ -154,9 +154,15 @@ for epoch in 0..<max_epoch {
       let act_v = graph.constant(act)
       let pred_q = DynamicGraph.Tensor<Float32>(net(inputs: obs_v)[0])
       let y_q = Functional.indexSelect(input: pred_q.reshaped(.NC(batch_size * 2, 1)), index: act_v)
-      let td_q = y_q - r_q
-      let mse = Functional.mul(left: td_q, right: td_q, scalar: 1.0 / Float(batch_size))
-      mse.backward(to: obs_v)
+      // Use Huber loss.
+      let loss = SmoothL1Loss()(y_q, target: r_q)[0]
+      let grad: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 1))
+      grad.fill(1.0 / Float(batch_size))
+      loss.grad = grad
+      // This code is to use MSE loss.
+      //let td_q = y_q - r_q
+      //let loss = Functional.mul(left: td_q, right: td_q, scalar: 1.0 / Float(batch_size))
+      loss.backward(to: obs_v)
       adamOptimizer.step()
     }
     step_count += 1
