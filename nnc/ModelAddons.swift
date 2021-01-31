@@ -222,7 +222,7 @@ public final class Transpose: Model {
 }
 
 extension Model.IO {
-  public func transpose(_ axisA: Int, _ axisB: Int) -> Model.IO {
+  public func transposed(_ axisA: Int, _ axisB: Int) -> Model.IO {
     return Transpose(axisA, axisB)(self)
   }
 }

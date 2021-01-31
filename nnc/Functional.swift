@@ -5,7 +5,7 @@ import C_nnc
 /// It has a typed version DynamicGraph.TensorGroup to enforce type constraint.
 
 public protocol DynamicGraph_AnyTensor {
-  static func upcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor
+  static func downcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor
 }
 
 public protocol DynamicGraph_AnyTensorGroup: DynamicGraph_Any {
@@ -28,7 +28,7 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph.AnyTensor: DynamicGraph_AnyTensor {
-  public static func upcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
+  public static func downcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
     fatalError("This will not be needed.")
   }
 }
@@ -113,7 +113,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
 }
 
 extension DynamicGraph.Group: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
-  public static func upcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
+  public static func downcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
     guard let from = from as? DynamicGraph.AnyGroup else {
       fatalError("This will not be needed.")
     }
@@ -284,12 +284,12 @@ public enum Functional {
     if let upcastFirstInput = firstInput as? T.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [T.AnyTensor.upcasting(from: firstInput) as! T.AnyTensor]
+      tensorInputs = [T.AnyTensor.downcasting(from: firstInput) as! T.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
+      tensorInputs += restInputs.map { T.AnyTensor.downcasting(from: $0) as! T.AnyTensor }
     }
     return exec(
       T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputSize: outputSize,
@@ -318,18 +318,18 @@ public enum Functional {
     if let upcastFirstInput = firstInput as? T.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [T.AnyTensor.upcasting(from: firstInput) as! T.AnyTensor]
+      tensorInputs = [T.AnyTensor.downcasting(from: firstInput) as! T.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
+      tensorInputs += restInputs.map { T.AnyTensor.downcasting(from: $0) as! T.AnyTensor }
     }
     let tensorOutputs: [T.AnyTensor]
     if let upcastTensorOutputs = outputs as? [T.AnyTensor] {
       tensorOutputs = upcastTensorOutputs
     } else {
-      tensorOutputs = outputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
+      tensorOutputs = outputs.map { T.AnyTensor.downcasting(from: $0) as! T.AnyTensor }
     }
     return exec(
       T.self, cmd: cmd, hint: hint, inputs: tensorInputs, outputs: tensorOutputs,
@@ -362,12 +362,12 @@ extension Model {
     if let upcastFirstInput = firstInput as? T.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [T.AnyTensor.upcasting(from: firstInput) as! T.AnyTensor]
+      tensorInputs = [T.AnyTensor.downcasting(from: firstInput) as! T.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [T.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { T.AnyTensor.upcasting(from: $0) as! T.AnyTensor }
+      tensorInputs += restInputs.map { T.AnyTensor.downcasting(from: $0) as! T.AnyTensor }
     }
     return self(T.self, tensorInputs, streamContext: streamContext)
   }
@@ -404,12 +404,12 @@ extension ModelBuilder {
     if let upcastFirstInput = firstInput as? U.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [U.AnyTensor.upcasting(from: firstInput) as! U.AnyTensor]
+      tensorInputs = [U.AnyTensor.downcasting(from: firstInput) as! U.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [U.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { U.AnyTensor.upcasting(from: $0) as! U.AnyTensor }
+      tensorInputs += restInputs.map { U.AnyTensor.downcasting(from: $0) as! U.AnyTensor }
     }
     return apply(ofType: U.self, t, tensorInputs, streamContext: streamContext)
   }
@@ -423,12 +423,12 @@ extension ModelBuilder where T == Void {
     if let upcastFirstInput = firstInput as? U.AnyTensor {
       tensorInputs = [upcastFirstInput]
     } else {
-      tensorInputs = [U.AnyTensor.upcasting(from: firstInput) as! U.AnyTensor]
+      tensorInputs = [U.AnyTensor.downcasting(from: firstInput) as! U.AnyTensor]
     }
     if let upcastTensorInputs = restInputs as? [U.AnyTensor] {
       tensorInputs += upcastTensorInputs
     } else {
-      tensorInputs += restInputs.map { U.AnyTensor.upcasting(from: $0) as! U.AnyTensor }
+      tensorInputs += restInputs.map { U.AnyTensor.downcasting(from: $0) as! U.AnyTensor }
     }
     return apply(ofType: U.self, Void(), tensorInputs, streamContext: streamContext)
   }

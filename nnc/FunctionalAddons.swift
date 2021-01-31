@@ -109,7 +109,7 @@ extension Functional {
 
 extension DynamicGraph.Tensor {
   /// Transpose from axisA to axisB.
-  public func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
+  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
@@ -124,7 +124,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Transpose from axisA to axisB.
-  public func transpose(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
+  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
     -> DynamicGraph.Group<Element>
   {
     var params = CmdParamsFactory.factory.newParams()

@@ -10,9 +10,11 @@ func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model {
   let tokeys = Dense(count: k * h, noBias: true)
   let toqueries = Dense(count: k * h, noBias: true)
   let tovalues = Dense(count: k * h, noBias: true)
-  let keys = tokeys(multiheads).reshaped([t, b, h, k]).transpose(0, 2).reshaped([b * h, t, k])
-  let queries = toqueries(multiheads).reshaped([t, b, h, k]).transpose(0, 2).reshaped([b * h, t, k])
-  let values = tovalues(multiheads).reshaped([t, b, h, k]).transpose(0, 2).reshaped([b * h, t, k])
+  let keys = tokeys(multiheads).reshaped([t, b, h, k]).transposed(0, 2).reshaped([b * h, t, k])
+  let queries = toqueries(multiheads).reshaped([t, b, h, k]).transposed(0, 2).reshaped([
+    b * h, t, k,
+  ])
+  let values = tovalues(multiheads).reshaped([t, b, h, k]).transposed(0, 2).reshaped([b * h, t, k])
   var dot = Matmul(transposeB: (1, 2))(queries, keys)
   dot = (1.0 / Float(k).squareRoot()) * dot
   dot = MaskedFill(equalTo: 0, fillWith: 1e-9)(dot, mask)
@@ -23,7 +25,7 @@ func SelfAttention(k: Int, h: Int, b: Int, t: Int, dropout: Float) -> Model {
   }
   dot = dot.reshaped([b * h, t, t])
   var out = dot * values
-  out = out.reshaped([h, b, t, k]).transpose(0, 2).reshaped([b * t, h * k])
+  out = out.reshaped([h, b, t, k]).transposed(0, 2).reshaped([b * t, h * k])
   let unifyheads = Dense(count: k)
   out = unifyheads(out).reshaped([t, b, k])
   return Model([x, mask], [out])
@@ -59,11 +61,11 @@ func ClassicTransformer(layers: Int, k: Int, h: Int, b: Int, t: Int, ff: Int, dr
 {
   let x = Input()
   let mask = Input()
-  var out = x.transpose(0, 1)
+  var out = x.transposed(0, 1)
   for _ in 0..<layers {
     out = TransformerBlock(k: k, h: h, b: b, t: t, ff: ff, dropout: dropout)(out, mask)
   }
-  out = out.transpose(0, 1).transpose(1, 2).reshaped([b, k, t, 1])
+  out = out.transposed(0, 1).transposed(1, 2).reshaped([b, k, t, 1])
   out = AveragePool()(out)
   out = Flatten()(out)
   out = Dense(count: 2)(out)
