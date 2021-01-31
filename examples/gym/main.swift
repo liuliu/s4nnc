@@ -148,12 +148,12 @@ for epoch in 0..<max_epoch {
       }
       let act_next_v = graph.constant(act_next)
       let q_q = Functional.indexSelect(
-        input: target_q.reshape(.NC(batch_size * 2, 1)), index: act_next_v)
+        input: target_q.reshaped(.NC(batch_size * 2, 1)), index: act_next_v)
       let r_q = graph.constant(r) .+ graph.constant(d) .* q_q
       let obs_v = graph.variable(obs)
       let act_v = graph.constant(act)
       let pred_q = DynamicGraph.Tensor<Float32>(net(inputs: obs_v)[0])
-      let y_q = Functional.indexSelect(input: pred_q.reshape(.NC(batch_size * 2, 1)), index: act_v)
+      let y_q = Functional.indexSelect(input: pred_q.reshaped(.NC(batch_size * 2, 1)), index: act_v)
       let td_q = y_q - r_q
       let mse = Functional.mul(left: td_q, right: td_q, scalar: 1.0 / Float(batch_size))
       mse.backward(to: obs_v)

@@ -101,12 +101,16 @@ public struct CategoricalCrossEntropyLoss: Loss {
 
 /// Smooth L1 loss (for object detection).
 public struct SmoothL1Loss: Loss {
-  public init() {}
+  public var beta: Float
+  public init(beta: Float = 1) {
+    self.beta = beta
+  }
   public func callAsFunction<T: DynamicGraph.AnyTensorGroup, U: DynamicGraph.AnyTensorGroup>(
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.smooth_l1.beta = beta
     let cmd = ccv_nnc_cmd(CCV_NNC_SMOOTH_L1_FORWARD, nil, params, 0)
     return Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, target, outputSize: 1,

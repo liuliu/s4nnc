@@ -29,7 +29,7 @@ tensor[0, 0, 0] = 1
 tensor[0, 0, 1] = 2
 ```
 
-There are very limited functionalities associated with raw tensors. Mostly, you can only `reshape` or `toGPU` / `toCPU`.
+There are very limited functionalities associated with raw tensors. Mostly, you can only `reshaped` or `toGPU` / `toCPU`.
 
 ### DynamicGraph
 
@@ -216,7 +216,7 @@ for epoch in 0..<10 {
     let squaredMaskGPU = (0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
     let batchLength = tensorGPU[0].dimensions[1]
     let output = graph.withStream(computeStream) { () -> Group<DynamicGraph.AnyTensor> in
-      let wordIndices = graph.variable(tensorGPU.reshape(.C(batchSize * batchLength)))
+      let wordIndices = graph.variable(tensorGPU.reshaped(.C(batchSize * batchLength)))
       let wordVec = Functional.indexSelect(input: vocabVec, index: wordIndices)
       var seqIndicesCPU = Tensor<Int32>(.CPU, .C(batchSize * batchLength))
       for i in 0..<batchSize {
@@ -228,8 +228,8 @@ for epoch in 0..<10 {
       let seqIndices = graph.constant(seqIndicesGPU)
       let posVec = Functional.indexSelect(input: seqVec, index: seqIndices)
       let selectVec = wordVec + posVec
-      let inputVec = selectVec.reshape(.CHW(batchSize, batchLength, embeddingSize))
-      let masked = graph.constant(squaredMaskGPU.reshape(.CHW(batchSize, batchLength, batchLength)))
+      let inputVec = selectVec.reshaped(.CHW(batchSize, batchLength, embeddingSize))
+      let masked = graph.constant(squaredMaskGPU.reshaped(.CHW(batchSize, batchLength, batchLength)))
       let output = transformer(inputs: inputVec, masked)[0]
       let softmaxLoss = SoftmaxCrossEntropyLoss()
       let target = graph.variable(oneHotGPU)

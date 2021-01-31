@@ -46,6 +46,7 @@ public final class DynamicGraph {
       set(v) {
         underlying.requiresGrad = v
         if v {
+          precondition(!self.isConstant)
           graph.trackGrad(self)
         } else {
           graph.untrackGrad(ObjectIdentifier(self))
@@ -261,7 +262,7 @@ extension DynamicGraph.WeakAnyTensor: Hashable {
 
 extension DynamicGraph.Tensor {
 
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     let _graph = graph._graph
@@ -289,10 +290,10 @@ extension DynamicGraph.Tensor {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensor with different format but the same underlying variable.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }

@@ -102,108 +102,108 @@ extension DynamicGraph {
 public typealias Group = DynamicGraph.Group
 
 extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Float64> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     return Group(
       underlyingArray.map {
-        $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })
   }
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }
 }
 
 extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Int64> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     return Group(
       underlyingArray.map {
-        $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })
   }
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }
 }
 
 extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Float32> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     return Group(
       underlyingArray.map {
-        $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })
   }
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }
 }
 
 extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Int32> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     return Group(
       underlyingArray.map {
-        $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })
   }
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }
 }
 
 extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Float16> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     return Group(
       underlyingArray.map {
-        $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })
   }
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }
 }
 
 extension DynamicGraph.Group where Element == DynamicGraph.Tensor<UInt8> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     return Group(
       underlyingArray.map {
-        $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })
   }
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }

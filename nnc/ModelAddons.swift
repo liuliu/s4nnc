@@ -125,7 +125,7 @@ extension Model.IO {
    *   - offset: Whether apply certain offset for each dimension.
    *   - increments: What's the step size for each dimension.
    */
-  public func reshape(_ dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil)
+  public func reshaped(_ dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil)
     -> Model.IO
   {
     return Reshape(dimensions: dimensions, offset: offset, increments: increments)(self)

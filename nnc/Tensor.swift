@@ -802,7 +802,7 @@ extension Tensor {
 
 extension Tensor {
 
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
     let cTensorParams = cTensor.pointee.info
@@ -840,10 +840,10 @@ extension Tensor {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensor with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return reshape(
+    return reshaped(
       format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
       increments: increments)
   }
@@ -851,11 +851,11 @@ extension Tensor {
 }
 
 extension Collection where Element == Tensor<Float64> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
     return map {
-      $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
   /**
@@ -867,19 +867,19 @@ extension Collection where Element == Tensor<Float64> {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
-    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
   }
 }
 
 extension Collection where Element == Tensor<Int64> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
     return map {
-      $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
   /**
@@ -891,19 +891,19 @@ extension Collection where Element == Tensor<Int64> {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
-    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
   }
 }
 
 extension Collection where Element == Tensor<Float32> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
     return map {
-      $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
   /**
@@ -915,19 +915,19 @@ extension Collection where Element == Tensor<Float32> {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
-    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
   }
 }
 
 extension Collection where Element == Tensor<Int32> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
     return map {
-      $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
   /**
@@ -939,19 +939,19 @@ extension Collection where Element == Tensor<Int32> {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
-    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
   }
 }
 
 extension Collection where Element == Tensor<Float16> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
     return map {
-      $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
   /**
@@ -963,19 +963,19 @@ extension Collection where Element == Tensor<Float16> {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
-    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
   }
 }
 
 extension Collection where Element == Tensor<UInt8> {
-  public func reshape(
+  public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
     return map {
-      $0.reshape(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
     }
   }
   /**
@@ -987,10 +987,10 @@ extension Collection where Element == Tensor<UInt8> {
    *   - increments: The step on each dimensions.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshape(
+  public func reshaped(
     _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
   ) -> [Element] {
-    return map { $0.reshape(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
   }
 }
 
