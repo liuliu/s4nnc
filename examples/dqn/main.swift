@@ -28,8 +28,8 @@ let net = Net()
 
 let eps_test: Float = 0.05
 let eps_train: Float = 0.1
-let buffer_size = 100_000
-let lr: Float32 = 0.001
+let buffer_size = 50_000
+let lr: Float32 = 0.00025
 let gamma: Float32 = 0.9
 let n_step = 5
 let target_update_freq = 160
@@ -69,7 +69,7 @@ for epoch in 0..<max_epoch {
     if env_step < 10_000 {
       eps = eps_train
     } else if env_step < 50_000 {
-      eps = eps_train - Float(env_step - 10_000) / Float(40_000) * 0.1 * eps_train
+      eps = eps_train - Float(env_step - 10_000) / Float(40_000) * 0.9 * eps_train
     } else {
       eps = 0.1 * eps_train
     }

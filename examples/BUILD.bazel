@@ -26,8 +26,8 @@ swift_binary(
 )
 
 swift_binary(
-    name = "gym",
-    srcs = ["gym/main.swift"],
+    name = "dqn",
+    srcs = ["dqn/main.swift"],
     deps = [
         "//nnc",
         "//nnc:nnc_python",
