@@ -88,6 +88,22 @@ new_git_repository(
     shallow_since = "1600489295 -0700",
 )
 
+new_git_repository(
+    name = "SwiftNumerics",
+    build_file = "swift-numerics.BUILD",
+    commit = "4a2cbc186b1f8cbbc1ace12cef43d65784b2559e",
+    remote = "https://github.com/apple/swift-numerics.git",
+    shallow_since = "1605460976 -0500",
+)
+
+new_git_repository(
+    name = "SwiftAlgorithms",
+    build_file = "swift-algorithms.BUILD",
+    commit = "cda6fddada47e3146fdfc06504e1d8b2d5ff20dd",
+    remote = "https://github.com/apple/swift-algorithms.git",
+    shallow_since = "1611850089 -0600",
+)
+
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.
 

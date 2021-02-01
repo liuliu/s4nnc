@@ -32,5 +32,17 @@ swift_binary(
         "//nnc",
         "//nnc:nnc_python",
         "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
+    ],
+)
+
+swift_binary(
+    name = "a2c",
+    srcs = ["a2c/main.swift"],
+    deps = [
+        "//nnc",
+        "//nnc:nnc_python",
+        "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
     ],
 )

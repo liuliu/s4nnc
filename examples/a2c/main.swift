@@ -1,4 +1,3 @@
-import Algorithms
 import NNC
 import NNCPythonConversion
 import PythonKit
@@ -123,14 +122,17 @@ for epoch in 0..<max_epoch {
       if step_count % target_update_freq == 0 {
         lastNet.parameters.copy(from: net.parameters)
       }
-      let batch = replays.randomSample(count: batch_size)
+      var batch = [Replay]()
+      for _ in 0..<batch_size {
+        let i = Int.random(in: 0..<replays.count)
+        batch.append(replays[i])
+      }
       var obs = Tensor<Float32>(.CPU, .NC(batch_size, 4))
       var obs_next = Tensor<Float32>(.CPU, .NC(batch_size, 4))
       var act = Tensor<Int32>(.CPU, .C(batch_size))
       var r = Tensor<Float32>(.CPU, .NC(batch_size, 1))
       var d = Tensor<Float32>(.CPU, .NC(batch_size, 1))
-      for i in 0..<batch_size {
-        let replay = batch[i % batch.count]
+      for (i, replay) in batch.enumerated() {
         obs[i, ...] = replay.obs[...]
         obs_next[i, ...] = replay.obs_next[...]
         var rew: Float32 = 0
