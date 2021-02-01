@@ -97,7 +97,11 @@ for epoch in 0..<max_epoch {
             for (i, play) in buffer.enumerated() {
               var rewards = [Float32]()
               for j in 0..<n_step {
-                rewards.append(i + j < buffer.count ? buffer[i + j].reward : 0)
+                if i + j == buffer.count - 1 {  // For the end, we penalize it.
+                  rewards.append(-10)
+                } else {
+                  rewards.append(i + j < buffer.count ? buffer[i + j].reward : 0)
+                }
               }
               let replay = Replay(
                 obs: play.obs, obs_next: buffer[min(i + n_step, buffer.count - 1)].obs,
