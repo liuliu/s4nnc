@@ -31,7 +31,7 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a1Grad.rawValue[0, 1], 3.3, accuracy: 1e-5)
   }
 
-  func testFill() throws {
+  func testFull() throws {
     let dynamicGraph = DynamicGraph()
     let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
     a0.full(10)
@@ -42,9 +42,38 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a0.rawValue[1, 0], -1, accuracy: 1e-5)
   }
 
+  func testLerp() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a0.full(10)
+    a1.full(-1)
+    a0.lerp(0.3, to: a1)
+    XCTAssertEqual(a0.rawValue[0, 0], 6.7, accuracy: 1e-5)
+    XCTAssertEqual(a0.rawValue[1, 0], 6.7, accuracy: 1e-5)
+  }
+
+  func testClamp() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a0[0, 0] = 10
+    a0[1, 0] = 2
+    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a1[0, 0] = -1
+    a1[1, 0] = -2
+    a0.clamp(min: 3, max: 6)
+    let a2 = a1.clamped(min: -1.1)
+    XCTAssertEqual(a0.rawValue[0, 0], 6, accuracy: 1e-5)
+    XCTAssertEqual(a0.rawValue[1, 0], 3, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[0, 0], -1, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 0], -1.1, accuracy: 1e-5)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
-    ("testFill", testFill),
+    ("testFull", testFull),
+    ("testLerp", testLerp),
+    ("testClamp", testClamp),
   ]
 }

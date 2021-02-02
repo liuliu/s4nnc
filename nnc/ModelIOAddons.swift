@@ -56,3 +56,27 @@ extension Model.Parameters {
       toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, fromModel._model, parameters._io)
   }
 }
+
+extension Model.Parameters {
+  /**
+   * Clamp current parameters between two values.
+   */
+  public func clamp(min: Float? = nil, max: Float? = nil) {
+    precondition(min != nil || max != nil)
+    guard var toModel = model else {
+      fatalError()
+    }
+    // We can only copy parameters from fully compiled model, i.e., the owner of the sub-models.
+    // Try to find them.
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.clamp.min = min ?? Float.nan
+    params.clamp.max = max ?? Float.nan
+    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    ccv_cnnp_model_parameters_map(
+      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil)
+  }
+}

@@ -267,6 +267,7 @@ extension DynamicGraph.Tensor {
   public func lerp(
     _ weight: Float, to: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil
   ) {
+    precondition(weight >= 0 && weight <= 1)
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (1 - weight, weight, 0)
@@ -285,6 +286,7 @@ extension DynamicGraph.Group {
   public func lerp(
     _ weight: Float, to: DynamicGraph.Group<Element>, streamContext: StreamContext? = nil
   ) {
+    precondition(weight >= 0 && weight <= 1)
     guard underlyingArray.count > 0 else { return }
     precondition(to.underlyingArray.count == underlyingArray.count)
     var params = CmdParamsFactory.factory.newParams()
@@ -307,5 +309,86 @@ extension DynamicGraph.Group {
       _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize * 2, _outputs, outputSize, outputSize,
       _streamContext)
     _outputs.deallocate()
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Clamp the given tensor between two values.
+  public func clamp(
+    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  ) {
+    precondition(min != nil || max != nil)
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.clamp.min = min ?? Float.nan
+    params.clamp.max = max ?? Float.nan
+    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    var _input: ccv_nnc_tensor_variable_t? = _tensor
+    var _output: ccv_nnc_tensor_variable_t? = _tensor
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Clamp the given tensor between two values.
+  public func clamp(
+    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  ) {
+    guard underlyingArray.count > 0 else { return }
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.clamp.min = min ?? Float.nan
+    params.clamp.max = max ?? Float.nan
+    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    let graph = underlyingArray[0].graph
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
+    let outputSize = Int32(underlyingArray.count)
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+      capacity: Int(outputSize))
+    for (i, variable) in underlyingArray.enumerated() {
+      (_outputs + i).initialize(to: variable._tensor)
+    }
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
+      _streamContext)
+    _outputs.deallocate()
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Clamp the given tensor between two values.
+  public func clamped(
+    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  ) -> DynamicGraph.Tensor<Element> {
+    precondition(min != nil || max != nil)
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.clamp.min = min ?? Float.nan
+    params.clamp.max = max ?? Float.nan
+    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Tensor<Element>(outputs[0])
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Clamp the given tensor between two values.
+  public func clamp(
+    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  ) -> DynamicGraph.Group<Element> {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.clamp.min = min ?? Float.nan
+    params.clamp.max = max ?? Float.nan
+    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Group<Element>(outputs[0])
   }
 }
