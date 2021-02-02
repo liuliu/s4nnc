@@ -250,17 +250,62 @@ extension DynamicGraph.Group {
     let graph = underlyingArray[0].graph
     let _graph = graph._graph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
-    var _output: ccv_nnc_tensor_variable_t? = underlyingArray[0]._tensor
-    ccv_nnc_dynamic_graph_exec(
-      _graph, cmd, ccv_nnc_no_hint, 0, nil, 0, &_output, 1, 0, _streamContext)
-    ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
-    let copy = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
-    // Init the rest of them to be the same.
-    for rest in underlyingArray.suffix(from: 1) {
-      var _target: ccv_nnc_tensor_variable_t? = rest._tensor
-      ccv_nnc_dynamic_graph_exec(
-        _graph, copy, ccv_nnc_no_hint, 0, &_output, 1, &_target, 1, 0, _streamContext)
+    let outputSize = Int32(underlyingArray.count)
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+      capacity: Int(outputSize))
+    for (i, variable) in underlyingArray.enumerated() {
+      (_outputs + i).initialize(to: variable._tensor)
     }
-    ccv_nnc_dynamic_graph_set_no_grad(_graph, 0)
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, nil, 0, _outputs, outputSize, outputSize, _streamContext)
+    _outputs.deallocate()
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Interpolate from this tensor to the other tensor.
+  public func lerp(
+    _ weight: Float, to: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil
+  ) {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.blas.a = (1 - weight, weight, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    let _inputs: [ccv_nnc_tensor_variable_t?] = [_tensor, to._tensor]
+    var _output: ccv_nnc_tensor_variable_t? = _tensor
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, _inputs, 2, &_output, 1, 0, _streamContext)
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Interpolate from this tensor to the other tensor.
+  public func lerp(
+    _ weight: Float, to: DynamicGraph.Group<Element>, streamContext: StreamContext? = nil
+  ) {
+    guard underlyingArray.count > 0 else { return }
+    precondition(to.underlyingArray.count == underlyingArray.count)
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.blas.a = (1 - weight, weight, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
+    let graph = underlyingArray[0].graph
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    let _inputs: [ccv_nnc_tensor_variable_t?] = zip(underlyingArray, to.underlyingArray).flatMap {
+      [$0.0._tensor, $0.1._tensor]
+    }
+    let outputSize = Int32(underlyingArray.count)
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+      capacity: Int(outputSize))
+    for (i, variable) in underlyingArray.enumerated() {
+      (_outputs + i).initialize(to: variable._tensor)
+    }
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize * 2, _outputs, outputSize, outputSize,
+      _streamContext)
+    _outputs.deallocate()
   }
 }
