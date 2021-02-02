@@ -37,8 +37,8 @@ swift_binary(
 )
 
 swift_binary(
-    name = "a2c",
-    srcs = ["a2c/main.swift"],
+    name = "ddpg",
+    srcs = ["ddpg/main.swift"],
     deps = [
         "//nnc",
         "//nnc:nnc_python",

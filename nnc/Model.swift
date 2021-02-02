@@ -201,15 +201,3 @@ public final class Input: Model.IO {
     super.init(_io)
   }
 }
-
-/// MARK - Hashable
-
-extension Model: Hashable {
-  public static func == (lhs: Model, rhs: Model) -> Bool {
-    return lhs === rhs
-  }
-
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(ObjectIdentifier(self))
-  }
-}

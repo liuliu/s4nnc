@@ -222,7 +222,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Tensor {
   /// Fill the given tensor with a value.
-  public func fill(
+  public func full(
     _ value: Float = 0, streamContext: StreamContext? = nil
   ) {
     var params = CmdParamsFactory.factory.newParams()
@@ -239,7 +239,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Fill the given tensor with a value.
-  public func fill(
+  public func full(
     _ value: Float = 0, streamContext: StreamContext? = nil
   ) {
     guard underlyingArray.count > 0 else { return }

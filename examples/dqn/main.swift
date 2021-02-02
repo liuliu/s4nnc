@@ -171,7 +171,7 @@ for epoch in 0..<max_epoch {
       let loss = td_q .* td_q
       */
       let grad: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 1))
-      grad.fill(1.0 / Float(batch_size))
+      grad.full(1.0 / Float(batch_size))
       loss.grad = grad
       var total: Float = 0
       for i in 0..<batch_size {
