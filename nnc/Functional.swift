@@ -233,6 +233,10 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
     ccv_nnc_dynamic_graph_evaluate(
       _graph, model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs,
       outputSize * Int32(parallel), nil, _streamContext)
+    // Set gradient update to noop. These will be reset when we call Optimizer.step.
+    let params = CmdParamsFactory.factory.newParams()
+    let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
+    ccv_cnnp_model_set_minimizer(model, noop, 1, nil, 0)
     _outputs.deallocate()
     return outputs
   }

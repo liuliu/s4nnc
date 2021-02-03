@@ -67,3 +67,9 @@ extension Tensor where Element: NumpyScalarCompatible {
     }
   }
 }
+
+extension Tensor: PythonConvertible where Element: NumpyScalarCompatible {
+  public var pythonObject: PythonObject {
+    makeNumpyArray()
+  }
+}

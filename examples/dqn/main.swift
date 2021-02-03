@@ -19,8 +19,6 @@ let gym = Python.import("gym")
 
 let env = gym.make(name)
 
-env.seed(0)
-
 let action_space = env.action_space
 
 let graph = DynamicGraph()
