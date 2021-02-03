@@ -19,6 +19,7 @@ let gym = Python.import("gym")
 let env = gym.make(name)
 
 env.seed(0)
+env.spec.reward_threshold = -250
 
 let action_space = env.action_space
 

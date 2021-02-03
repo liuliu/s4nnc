@@ -108,6 +108,52 @@ extension Functional {
 }
 
 extension DynamicGraph.Tensor {
+  public subscript(ranges: Range<Int>..., streamContext: StreamContext? = nil)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get {
+      precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
+      let dimensions = self.dimensions
+      precondition(ranges.count == dimensions.count)
+      let offset = ranges.map { $0.lowerBound }
+      let newDimensions = ranges.map { $0.count }
+      let increments = rawValue.increments
+      precondition(ranges.count == increments.count)
+      for (i, range) in ranges.enumerated() {
+        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
+        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+      }
+      return reshaped(
+        format: rawValue.format, dimensions: newDimensions, offset: offset, increments: increments)
+    }
+    set(v) {
+      precondition(v.graph === graph)
+      precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
+      let dimensions = self.dimensions
+      precondition(ranges.count == dimensions.count)
+      let offset = ranges.map { $0.lowerBound }
+      let newDimensions = ranges.map { $0.count }
+      let increments = rawValue.increments
+      precondition(ranges.count == increments.count)
+      for (i, range) in ranges.enumerated() {
+        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
+        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+      }
+      let output = reshaped(
+        format: rawValue.format, dimensions: newDimensions, offset: offset, increments: increments)
+      let params = CmdParamsFactory.factory.newParams()
+      let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
+      let _graph = graph._graph
+      let _streamContext = (streamContext ?? graph.streamContext)?._stream
+      var _input: ccv_nnc_tensor_variable_t? = v._tensor
+      var _output: ccv_nnc_tensor_variable_t? = output._tensor
+      ccv_nnc_dynamic_graph_exec(
+        _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
+    }
+  }
+}
+
+extension DynamicGraph.Tensor {
   /// Transpose from axisA to axisB.
   public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
     -> DynamicGraph.Tensor<Element>
