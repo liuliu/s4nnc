@@ -16,6 +16,7 @@ swift_library(
         "Model.swift",
         "ModelAddons.swift",
         "ModelBuilder.swift",
+        "ModelCore.swift",
         "ModelIOAddons.swift",
         "Operators.swift",
         "Optimizer.swift",
