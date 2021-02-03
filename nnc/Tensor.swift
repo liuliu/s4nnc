@@ -333,7 +333,8 @@ extension AnyTensorStorage {
     set(v) {
       let cTensorParams = cTensor.pointee.info
       let device = DeviceKind.from(cTensorParams: cTensorParams)
-      let format = TensorFormat.from(cTensorParams: cTensorParams)
+      // Use the format of the input to make sure we don't do unnecessary format conversions.
+      let vFormat = TensorFormat.from(cTensorParams: v.cTensor.pointee.info)
       let increments = self.increments
       assert(increments.count == ranges.count)
       for (i, range) in ranges.enumerated() {
@@ -349,7 +350,7 @@ extension AnyTensorStorage {
           ccv_nnc_tensor_view(
             cTensor,
             toCTensorParams(
-              device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset,
+              device, dataType: Element.dataType, format: vFormat, dimensions: dimensions), cOffset,
             cIncrements)
         }
       }

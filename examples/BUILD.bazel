@@ -44,5 +44,6 @@ swift_binary(
         "//nnc:nnc_python",
         "@PythonKit",
         "@SwiftAlgorithms//:Algorithms",
+        "@SwiftNumerics//:Numerics",
     ],
 )

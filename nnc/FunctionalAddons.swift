@@ -139,8 +139,10 @@ extension DynamicGraph.Tensor {
         assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
         assert(range.upperBound > 0 && range.upperBound <= increments[i])
       }
+      // Intentionally use the format of the input so we don't do unnecessary format conversion.
       let output = reshaped(
-        format: rawValue.format, dimensions: newDimensions, offset: offset, increments: increments)
+        format: v.rawValue.format, dimensions: newDimensions, offset: offset, increments: increments
+      )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
       let _graph = graph._graph
