@@ -3,12 +3,13 @@ import NNCPythonConversion
 import Numerics
 import PythonKit
 
+@Sequential
 func Net() -> Model {
-  return Model([
-    Dense(count: 128), RELU(),
-    Dense(count: 128), RELU(),
-    Dense(count: 1),
-  ])
+  Dense(count: 128)
+  RELU()
+  Dense(count: 128)
+  RELU()
+  Dense(count: 1)
 }
 
 let name = "Pendulum-v0"

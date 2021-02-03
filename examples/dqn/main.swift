@@ -3,14 +3,17 @@ import NNC
 import NNCPythonConversion
 import PythonKit
 
+@Sequential
 func Net() -> Model {
-  return Model([
-    Dense(count: 128), RELU(),
-    Dense(count: 128), RELU(),
-    Dense(count: 128), RELU(),
-    Dense(count: 128), RELU(),
-    Dense(count: 2),
-  ])
+  Dense(count: 128)
+  RELU()
+  Dense(count: 128)
+  RELU()
+  Dense(count: 128)
+  RELU()
+  Dense(count: 128)
+  RELU()
+  Dense(count: 2)
 }
 
 let name = "CartPole-v0"
