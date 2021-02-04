@@ -49,7 +49,20 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0._tensor }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
       capacity: Int(outputSize))
-    let outputs: [DynamicGraph.AnyTensor] = (0..<outputSize).map { _ in graph.variable() }
+    // Constants are very conservative, if all inputs are constants, then outputs can be constants.
+    var outputsCanBeConstants = true
+    for x in inputs {
+      if !x.isConstant {
+        outputsCanBeConstants = false
+        break
+      }
+    }
+    let outputs: [DynamicGraph.AnyTensor]
+    if outputsCanBeConstants {
+      outputs = (0..<outputSize).map { _ in graph.constant() }
+    } else {
+      outputs = (0..<outputSize).map { _ in graph.variable() }
+    }
     for (i, variable) in outputs.enumerated() {
       (_outputs + i).initialize(to: variable._tensor)
     }
@@ -94,9 +107,22 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
       assert(input.graph === graph)
     }
     let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0._tensor }
+    // Constants are very conservative, if all inputs are constants, then outputs can be constants.
+    var outputsCanBeConstants = true
+    for x in inputs {
+      if !x.isConstant {
+        outputsCanBeConstants = false
+        break
+      }
+    }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
       capacity: Int(outputSize))
-    let outputs: [DynamicGraph.AnyTensor] = (0..<outputSize).map { _ in graph.variable() }
+    let outputs: [DynamicGraph.AnyTensor]
+    if outputsCanBeConstants {
+      outputs = (0..<outputSize).map { _ in graph.constant() }
+    } else {
+      outputs = (0..<outputSize).map { _ in graph.variable() }
+    }
     for (i, variable) in outputs.enumerated() {
       assert(variable.graph === graph)
       (_outputs + i).initialize(to: variable._tensor)
@@ -106,6 +132,10 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     ccv_nnc_dynamic_graph_evaluate(
       _graph, model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs, outputSize, nil,
       _streamContext)
+    // Set gradient update to noop. These will be reset when we call Optimizer.step.
+    let params = CmdParamsFactory.factory.newParams()
+    let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
+    ccv_cnnp_model_set_minimizer(model, noop, 1, nil, 0)
     _outputs.deallocate()
     return outputs
   }
@@ -134,17 +164,28 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
     let parallel = inputs[0].count
     let inputSize = inputs.count
     var _inputs = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * inputSize)
+    var outputsCanBeConstants = true
     for (i, input) in inputs.enumerated() {
       assert(input.count == parallel)
       for (j, tensor) in input.enumerated() {
         assert(tensor.graph === graph)
         _inputs[j * inputSize + i] = tensor._tensor
+        if !tensor.isConstant {
+          outputsCanBeConstants = false
+        }
       }
     }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
       capacity: Int(outputSize) * parallel)
-    let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>] = (0..<outputSize).map { _ in
-      DynamicGraph.Group((0..<parallel).map { _ in graph.variable() })
+    let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>]
+    if outputsCanBeConstants {
+      outputs = (0..<outputSize).map { _ in
+        DynamicGraph.Group((0..<parallel).map { _ in graph.constant() })
+      }
+    } else {
+      outputs = (0..<outputSize).map { _ in
+        DynamicGraph.Group((0..<parallel).map { _ in graph.variable() })
+      }
     }
     for (i, output) in outputs.enumerated() {
       for (j, tensor) in output.enumerated() {
@@ -204,11 +245,15 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
     let parallel = inputs[0].count
     let inputSize = inputs.count
     var _inputs = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * inputSize)
+    var outputsCanBeConstants = true
     for (i, input) in inputs.enumerated() {
       assert(input.count == parallel)
       for (j, tensor) in input.enumerated() {
         assert(tensor.graph === graph)
         _inputs[j * inputSize + i] = tensor._tensor
+        if !tensor.isConstant {
+          outputsCanBeConstants = false
+        }
       }
     }
     if let dataParallel = dataParallel {
@@ -220,8 +265,15 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
     }
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
       capacity: Int(outputSize) * parallel)
-    let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>] = (0..<outputSize).map { _ in
-      DynamicGraph.Group((0..<parallel).map { _ in graph.variable() })
+    let outputs: [DynamicGraph.Group<DynamicGraph.AnyTensor>]
+    if outputsCanBeConstants {
+      outputs = (0..<outputSize).map { _ in
+        DynamicGraph.Group((0..<parallel).map { _ in graph.constant() })
+      }
+    } else {
+      outputs = (0..<outputSize).map { _ in
+        DynamicGraph.Group((0..<parallel).map { _ in graph.variable() })
+      }
     }
     for (i, output) in outputs.enumerated() {
       for (j, tensor) in output.enumerated() {

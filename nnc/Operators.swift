@@ -62,3 +62,11 @@ public func * (left: Float, right: Model.IO) -> Model.IO {
 public func * (left: Model.IO, right: Float) -> Model.IO {
   return Scalmul(right)(left)
 }
+
+public prefix func - <T: DynamicGraph.TensorGroup>(tensor: T) -> T {
+  return Functional.scalmul(left: -1, right: tensor)
+}
+
+public prefix func - (tensor: Model.IO) -> Model.IO {
+  return Scalmul(-1)(tensor)
+}
