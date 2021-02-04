@@ -167,8 +167,11 @@ for epoch in 0..<max_epoch {
         // Firs time use actorOld, copy its parameters from actor.
         actorOld.parameters.copy(from: actor.parameters)
       }
-      let act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
-      // let noise_v = noise(policy_noise)
+      var act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
+      let policy_noise_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 1))
+      policy_noise_v.randn(std: policy_noise)
+      policy_noise_v.clamp(min: -noise_clip, max: noise_clip)
+      act_next_v = act_next_v + policy_noise_v
       act_next_v.clamp(min: actionLow, max: actionHigh)
       let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
