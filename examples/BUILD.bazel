@@ -47,3 +47,15 @@ swift_binary(
         "@SwiftNumerics//:Numerics",
     ],
 )
+
+swift_binary(
+    name = "td3",
+    srcs = ["td3/main.swift"],
+    deps = [
+        "//nnc",
+        "//nnc:nnc_python",
+        "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
+        "@SwiftNumerics//:Numerics",
+    ],
+)

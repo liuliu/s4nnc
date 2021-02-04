@@ -42,6 +42,9 @@ let critic_lr: Float = 1e-3
 let gamma: Float = 0.99
 let tau: Float = 0.005
 let exploration_noise: Float = 0.1
+let policy_noise: Float = 0.2
+let noise_clip: Float = 0.5
+let update_actor_freq = 2
 let max_epoch = 20
 let step_per_epoch = 2400
 let collect_per_step = 4
@@ -60,14 +63,18 @@ func noise(_ std: Float) -> Float {
 }
 
 let actor = Net()
-let critic = Net()
+let critic1 = Net()
+let critic2 = Net()
 let actorOld = actor.copy()
-let criticOld = critic.copy()
+let critic1Old = critic1.copy()
+let critic2Old = critic2.copy()
 
 var actorOptim = AdamOptimizer(graph, rate: actor_lr)
 actorOptim.parameters = [actor.parameters]
-var criticOptim = AdamOptimizer(graph, rate: critic_lr)
-criticOptim.parameters = [critic.parameters]
+var critic1Optim = AdamOptimizer(graph, rate: critic_lr)
+critic1Optim.parameters = [critic1.parameters]
+var critic2Optim = AdamOptimizer(graph, rate: critic_lr)
+critic2Optim.parameters = [critic2.parameters]
 
 let actionLow: Float = Float(env.action_space.low[0])!
 let actionHigh: Float = Float(env.action_space.high[0])!
@@ -128,7 +135,8 @@ for epoch in 0..<max_epoch {
     // Now update the model. First, get some samples out of replay buffer.
     let update_steps = min(
       update_per_step * (env_step_count / collect_per_step), step_per_epoch - step_in_epoch)
-    var criticLoss: Float = 0
+    var critic1Loss: Float = 0
+    var critic2Loss: Float = 0
     var actorLoss: Float = 0
     for update_step in 0..<update_steps {
       let batch = replays.randomSample(count: batch_size)
@@ -160,11 +168,18 @@ for epoch in 0..<max_epoch {
         actorOld.parameters.copy(from: actor.parameters)
       }
       let act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
+      // let noise_v = noise(policy_noise)
       act_next_v.clamp(min: actionLow, max: actionHigh)
       let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
-      let target_q = DynamicGraph.Tensor<Float32>(criticOld(inputs: obs_act_next_v)[0])
+      let target1_q = DynamicGraph.Tensor<Float32>(critic1Old(inputs: obs_act_next_v)[0])
+      let target2_q = DynamicGraph.Tensor<Float32>(critic2Old(inputs: obs_act_next_v)[0])
+      var target = Tensor<Float32>(.CPU, .NC(batch_size, 1))
+      for i in 0..<batch_size {
+        target[i, 0] = min(target1_q[i, 0], target2_q[i, 0])
+      }
+      let target_q = graph.constant(target)
       let r_q = graph.constant(r) .+ graph.constant(d) .* target_q
       let obs_v = graph.variable(obs)
       let act_v = graph.constant(act)
@@ -173,40 +188,57 @@ for epoch in 0..<max_epoch {
       obs_act_v[0..<batch_size, 3..<4] = act_v
       if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
         // First time use critic, copy its parameters from criticOld.
-        critic.parameters.copy(from: criticOld.parameters)
+        critic1.parameters.copy(from: critic1Old.parameters)
+        critic2.parameters.copy(from: critic2Old.parameters)
       }
-      let pred_q = DynamicGraph.Tensor<Float32>(critic(inputs: obs_act_v)[0])
-      let loss = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred_q, target: r_q)[0])
+
+      let pred1_q = DynamicGraph.Tensor<Float32>(critic1(inputs: obs_act_v)[0])
+      let loss1 = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred1_q, target: r_q)[0])
       for i in 0..<batch_size {
-        criticLoss += loss[i, 0]
+        critic1Loss += loss1[i, 0]
       }
-      loss.backward(to: obs_act_v)
-      criticOptim.step()
-      let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
-      new_act_v.clamp(min: actionLow, max: actionHigh)
-      let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
-      new_obs_act_v[0..<batch_size, 0..<3] = obs_v
-      new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
-      let actor_loss = DynamicGraph.Tensor<Float32>(critic(inputs: new_obs_act_v)[0])
+      loss1.backward(to: obs_act_v)
+      critic1Optim.step()
+
+      let pred2_q = DynamicGraph.Tensor<Float32>(critic1(inputs: obs_act_v)[0])
+      let loss2 = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred2_q, target: r_q)[0])
       for i in 0..<batch_size {
-        actorLoss += actor_loss[i, 0]
+        critic2Loss += loss2[i, 0]
       }
-      let grad: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 1))
-      // Run gradient ascent, therefore, the negative sign for the gradient. It is the same as:
-      // actor_loss = -critic(inputs: new_obs_act_v)[0]
-      grad.full(-1.0 / Float(batch_size))
-      actor_loss.grad = grad
-      actor_loss.backward(to: obs_v)
-      actorOptim.step()
-      actorOld.parameters.lerp(tau, to: actor.parameters)
-      criticOld.parameters.lerp(tau, to: critic.parameters)
+      loss2.backward(to: obs_act_v)
+      critic2Optim.step()
+
+      critic1Old.parameters.lerp(tau, to: critic1.parameters)
+      critic2Old.parameters.lerp(tau, to: critic2.parameters)
+
+      if step_count % update_actor_freq == 0 {
+        let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
+        new_act_v.clamp(min: actionLow, max: actionHigh)
+        let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
+        new_obs_act_v[0..<batch_size, 0..<3] = obs_v
+        new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
+        let actor_loss = DynamicGraph.Tensor<Float32>(critic1(inputs: new_obs_act_v)[0])
+        for i in 0..<batch_size {
+          actorLoss += actor_loss[i, 0]
+        }
+        let grad: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 1))
+        // Run gradient ascent, therefore, the negative sign for the gradient. It is the same as:
+        // actor_loss = -critic(inputs: new_obs_act_v)[0]
+        grad.full(-1.0 / Float(batch_size))
+        actor_loss.grad = grad
+        actor_loss.backward(to: obs_v)
+        actorOptim.step()
+        actorOld.parameters.lerp(tau, to: actor.parameters)
+      }
+
       step_count += 1
       step_in_epoch += 1
     }
-    criticLoss = criticLoss / Float(batch_size * update_steps)
+    critic1Loss = critic1Loss / Float(batch_size * update_steps)
+    critic2Loss = critic2Loss / Float(batch_size * update_steps)
     actorLoss = -actorLoss / Float(batch_size * update_steps)
     print(
-      "Epoch \(epoch), step \(step_in_epoch), critic loss \(criticLoss), actor loss \(actorLoss), reward \(Float(training_rewards) / Float(episodes))"
+      "Epoch \(epoch), step \(step_in_epoch), critic1 loss \(critic1Loss), critic2 loss \(critic2Loss), actor loss \(actorLoss), reward \(Float(training_rewards) / Float(episodes))"
     )
   }
   // Running test and print how many steps we can perform in an episode before it fails.
@@ -233,7 +265,8 @@ for epoch in 0..<max_epoch {
     print("Stop criteria met. Saving mode to \(name).ckpt.")
     graph.openStore("\(name).ckpt") { store in
       store.write("ddpg_actor", model: actor)
-      store.write("ddpg_critic", model: critic)
+      store.write("ddpg_critic1", model: critic1)
+      store.write("ddpg_critic2", model: critic2)
     }
     break
   }
