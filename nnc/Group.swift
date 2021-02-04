@@ -5,6 +5,8 @@ public protocol DynamicGraph_AnyParameters {
 /// Protocol for other places to recognize AnyTensor and AnyGroup with static dispatch.
 public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var dimensions: [Int] { get }
+  var format: TensorFormat { get }
+  var increments: [Int] { get }
   var isConstant: Bool { get }
   var requiresGrad: Bool { get set }
 }
@@ -21,6 +23,20 @@ extension DynamicGraph_AnyGroup {
       assert(dimensions == tensor.dimensions)
     }
     return dimensions
+  }
+  public var format: TensorFormat {
+    let format = untyped[0].format
+    for tensor in untyped {
+      assert(format == tensor.format)
+    }
+    return format
+  }
+  public var increments: [Int] {
+    let increments = untyped[0].increments
+    for tensor in untyped {
+      assert(increments == tensor.increments)
+    }
+    return increments
   }
   public var isConstant: Bool {
     let isConstant = untyped[0].isConstant

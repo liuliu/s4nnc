@@ -90,6 +90,45 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[2, 1], -3, accuracy: 1e-5)
   }
 
+  func testPartialAssignWithGroup() throws {
+    let dynamicGraph = DynamicGraph()
+    let a00: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 1))
+    a00[0, 0] = 10
+    a00[1, 0] = 2
+    a00[2, 0] = 5
+    let a01: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 1))
+    a01[0, 0] = 2
+    a01[1, 0] = 3
+    a01[2, 0] = 0
+    let a0 = Group(a00, a01)
+    let a10: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 1))
+    a10[0, 0] = -1
+    a10[1, 0] = -2
+    a10[2, 0] = -3
+    let a11: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 1))
+    a11[0, 0] = 1
+    a11[1, 0] = 2
+    a11[2, 0] = 3
+    let a1 = Group(a10, a11)
+    let a20: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 2))
+    let a21: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 2))
+    var a2 = Group(a20, a21)
+    a2[0..<3, 0..<1] = a0[0..<3, 0..<1]
+    a2[0..<3, 1..<2] = a1[0..<3, 0..<1]
+    XCTAssertEqual(a20.rawValue[0, 0], 10, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 0], 2, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[2, 0], 5, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[0, 1], -1, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 1], -2, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[2, 1], -3, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 0], 2, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 0], 3, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[2, 0], 0, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 1], 1, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 1], 2, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[2, 1], 3, accuracy: 1e-5)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -97,5 +136,6 @@ final class GraphTests: XCTestCase {
     ("testLerp", testLerp),
     ("testClamp", testClamp),
     ("testPartialAssign", testPartialAssign),
+    ("testPartialAssignWithGroup", testPartialAssignWithGroup),
   ]
 }

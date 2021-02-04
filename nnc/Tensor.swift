@@ -259,14 +259,7 @@ public final class AnyTensorStorage {
 
   @usableFromInline
   var increments: [Int] {
-    let type = Int(cTensor.pointee.type)
-    guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
-      return fromCDimensions(cTensor.pointee.info.dim)
-    }
-    let inc = UnsafeMutableRawPointer(cTensor).bindMemory(
-      to: ccv_nnc_tensor_view_t.self, capacity: 1
-    ).pointee.inc
-    return fromCDimensions(inc)
+    fromCTensorIncrements(cTensor)
   }
 
   @usableFromInline
@@ -1151,6 +1144,18 @@ func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, In
       Int(dim.7),
     ]
   }
+}
+
+@usableFromInline
+func fromCTensorIncrements(_ cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>) -> [Int] {
+  let type = Int(cTensor.pointee.type)
+  guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
+    return fromCDimensions(cTensor.pointee.info.dim)
+  }
+  let inc = UnsafeMutableRawPointer(cTensor).bindMemory(
+    to: ccv_nnc_tensor_view_t.self, capacity: 1
+  ).pointee.inc
+  return fromCDimensions(inc)
 }
 
 @usableFromInline

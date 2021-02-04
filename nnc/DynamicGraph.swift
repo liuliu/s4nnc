@@ -82,6 +82,19 @@ public final class DynamicGraph {
       return fromCDimensions(info.dim)
     }
 
+    public var format: TensorFormat {
+      let _graph = graph._graph
+      let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
+      return TensorFormat.from(cTensorParams: info)
+    }
+
+    public var increments: [Int] {
+      let _graph = graph._graph
+      let _streamContext = graph.streamContext?._stream
+      let cTensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
+      return fromCTensorIncrements(cTensor)
+    }
+
     /**
      * A constant tensor can only be used as input, you cannot compute gradients
      * for a constant tensor.
