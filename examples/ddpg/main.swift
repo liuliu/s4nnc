@@ -80,14 +80,14 @@ for epoch in 0..<max_epoch {
   while step_in_epoch < step_per_epoch {
     var episodes = 0
     var env_step_count = 0
+    var training_rewards: Float = 0
     while env_step_count < collect_per_step {
       for _ in 0..<training_num {
         while true {
           let variable = graph.variable(last_obs)
           let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
           // It happens that we made a copy through mutation. We *may* have bugs if we just grab this without any modification.
-          var act_v = act.rawValue
-          act_v[0] += noise(exploration_noise)
+          let act_v = Tensor<Float32>([act[0] + noise(exploration_noise)], .C(1))
           let (obs, reward, done, _) = env.step(act_v).tuple4
           buffer.append((obs: last_obs, reward: Float32(reward)!, act: act_v))
           last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
@@ -98,6 +98,7 @@ for epoch in 0..<max_epoch {
             last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
             // Organizing data into ReplayBuffer.
             for (i, play) in buffer.enumerated() {
+              training_rewards += play.reward
               var rewards = [Float32]()
               for j in 0..<n_step {
                 rewards.append(i + j < buffer.count ? buffer[i + j].reward : 0)
@@ -124,6 +125,8 @@ for epoch in 0..<max_epoch {
     // Now update the model. First, get some samples out of replay buffer.
     let update_steps = min(
       update_per_step * (env_step_count / collect_per_step), step_per_epoch - step_in_epoch)
+    var criticLoss: Float = 0
+    var actorLoss: Float = 0
     for update_step in 0..<update_steps {
       let batch = replays.randomSample(count: batch_size)
       var obs = Tensor<Float32>(.CPU, .NC(batch_size, 3))
@@ -148,7 +151,6 @@ for epoch in 0..<max_epoch {
         d[i, 0] = replay.step + n_step < replay.step_count ? discount : 0
       }
       // Compute the q.
-      graph.logLevel = .verbose
       let obs_next_v = graph.constant(obs_next)
       if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
         // Firs time use actorOld, copy its parameters from actor.
@@ -171,6 +173,9 @@ for epoch in 0..<max_epoch {
       }
       let pred_q = DynamicGraph.Tensor<Float32>(critic(inputs: obs_act_v)[0])
       let loss = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred_q, target: r_q)[0])
+      for i in 0..<batch_size {
+        criticLoss += loss[i, 0]
+      }
       loss.backward(to: obs_act_v)
       criticOptim.step()
       let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
@@ -178,21 +183,55 @@ for epoch in 0..<max_epoch {
       new_obs_act_v[0..<batch_size, 0..<3] = obs_v
       new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
       let actor_loss = DynamicGraph.Tensor<Float32>(critic(inputs: new_obs_act_v)[0])
+      for i in 0..<batch_size {
+        actorLoss += actor_loss[i, 0]
+      }
       let grad: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 1))
+      // Run gradient ascent, therefore, the negative sign for the gradient. It is the same as:
+      // actor_loss = -critic(inputs: new_obs_act_v)[0]
       grad.full(-1.0 / Float(batch_size))
       actor_loss.grad = grad
       actor_loss.backward(to: obs_v)
       actorOptim.step()
       actorOld.parameters.lerp(tau, to: actor.parameters)
       criticOld.parameters.lerp(tau, to: critic.parameters)
-      graph.logLevel = .none
       step_count += 1
       step_in_epoch += 1
-      break
+    }
+    criticLoss = criticLoss / Float(batch_size * update_steps)
+    actorLoss = -actorLoss / Float(batch_size * update_steps)
+    print(
+      "Epoch \(epoch), step \(step_in_epoch), critic loss \(criticLoss), actor loss \(actorLoss), reward \(Float(training_rewards) / Float(episodes))"
+    )
+  }
+  // Running test and print how many steps we can perform in an episode before it fails.
+  var testing_rewards: Float = 0
+  for _ in 0..<testing_num {
+    while true {
+      let variable = graph.variable(last_obs)
+      let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
+      // It happens that we made a copy through mutation. We *may* have bugs if we just grab this without any modification.
+      let act_v = act.rawValue
+      let (obs, reward, done, _) = env.step(act_v).tuple4
+      last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+      testing_rewards += Float(reward)!
+      if Bool(done)! {
+        let obs = env.reset()
+        last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+        break
+      }
+    }
+  }
+  let avg_testing_rewards = testing_rewards / Float(testing_num)
+  print("Epoch \(epoch), testing reward \(avg_testing_rewards)")
+  if avg_testing_rewards >= Float(env.spec.reward_threshold)! {
+    print("Stop criteria met. Saving mode to \(name).ckpt.")
+    graph.openStore("\(name).ckpt") { store in
+      store.write("ddpg_actor", model: actor)
+      store.write("ddpg_critic", model: critic)
     }
     break
   }
-  break
 }
 
 env.close()
