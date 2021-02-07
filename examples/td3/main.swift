@@ -1,4 +1,5 @@
 import Algorithms
+import Foundation
 import NNC
 import NNCPythonConversion
 import Numerics
@@ -273,6 +274,23 @@ for epoch in 0..<max_epoch {
     }
     break
   }
+}
+
+var episodes = 0
+while episodes < 10 {
+  let variable = graph.variable(last_obs)
+  let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
+  act.clamp(min: actionLow, max: actionHigh)
+  let act_v = act.rawValue
+  let (obs, _, done, _) = env.step(act_v).tuple4
+  last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+  if Bool(done)! {
+    let obs = env.reset()
+    last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+    episodes += 1
+  }
+  env.render()
+  Thread.sleep(forTimeInterval: 0.0166667)
 }
 
 env.close()

@@ -155,67 +155,7 @@ extension DynamicGraph.Tensor {
   }
 }
 
-extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Float32> {
-  public subscript(ranges: Range<Int>..., streamContext: StreamContext? = nil)
-    -> DynamicGraph.Group<Element>
-  {
-    get {
-      precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(ranges.count == dimensions.count)
-      let offset = ranges.map { $0.lowerBound }
-      let newDimensions = ranges.map { $0.count }
-      let increments = self.increments
-      precondition(ranges.count == increments.count)
-      for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
-      }
-      return reshaped(
-        format: format, dimensions: newDimensions, offset: offset, increments: increments)
-    }
-    set(v) {
-      precondition(v.count == count)
-      guard count > 0 else { return }
-      let graph = untyped[0].graph
-      for x in v.untyped {
-        precondition(x.graph === graph)
-      }
-      precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(ranges.count == dimensions.count)
-      let offset = ranges.map { $0.lowerBound }
-      let newDimensions = ranges.map { $0.count }
-      let increments = self.increments
-      precondition(ranges.count == increments.count)
-      for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
-      }
-      // Intentionally use the format of the input so we don't do unnecessary format conversion.
-      let outputs = reshaped(
-        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
-      )
-      let params = CmdParamsFactory.factory.newParams()
-      let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
-      let _graph = graph._graph
-      let _streamContext = (streamContext ?? graph.streamContext)?._stream
-      let _inputs: [ccv_nnc_tensor_variable_t?] = v.untyped.map { $0._tensor }
-      let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
-        capacity: count)
-      for (i, variable) in outputs.untyped.enumerated() {
-        (_outputs + i).initialize(to: variable._tensor)
-      }
-      let outputSize = Int32(count)
-      ccv_nnc_dynamic_graph_exec(
-        _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
-        _streamContext)
-      _outputs.deallocate()
-    }
-  }
-}
-
-extension DynamicGraph.Group where Element == DynamicGraph.Tensor<Float16> {
+extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   public subscript(ranges: Range<Int>..., streamContext: StreamContext? = nil)
     -> DynamicGraph.Group<Element>
   {

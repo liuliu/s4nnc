@@ -54,7 +54,7 @@ public final class DynamicGraph {
       }
     }
 
-    fileprivate init(
+    required init(
       graph: DynamicGraph, tensor: ccv_nnc_tensor_variable_t, requiresGrad: Bool = false,
       original: Any? = nil
     ) {
@@ -273,7 +273,7 @@ extension DynamicGraph.WeakAnyTensor: Hashable {
   }
 }
 
-extension DynamicGraph.Tensor {
+extension DynamicGraph.AnyTensor {
 
   public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
@@ -281,6 +281,7 @@ extension DynamicGraph.Tensor {
     let _graph = graph._graph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     let device = DeviceKind.from(cTensorParams: cTensorParams)
+    let dataType = DataType.from(cTensorParams: cTensorParams)
     var offset = toCDimensions(offset)
     var increments = toCDimensions(increments)
     let _alias = withUnsafePointer(to: &offset.0) { offset in
@@ -288,7 +289,7 @@ extension DynamicGraph.Tensor {
         ccv_nnc_tensor_variable_alias_new(
           _graph, _tensor, offset, increments,
           toCTensorParams(
-            device, dataType: Element.dataType, format: format, dimensions: dimensions))!
+            device, dataType: dataType, format: format, dimensions: dimensions))!
       }
     }
     return Self(graph: underlying.graph, tensor: _alias, original: self)
