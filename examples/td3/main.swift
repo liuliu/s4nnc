@@ -179,11 +179,7 @@ for epoch in 0..<max_epoch {
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
       let target1_q = DynamicGraph.Tensor<Float32>(critic1Old(inputs: obs_act_next_v)[0])
       let target2_q = DynamicGraph.Tensor<Float32>(critic2Old(inputs: obs_act_next_v)[0])
-      var target = Tensor<Float32>(.CPU, .NC(batch_size, 1))
-      for i in 0..<batch_size {
-        target[i, 0] = min(target1_q[i, 0], target2_q[i, 0])
-      }
-      let target_q = graph.constant(target)
+      let target_q = Functional.min(target1_q, target2_q)
       let r_q = graph.constant(r) .+ graph.constant(d) .* target_q
       let obs_v = graph.variable(obs)
       let act_v = graph.constant(act)

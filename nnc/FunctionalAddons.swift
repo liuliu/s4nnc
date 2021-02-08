@@ -105,6 +105,32 @@ extension Functional {
       streamContext: streamContext)
     return T(outputs[0])
   }
+
+  /// Element-wise min for two input tensors
+  public static func min<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_MIN_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  /// Element-wise max for two input tensors
+  public static func max<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_MAX_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
 }
 
 extension DynamicGraph.Tensor {

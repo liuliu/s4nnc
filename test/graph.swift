@@ -129,6 +129,32 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a21.rawValue[2, 1], 3, accuracy: 1e-5)
   }
 
+  func testMin() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a0[0, 0] = 10
+    a0[1, 0] = 1
+    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a1[0, 0] = 1
+    a1[1, 0] = 5
+    let a2 = Functional.min(a0, a1)
+    XCTAssertEqual(a2.rawValue[0, 0], 1, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 0], 1, accuracy: 1e-5)
+  }
+
+  func testMax() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a0[0, 0] = 10
+    a0[1, 0] = 1
+    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    a1[0, 0] = 1
+    a1[1, 0] = 5
+    let a2 = Functional.max(a0, a1)
+    XCTAssertEqual(a2.rawValue[0, 0], 10, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 0], 5, accuracy: 1e-5)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -137,5 +163,7 @@ final class GraphTests: XCTestCase {
     ("testClamp", testClamp),
     ("testPartialAssign", testPartialAssign),
     ("testPartialAssignWithGroup", testPartialAssignWithGroup),
+    ("testMin", testMin),
+    ("testMax", testMax),
   ]
 }
