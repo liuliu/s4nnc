@@ -50,7 +50,7 @@ extension Model.Parameters {
     }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
-    params.blas.a = (weight, 1 - weight, 0)
+    params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     ccv_cnnp_model_parameters_zip_map(
       toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, fromModel._model, parameters._io)

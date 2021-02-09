@@ -95,8 +95,8 @@ for epoch in 0..<max_epoch {
     while env_step_count < collect_per_step {
       for _ in 0..<training_num {
         while true {
-          let variable = graph.variable(last_obs)
-          let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
+          let variable = graph.variable(last_obs.toGPU(0))
+          let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0]).toCPU()
           let v = max(min(act[0] + noise(exploration_noise), actionHigh), actionLow)
           let act_v = Tensor<Float32>([v], .CPU, .C(1))
           let (obs, reward, done, _) = env.step(act_v).tuple4
@@ -163,27 +163,27 @@ for epoch in 0..<max_epoch {
         d[i, 0] = replay.step + n_step < replay.step_count ? discount : 0
       }
       // Compute the q.
-      let obs_next_v = graph.constant(obs_next)
+      let obs_next_v = graph.constant(obs_next.toGPU(0))
       if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
         // Firs time use actorOld, copy its parameters from actor.
         actorOld.parameters.copy(from: actor.parameters)
       }
       var act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
-      let policy_noise_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 1))
+      let policy_noise_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 1))
       policy_noise_v.randn(std: policy_noise)
       policy_noise_v.clamp(min: -noise_clip, max: noise_clip)
       act_next_v = act_next_v + policy_noise_v
       act_next_v.clamp(min: actionLow, max: actionHigh)
-      let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 4))
+      let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
       let target1_q = DynamicGraph.Tensor<Float32>(critic1Old(inputs: obs_act_next_v)[0])
       let target2_q = DynamicGraph.Tensor<Float32>(critic2Old(inputs: obs_act_next_v)[0])
       let target_q = Functional.min(target1_q, target2_q)
-      let r_q = graph.constant(r) .+ graph.constant(d) .* target_q
-      let obs_v = graph.variable(obs)
-      let act_v = graph.constant(act)
-      let obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
+      let r_q = graph.constant(r.toGPU(0)) .+ graph.constant(d.toGPU(0)) .* target_q
+      let obs_v = graph.variable(obs.toGPU(0))
+      let act_v = graph.constant(act.toGPU(0))
+      let obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 4))
       obs_act_v[0..<batch_size, 0..<3] = obs_v
       obs_act_v[0..<batch_size, 3..<4] = act_v
       if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
@@ -194,16 +194,18 @@ for epoch in 0..<max_epoch {
 
       let pred1_q = DynamicGraph.Tensor<Float32>(critic1(inputs: obs_act_v)[0])
       let loss1 = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred1_q, target: r_q)[0])
+      let cpuLoss1 = loss1.toCPU()
       for i in 0..<batch_size {
-        critic1Loss += loss1[i, 0]
+        critic1Loss += cpuLoss1[i, 0]
       }
       loss1.backward(to: obs_act_v)
       critic1Optim.step()
 
-      let pred2_q = DynamicGraph.Tensor<Float32>(critic1(inputs: obs_act_v)[0])
+      let pred2_q = DynamicGraph.Tensor<Float32>(critic2(inputs: obs_act_v)[0])
       let loss2 = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred2_q, target: r_q)[0])
+      let cpuLoss2 = loss2.toCPU()
       for i in 0..<batch_size {
-        critic2Loss += loss2[i, 0]
+        critic2Loss += cpuLoss2[i, 0]
       }
       loss2.backward(to: obs_act_v)
       critic2Optim.step()
@@ -214,14 +216,16 @@ for epoch in 0..<max_epoch {
       if step_count % update_actor_freq == 0 {
         let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
         new_act_v.clamp(min: actionLow, max: actionHigh)
-        let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
+        let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(
+          .GPU(0), .NC(batch_size, 4))
         new_obs_act_v[0..<batch_size, 0..<3] = obs_v
         new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
         let actor_loss = DynamicGraph.Tensor<Float32>(critic1(inputs: new_obs_act_v)[0])
+        let cpuActorLoss = actor_loss.toCPU()
         for i in 0..<batch_size {
-          actorLoss += actor_loss[i, 0]
+          actorLoss += cpuActorLoss[i, 0]
         }
-        let grad: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 1))
+        let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 1))
         // Run gradient ascent, therefore, the negative sign for the gradient. It is the same as:
         // actor_loss = -critic(inputs: new_obs_act_v)[0]
         grad.full(-1.0 / Float(batch_size))
@@ -245,10 +249,10 @@ for epoch in 0..<max_epoch {
   var testing_rewards: Float = 0
   for _ in 0..<testing_num {
     while true {
-      let variable = graph.variable(last_obs)
+      let variable = graph.variable(last_obs.toGPU(0))
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(min: actionLow, max: actionHigh)
-      let act_v = act.rawValue
+      let act_v = act.rawValue.toCPU()
       let (obs, reward, done, _) = env.step(act_v).tuple4
       last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
       testing_rewards += Float(reward)!
@@ -274,10 +278,10 @@ for epoch in 0..<max_epoch {
 
 var episodes = 0
 while episodes < 10 {
-  let variable = graph.variable(last_obs)
+  let variable = graph.variable(last_obs.toGPU(0))
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
   act.clamp(min: actionLow, max: actionHigh)
-  let act_v = act.rawValue
+  let act_v = act.rawValue.toCPU()
   let (obs, _, done, _) = env.step(act_v).tuple4
   last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
   if Bool(done)! {
