@@ -91,7 +91,7 @@ for epoch in 0..<max_epoch {
           let variable = graph.variable(last_obs)
           let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
           let v = max(min(act[0] + noise(exploration_noise), actionHigh), actionLow)
-          let act_v = Tensor<Float32>([v], .C(1))
+          let act_v = Tensor<Float32>([v], .CPU, .C(1))
           let (obs, reward, done, _) = env.step(act_v).tuple4
           buffer.append((obs: last_obs, reward: Float32(reward)!, act: act_v))
           last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))

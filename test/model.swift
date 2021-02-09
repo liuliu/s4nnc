@@ -16,9 +16,9 @@ final class ModelTests: XCTestCase {
     }
 
     let muladd = MulAdd()
-    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .C(1)))
-    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .C(1)))
-    let tv2 = dynamicGraph.variable(Tensor<Float32>([0.2], .C(1)))
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+    let tv2 = dynamicGraph.variable(Tensor<Float32>([0.2], .CPU, .C(1)))
     let tv3 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0, tv1, tv2)[0])
     XCTAssertEqual(tv3.rawValue[0], 1.1 * 2.2 - 0.2, accuracy: 1e-5)
   }
@@ -33,13 +33,13 @@ final class ModelTests: XCTestCase {
       return Model([i0, i1], [i2])
     }
 
-    let b0 = dynamicGraph.variable(Tensor<Float32>([1.2], .C(1)))
-    let b1 = dynamicGraph.constant(Tensor<Float32>([2.2], .C(1)))
+    let b0 = dynamicGraph.variable(Tensor<Float32>([1.2], .CPU, .C(1)))
+    let b1 = dynamicGraph.constant(Tensor<Float32>([2.2], .CPU, .C(1)))
     let b2 = DynamicGraph.Tensor<Float32>(builder(inputs: b0, b1)[0])
     XCTAssertEqual(b2.rawValue[0], 1.2 * 2.2, accuracy: 1e-5)
 
-    let b3 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2], .C(2)))
-    let b4 = dynamicGraph.constant(Tensor<Float32>([2.2, 3.3], .C(2)))
+    let b3 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2], .CPU, .C(2)))
+    let b4 = dynamicGraph.constant(Tensor<Float32>([2.2, 3.3], .CPU, .C(2)))
     let b5 = DynamicGraph.Tensor<Float32>(builder(inputs: b3, b4)[0])
     XCTAssertEqual(b5.rawValue[0], 1.2 * 2.2, accuracy: 1e-5)
     XCTAssertEqual(b5.rawValue[1], 2.2 * 3.3, accuracy: 1e-5)
@@ -55,8 +55,8 @@ final class ModelTests: XCTestCase {
     }
 
     let muladd = MulAdd()
-    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .C(1)))
-    let tv1 = dynamicGraph.variable(Tensor<Float32>([-2.2], .C(1)))
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([-2.2], .CPU, .C(1)))
     let _ = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0)[0])
     muladd.parameters.clamp(min: 1, max: 1)
     let tv2 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0)[0])

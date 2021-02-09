@@ -140,7 +140,7 @@ var trainDataDf = DataFrame(from: trainData, name: "main")
 let testDataDf = DataFrame(from: testData, name: "main")
 trainDataDf["tensor"] = trainDataDf["main", CIFARData.self].map(\.tensor)
 trainDataDf["c"] = trainDataDf["main", CIFARData.self].map {
-  Tensor<Int32>([Int32($0.label)], .C(1))
+  Tensor<Int32>([Int32($0.label)], .CPU, .C(1))
 }
 trainDataDf["jittered"] = trainDataDf["tensor"]!.toImageJitter(
   Float32.self,

@@ -535,12 +535,22 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     self.init(kind, Element.dataType, dimensionFormat)
   }
 
-  public init<S: Sequence>(_ sequence: S, format: TensorFormat, dimensions: [Int])
+  public init<S: Sequence>(_ sequence: S, kind: DeviceKind, format: TensorFormat, dimensions: [Int])
   where S.Element == Element {
-    self.init(.CPU, format: format, dimensions: dimensions)
+    self.init(kind, format: format, dimensions: dimensions)
     let cArray = ContiguousArray(sequence)
     cArray.withUnsafeBytes { bytes -> Void in
-      memcpy(cTensor.pointee.data.u8, bytes.baseAddress!, bytes.count)
+      var tensor = ccv_nnc_tensor(
+        bytes.baseAddress,
+        toCTensorParams(.CPU, dataType: Element.dataType, format: format, dimensions: dimensions), 0
+      )
+      let cmd = ccv_nnc_cmd(
+        CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
+      var _output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
+      withUnsafeMutablePointer(to: &tensor) { input in
+        var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = input
+        ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, nil)
+      }
     }
   }
 
@@ -551,9 +561,12 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
    *   - sequence: The sequence to initialize the new tensor with.
    *   - dimensionFormat: The format and dimensions of the new tensor.
    */
-  public init<S: Sequence>(_ sequence: S, _ dimensionFormat: TensorDimensionFormat)
+  public init<S: Sequence>(
+    _ sequence: S, _ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat
+  )
   where S.Element == Element {
-    self.init(sequence, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
+    self.init(
+      sequence, kind: kind, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
   public init(

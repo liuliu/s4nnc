@@ -19,7 +19,7 @@ final class TensorTests: XCTestCase {
     let subT = tensor[2..<4, 1..<2]
     XCTAssertEqual(5, subT[0, 0])
     XCTAssertEqual(7, subT[1, 0])
-    var outT = Tensor<Int32>([0, 0, 0, 0, 0, 0], .NC(3, 2))
+    var outT = Tensor<Int32>([0, 0, 0, 0, 0, 0], .CPU, .NC(3, 2))
     outT[1..<3, 0..<1] = subT
     XCTAssertEqual(0, outT[0, 0])
     XCTAssertEqual(5, outT[1, 0])
