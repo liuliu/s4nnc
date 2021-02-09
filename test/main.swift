@@ -6,6 +6,7 @@
     testCase(GraphTests.allTests),
     testCase(LossTests.allTests),
     testCase(ModelTests.allTests),
+    testCase(OpsTests.allTests),
     testCase(OptimizerTests.allTests),
     testCase(StoreTests.allTests),
     testCase(TensorTests.allTests),

@@ -1,5 +1,10 @@
 import C_nnc
 
+public enum ReduceOp {
+  case sum
+  case max
+}
+
 extension Functional {
   /// Element-wise addition
   public static func sum<T: DynamicGraph.TensorGroup>(
@@ -558,7 +563,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Clamp the given tensor between two values.
-  public func clamp(
+  public func clamped(
     min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
   ) -> DynamicGraph.Group<Element> {
     var params = CmdParamsFactory.factory.newParams()
@@ -566,6 +571,48 @@ extension DynamicGraph.Group {
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Group<Element>(outputs[0])
+  }
+}
+
+extension DynamicGraph.Tensor {
+  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext? = nil)
+    -> DynamicGraph.Tensor<Element>
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.reduce.axis = toCDimensions(axis)
+    params.reduce.count = Int32(axis.count)
+    let cmd: ccv_nnc_cmd_t
+    switch op {
+    case .sum:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_SUM_FORWARD, nil, params, 0)
+    case .max:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
+    }
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Tensor<Element>(outputs[0])
+  }
+}
+
+extension DynamicGraph.Group {
+  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext? = nil)
+    -> DynamicGraph.Group<Element>
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.reduce.axis = toCDimensions(axis)
+    params.reduce.count = Int32(axis.count)
+    let cmd: ccv_nnc_cmd_t
+    switch op {
+    case .sum:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_SUM_FORWARD, nil, params, 0)
+    case .max:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
+    }
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Group<Element>(outputs[0])

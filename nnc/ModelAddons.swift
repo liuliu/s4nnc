@@ -397,3 +397,100 @@ public final class AveragePool: Model {
     return T(outputs[0])
   }
 }
+
+/// reduce sum model.
+public final class ReduceSum: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: [Int], name: String = "") {
+    precondition(axis.count > 0)
+    super.init(ccv_cnnp_reduce_sum(axis.map { Int32($0) }, Int32(axis.count), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// reduce max model.
+public final class ReduceMax: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: [Int], name: String = "") {
+    precondition(axis.count > 0)
+    super.init(ccv_cnnp_reduce_max(axis.map { Int32($0) }, Int32(axis.count), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  public func reduced(_ op: ReduceOp, axis: [Int]) -> Model.IO {
+    switch op {
+    case .sum:
+      return ReduceSum(axis: axis)(self)
+    case .max:
+      return ReduceMax(axis: axis)(self)
+    }
+  }
+}
+
+/// min model.
+public final class Min: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_min(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func min(_ left: Model.IO, _ right: Model.IO) -> Model.IO {
+    return Min()(left, right)
+  }
+}
+
+/// max model.
+public final class Max: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_max(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func max(_ left: Model.IO, _ right: Model.IO) -> Model.IO {
+    return Max()(left, right)
+  }
+}

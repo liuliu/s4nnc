@@ -8,6 +8,7 @@ swift_test(
         "loss.swift",
         "main.swift",
         "model.swift",
+        "ops.swift",
         "optimizer.swift",
         "store.swift",
         "tensor.swift",
