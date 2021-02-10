@@ -17,7 +17,7 @@ Currently, s4nnc works better under Linux with CUDA 11, CuDNN and NCCL. The API 
 ```swift
 public struct Tensor<Element> {
   init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat)
-  init<S: Sequence>(_ sequence: S, _ dimensionFormat: TensorDimensionFormat) where S.Element == Element
+  init<S: Sequence>(_ sequence: S, _ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) where S.Element == Element
 }
 ```
 
@@ -197,8 +197,8 @@ let graph = DynamicGraph()
 
 let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
 let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group((0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
-vocabVec.rand(-1, 1)
-seqVec.rand(-1, 1)
+vocabVec.rand(-1...1)
+seqVec.rand(-1...1)
 var adamOptimizer = AdamOptimizer(graph, rate: 0.0001, betas: (0.9, 0.98), decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec, transformer.parameters]
 var overallAccuracy = 0.0
