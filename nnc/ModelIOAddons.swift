@@ -32,8 +32,11 @@ extension Model.Parameters {
    *
    * - Parameter weight: How much the other parameter should weight, it must be between [0, 1].
    * - Parameter parameters: The parameters of another model, it must match the parameters to update.
+   * - Parameter streamContext: The stream context to apply the lerp operation.
    */
-  public func lerp(_ weight: Float, to parameters: Model.Parameters) {
+  public func lerp(
+    _ weight: Float, to parameters: Model.Parameters, streamContext: StreamContext? = nil
+  ) {
     precondition(weight >= 0 && weight <= 1)
     guard var fromModel = parameters.model,
       var toModel = model
@@ -58,10 +61,7 @@ extension Model.Parameters {
 }
 
 extension Model.Parameters {
-  /**
-   * Clamp current parameters between two values.
-   */
-  public func clamp(min: Float? = nil, max: Float? = nil) {
+  func clamp(min: Float?, max: Float?, streamContext: StreamContext?) {
     precondition(min != nil || max != nil)
     guard var toModel = model else {
       fatalError()
@@ -78,5 +78,26 @@ extension Model.Parameters {
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
     ccv_cnnp_model_parameters_map(
       toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil)
+  }
+
+  /**
+   * Clamp current parameters between two values.
+   */
+  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
+  }
+
+  /**
+   * Clamp current parameters with a lower bound.
+   */
+  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: range.lowerBound, max: nil, streamContext: streamContext)
+  }
+
+  /**
+   * Clamp current parameters with an upper bound.
+   */
+  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: nil, max: range.upperBound, streamContext: streamContext)
   }
 }

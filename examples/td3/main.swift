@@ -171,9 +171,9 @@ for epoch in 0..<max_epoch {
       var act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
       let policy_noise_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 1))
       policy_noise_v.randn(std: policy_noise)
-      policy_noise_v.clamp(min: -noise_clip, max: noise_clip)
+      policy_noise_v.clamp(-noise_clip...noise_clip)
       act_next_v = act_next_v + policy_noise_v
-      act_next_v.clamp(min: actionLow, max: actionHigh)
+      act_next_v.clamp(actionLow...actionHigh)
       let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
@@ -215,7 +215,7 @@ for epoch in 0..<max_epoch {
 
       if step_count % update_actor_freq == 0 {
         let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
-        new_act_v.clamp(min: actionLow, max: actionHigh)
+        new_act_v.clamp(actionLow...actionHigh)
         let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(
           .GPU(0), .NC(batch_size, 4))
         new_obs_act_v[0..<batch_size, 0..<3] = obs_v
@@ -251,7 +251,7 @@ for epoch in 0..<max_epoch {
     while true {
       let variable = graph.variable(last_obs.toGPU(0))
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-      act.clamp(min: actionLow, max: actionHigh)
+      act.clamp(actionLow...actionHigh)
       let act_v = act.rawValue.toCPU()
       let (obs, reward, done, _) = env.step(act_v).tuple4
       last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
@@ -280,7 +280,7 @@ var episodes = 0
 while episodes < 10 {
   let variable = graph.variable(last_obs.toGPU(0))
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-  act.clamp(min: actionLow, max: actionHigh)
+  act.clamp(actionLow...actionHigh)
   let act_v = act.rawValue.toCPU()
   let (obs, _, done, _) = env.step(act_v).tuple4
   last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))

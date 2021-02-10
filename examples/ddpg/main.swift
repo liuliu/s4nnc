@@ -161,7 +161,7 @@ for epoch in 0..<max_epoch {
         actorOld.parameters.copy(from: actor.parameters)
       }
       let act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
-      act_next_v.clamp(min: actionLow, max: actionHigh)
+      act_next_v.clamp(actionLow...actionHigh)
       let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
@@ -184,7 +184,7 @@ for epoch in 0..<max_epoch {
       loss.backward(to: obs_act_v)
       criticOptim.step()
       let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
-      new_act_v.clamp(min: actionLow, max: actionHigh)
+      new_act_v.clamp(actionLow...actionHigh)
       let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
       new_obs_act_v[0..<batch_size, 0..<3] = obs_v
       new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
@@ -216,7 +216,7 @@ for epoch in 0..<max_epoch {
     while true {
       let variable = graph.variable(last_obs)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-      act.clamp(min: actionLow, max: actionHigh)
+      act.clamp(actionLow...actionHigh)
       let act_v = act.rawValue
       let (obs, reward, done, _) = env.step(act_v).tuple4
       last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
@@ -244,7 +244,7 @@ var episodes = 0
 while episodes < 10 {
   let variable = graph.variable(last_obs)
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-  act.clamp(min: actionLow, max: actionHigh)
+  act.clamp(actionLow...actionHigh)
   let act_v = act.rawValue
   let (obs, _, done, _) = env.step(act_v).tuple4
   last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))

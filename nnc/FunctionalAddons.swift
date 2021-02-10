@@ -279,11 +279,11 @@ extension DynamicGraph.Group {
 extension DynamicGraph.Tensor {
   /// Fill the given tensor with uniform random values.
   public func rand(
-    _ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil
+    _ range: ClosedRange<Float> = 0...1, streamContext: StreamContext? = nil
   ) {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
-    params.blas.a = (lowerBound, upperBound, 0)
+    params.blas.a = (range.lowerBound, range.upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
     let _graph = graph._graph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
@@ -296,12 +296,12 @@ extension DynamicGraph.Tensor {
 extension DynamicGraph.Group {
   /// Fill the given tensor with uniform random values.
   public func rand(
-    _ lowerBound: Float = 0, _ upperBound: Float = 1, streamContext: StreamContext? = nil
+    _ range: ClosedRange<Float> = 0...1, streamContext: StreamContext? = nil
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
-    params.blas.a = (lowerBound, upperBound, 0)
+    params.blas.a = (range.lowerBound, range.upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
     let _graph = graph._graph
@@ -497,9 +497,8 @@ extension DynamicGraph.Group {
 }
 
 extension DynamicGraph.Tensor {
-  /// Clamp the given tensor between two values.
-  public func clamp(
-    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  func clamp(
+    min: Float?, max: Float?, streamContext: StreamContext?
   ) {
     precondition(min != nil || max != nil)
     var params = CmdParamsFactory.factory.newParams()
@@ -514,12 +513,26 @@ extension DynamicGraph.Tensor {
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
   }
+
+  /// Clamp the given tensor between two values.
+  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with a lower bound.
+  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: range.lowerBound, max: nil, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with an upper bound.
+  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: nil, max: range.upperBound, streamContext: streamContext)
+  }
 }
 
 extension DynamicGraph.Group {
-  /// Clamp the given tensor between two values.
-  public func clamp(
-    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  func clamp(
+    min: Float?, max: Float?, streamContext: StreamContext?
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
@@ -542,12 +555,26 @@ extension DynamicGraph.Group {
       _streamContext)
     _outputs.deallocate()
   }
+
+  /// Clamp the given tensor between two values.
+  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with a lower bound.
+  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: range.lowerBound, max: nil, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with an upper bound.
+  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
+    clamp(min: nil, max: range.upperBound, streamContext: streamContext)
+  }
 }
 
 extension DynamicGraph.Tensor {
-  /// Clamp the given tensor between two values.
-  public func clamped(
-    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+  func clamped(
+    min: Float?, max: Float?, streamContext: StreamContext?
   ) -> DynamicGraph.Tensor<Element> {
     precondition(min != nil || max != nil)
     var params = CmdParamsFactory.factory.newParams()
@@ -559,11 +586,31 @@ extension DynamicGraph.Tensor {
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Tensor<Element>(outputs[0])
   }
+
+  /// Clamp the given tensor between two values.
+  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil)
+    -> DynamicGraph.Tensor<Element>
+  {
+    return clamped(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with a lower bound.
+  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil)
+    -> DynamicGraph.Tensor<Element>
+  {
+    return clamped(min: range.lowerBound, max: nil, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with an upper bound.
+  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil)
+    -> DynamicGraph.Tensor<Element>
+  {
+    return clamped(min: nil, max: range.upperBound, streamContext: streamContext)
+  }
 }
 
 extension DynamicGraph.Group {
-  /// Clamp the given tensor between two values.
-  public func clamped(
+  func clamped(
     min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
   ) -> DynamicGraph.Group<Element> {
     var params = CmdParamsFactory.factory.newParams()
@@ -574,6 +621,27 @@ extension DynamicGraph.Group {
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Group<Element>(outputs[0])
+  }
+
+  /// Clamp the given tensor between two values.
+  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil)
+    -> DynamicGraph.Group<Element>
+  {
+    return clamped(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with a lower bound.
+  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil)
+    -> DynamicGraph.Group<Element>
+  {
+    return clamped(min: range.lowerBound, max: nil, streamContext: streamContext)
+  }
+
+  /// Clamp the given tensor with an upper bound.
+  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil)
+    -> DynamicGraph.Group<Element>
+  {
+    return clamped(min: nil, max: range.upperBound, streamContext: streamContext)
   }
 }
 

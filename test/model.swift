@@ -58,7 +58,7 @@ final class ModelTests: XCTestCase {
     let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
     let tv1 = dynamicGraph.variable(Tensor<Float32>([-2.2], .CPU, .C(1)))
     let _ = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0)[0])
-    muladd.parameters.clamp(min: 1, max: 1)
+    muladd.parameters.clamp(1...1)
     let tv2 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0)[0])
     let tv3 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv1)[0])
     XCTAssertEqual(tv2.rawValue[0], 2.1, accuracy: 1e-5)

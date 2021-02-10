@@ -196,8 +196,8 @@ let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group(
   (0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
 let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group(
   (0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
-vocabVec.rand(-1, 1)
-seqVec.rand(-1, 1)
+vocabVec.rand(-1...1)
+seqVec.rand(-1...1)
 graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
   store.read("vocab", variable: vocabVec)
   store.read("seq", variable: seqVec)

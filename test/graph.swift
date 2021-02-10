@@ -61,8 +61,8 @@ final class GraphTests: XCTestCase {
     let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
     a1[0, 0] = -1
     a1[1, 0] = -2
-    a0.clamp(min: 3, max: 6)
-    let a2 = a1.clamped(min: -1.1)
+    a0.clamp(3...6)
+    let a2 = a1.clamped((-1.1)...)
     XCTAssertEqual(a0.rawValue[0, 0], 6, accuracy: 1e-5)
     XCTAssertEqual(a0.rawValue[1, 0], 3, accuracy: 1e-5)
     XCTAssertEqual(a2.rawValue[0, 0], -1, accuracy: 1e-5)
