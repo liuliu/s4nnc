@@ -36,7 +36,7 @@ public final class DynamicGraph {
 
     fileprivate let underlying: _AnyTensor
 
-    var graph: DynamicGraph { underlying.graph }
+    public var graph: DynamicGraph { underlying.graph }
     var _tensor: ccv_nnc_tensor_variable_t { underlying._tensor }
 
     public var requiresGrad: Bool {  // I would like to keep this as internal. Unfortunately, that is hard to do. Hence, mark with _.

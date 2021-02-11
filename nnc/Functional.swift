@@ -5,6 +5,7 @@ import C_nnc
 /// It has a typed version DynamicGraph.TensorGroup to enforce type constraint.
 
 public protocol DynamicGraph_AnyTensor {
+  var graph: DynamicGraph { get }
   static func downcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor
 }
 
@@ -143,6 +144,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
 }
 
 extension DynamicGraph.Group: DynamicGraph_AnyTensor where Element: DynamicGraph.AnyTensor {
+  public var graph: DynamicGraph { underlyingArray[0].graph }
   public static func downcasting(from: DynamicGraph_Any) -> DynamicGraph_AnyTensor {
     guard let from = from as? DynamicGraph.AnyGroup else {
       fatalError("This will not be needed.")
@@ -407,6 +409,7 @@ extension Model {
     _: T.Type, _ inputs: [T.AnyTensor], streamContext: StreamContext? = nil
   ) -> [T.AnyTensor] {
     let outputSize = ccv_cnnp_model_output_size(_model)
+    graph = inputs.first?.graph
     return T.evaluate(
       model: _model, isTest: isTest, dataParallel: &dataParallel, inputs: inputs,
       outputSize: outputSize, streamContext: streamContext)
@@ -443,6 +446,7 @@ extension AnyModelBuilder {
     self.t = t
     self.inputs = (inputs as! [DynamicGraph_Any])
     let outputSize = self.outputSize
+    model!.graph = inputs.first?.graph
     let outputs = U.evaluate(
       model: model!._model, isTest: isTest, dataParallel: &model!.dataParallel, inputs: inputs,
       outputSize: Int32(outputSize), streamContext: streamContext)

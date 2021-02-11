@@ -29,6 +29,7 @@ public class Model {
   var dataParallel: Int? = nil  // Keep track of whether we applied data parallel to the model or not.
   let _model: OpaquePointer
   var owner: Model? = nil
+  weak var graph: DynamicGraph? = nil
 
   private func ownerHook() {
     ccv_cnnp_model_notify_hook(

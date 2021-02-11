@@ -55,8 +55,11 @@ extension Model.Parameters {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
     params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
+    let graph = toModel.graph
+    let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_zip_map(
-      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, fromModel._model, parameters._io)
+      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, _streamContext, fromModel._model, parameters._io
+    )
   }
 }
 
@@ -76,8 +79,10 @@ extension Model.Parameters {
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    let graph = toModel.graph
+    let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_map(
-      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil)
+      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, _streamContext)
   }
 
   /**
