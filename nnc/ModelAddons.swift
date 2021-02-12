@@ -494,3 +494,29 @@ extension Functional {
     return Max()(left, right)
   }
 }
+
+/// Concatenate model.
+public final class Concat: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: Int, name: String = "") {
+    super.init(ccv_cnnp_concat(Int32(axis), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ inputs: T..., streamContext: StreamContext? = nil
+  ) -> T {
+    precondition(inputs.count >= 2)
+    let outputs = self(
+      inputs: inputs[0], Array(inputs.suffix(from: 1)), streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func concat(axis: Int, _ inputs: Model.IO...) -> Model.IO {
+    return Concat(axis: axis).apply(inputs)
+  }
+}

@@ -69,6 +69,21 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[1, 0], 4.4)
   }
 
+  func testConcatModel() throws {
+    let dynamicGraph = DynamicGraph()
+    let i0 = Input()
+    let i1 = Input()
+    let model = Model([i0, i1], [Functional.concat(axis: 1, i0, i1)])
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 4.4], .CPU, .NC(2, 1)))
+    let a1 = dynamicGraph.variable(Tensor<Float32>([2.2, 3.3], .CPU, .NC(2, 1)))
+    let a2 = DynamicGraph.Tensor<Float32>(model(inputs: a0, a1)[0])
+    XCTAssertEqual(a2.rawValue.dimensions, [2, 2])
+    XCTAssertEqual(a2.rawValue[0, 0], 1.1)
+    XCTAssertEqual(a2.rawValue[1, 0], 4.4)
+    XCTAssertEqual(a2.rawValue[0, 1], 2.2)
+    XCTAssertEqual(a2.rawValue[1, 1], 3.3)
+  }
+
   static let allTests = [
     ("testReduceSum", testReduceSum),
     ("testReduceMax", testReduceMax),
@@ -76,5 +91,6 @@ final class OpsTests: XCTestCase {
     ("testReduceMaxModel", testReduceMaxModel),
     ("testMinModel", testMinModel),
     ("testMaxModel", testMaxModel),
+    ("testConcatModel", testConcatModel),
   ]
 }

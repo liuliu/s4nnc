@@ -10,10 +10,12 @@ public class Model {
    */
   public class IO {
 
+    @usableFromInline
     let _io: ccv_cnnp_model_io_t
     let model: Model?
     private let inputs: [IO]?
 
+    @usableFromInline
     init(_ io: ccv_cnnp_model_io_t, model: Model? = nil, inputs: [IO]? = nil) {
       _io = io
       self.model = model
@@ -27,6 +29,7 @@ public class Model {
   public var isTest: Bool = false
 
   var dataParallel: Int? = nil  // Keep track of whether we applied data parallel to the model or not.
+  @usableFromInline
   let _model: OpaquePointer
   var owner: Model? = nil
   weak var graph: DynamicGraph? = nil
@@ -54,10 +57,16 @@ public class Model {
     return _model
   }
 
-  public func callAsFunction(_ inputs: IO...) -> IO {
+  @inlinable
+  func apply(_ inputs: [IO]) -> IO {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _io = ccv_cnnp_model_apply(_model, _inputs, Int32(inputs.count))!
     return IO(_io, model: self, inputs: inputs)
+  }
+
+  @inlinable
+  public func callAsFunction(_ inputs: IO...) -> IO {
+    return apply(inputs)
   }
 
   deinit {
