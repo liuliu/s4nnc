@@ -307,6 +307,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testToGPU() throws {
+    guard DeviceKind.GPUs.count > 0 else { return }
     var tensor0 = Tensor<Float32>(.CPU, .C(1))
     tensor0[0] = 1.1
     var tensor1 = Tensor<Float32>(.CPU, .C(1))
@@ -329,6 +330,7 @@ final class DataFrameTests: XCTestCase {
   }
 
   func testToManyGPU() throws {
+    guard DeviceKind.GPUs.count > 0 else { return }
     var tensor0 = Tensor<Float32>(.CPU, .C(1))
     tensor0[0] = 1.1
     var tensor1 = Tensor<Float32>(.CPU, .C(1))

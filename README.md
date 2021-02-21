@@ -1,5 +1,7 @@
 # Swift for NNC
 
+[![ubuntu-bazel](https://github.com/liuliu/s4nnc/actions/workflows/ubuntu-bazel.yaml/badge.svg?branch=unstable)](https://github.com/liuliu/s4nnc/actions/workflows/ubuntu-bazel.yaml?query=branch%3Aunstable)
+
 s4nnc is a Swift interface for [libnnc](https://libnnc.org) library.
 
 From the very start, [libnnc](https://libnnc.org) is meant to be a common runtime that supports many language bindings. It becomes apparent during the development that for deep learning, a raw C interface would be unwieldy complex to use in real-life. For example, the training loop of a transformer model for sentiment analysis takes more than 400 lines of code: <https://github.com/liuliu/ccv/blob/unstable/bin/nnc/imdb.c#L268>
