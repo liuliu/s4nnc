@@ -1047,46 +1047,74 @@ extension Tensor: CustomStringConvertible {
 }
 
 @usableFromInline
-func toCDimensions(_ dimensions: [Int]?) -> (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
-{
+func toCDimensions(_ dimensions: [Int]?) -> (
+  Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32
+) {
   guard let dimensions = dimensions else {
-    return (0, 0, 0, 0, 0, 0, 0, 0)
+    return (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   }
   assert(dimensions.count <= CCV_NNC_MAX_DIM_ALLOC)
   switch dimensions.count {
   case 1:
-    return (Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0)
+    return (Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   case 2:
-    return (Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0)
+    return (Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   case 3:
-    return (Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0)
+    return (
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0, 0, 0, 0, 0
+    )
   case 4:
     return (
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), 0, 0,
-      0, 0
+      0, 0, 0, 0, 0, 0
     )
   case 5:
     return (
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), 0, 0, 0
+      Int32(dimensions[4]), 0, 0, 0, 0, 0, 0, 0
     )
   case 6:
     return (
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), Int32(dimensions[5]), 0, 0
+      Int32(dimensions[4]), Int32(dimensions[5]), 0, 0, 0, 0, 0, 0
     )
   case 7:
     return (
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0, 0, 0, 0, 0
     )
   case 8:
     return (
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7])
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]), 0, 0,
+      0, 0
+    )
+  case 9:
+    return (
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), 0, 0, 0
+    )
+  case 10:
+    return (
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), Int32(dimensions[9]), 0, 0
+    )
+  case 11:
+    return (
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), Int32(dimensions[9]), Int32(dimensions[10]), 0
+    )
+  case 12:
+    return (
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), Int32(dimensions[9]), Int32(dimensions[10]), Int32(dimensions[11])
     )
   default:
-    return (0, 0, 0, 0, 0, 0, 0, 0)
+    return (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
   }
 }
 
@@ -1098,43 +1126,72 @@ func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
   assert(dimensions.count <= CCV_NNC_MAX_DIM_ALLOC)
   switch dimensions.count {
   case 1:
-    return [Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0]
+    return [Int32(dimensions[0]), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   case 2:
-    return [Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0]
+    return [Int32(dimensions[0]), Int32(dimensions[1]), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   case 3:
-    return [Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0]
+    return [
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]
   case 4:
     return [
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]), 0, 0,
-      0, 0,
+      0, 0, 0, 0, 0, 0,
     ]
   case 5:
     return [
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), 0, 0, 0,
+      Int32(dimensions[4]), 0, 0, 0, 0, 0, 0, 0,
     ]
   case 6:
     return [
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), Int32(dimensions[5]), 0, 0,
+      Int32(dimensions[4]), Int32(dimensions[5]), 0, 0, 0, 0, 0, 0,
     ]
   case 7:
     return [
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
-      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0,
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), 0, 0, 0, 0, 0,
     ]
   case 8:
     return [
       Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]), 0, 0,
+      0, 0,
+    ]
+  case 9:
+    return [
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
       Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), 0, 0, 0,
+    ]
+  case 10:
+    return [
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), Int32(dimensions[9]), 0, 0,
+    ]
+  case 11:
+    return [
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), Int32(dimensions[9]), Int32(dimensions[10]), 0,
+    ]
+  case 12:
+    return [
+      Int32(dimensions[0]), Int32(dimensions[1]), Int32(dimensions[2]), Int32(dimensions[3]),
+      Int32(dimensions[4]), Int32(dimensions[5]), Int32(dimensions[6]), Int32(dimensions[7]),
+      Int32(dimensions[8]), Int32(dimensions[9]), Int32(dimensions[10]), Int32(dimensions[11]),
     ]
   default:
-    return [0, 0, 0, 0, 0, 0, 0, 0]
+    return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   }
 }
 
 @usableFromInline
-func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)) -> [Int] {
+func fromCDimensions(
+  _ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
+) -> [Int] {
   if dim.0 == 0 {
     return []
   } else if dim.1 == 0 {
@@ -1151,10 +1208,30 @@ func fromCDimensions(_ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, In
     return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5)]
   } else if dim.7 == 0 {
     return [Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6)]
-  } else {
+  } else if dim.8 == 0 {
     return [
       Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6),
       Int(dim.7),
+    ]
+  } else if dim.9 == 0 {
+    return [
+      Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6),
+      Int(dim.7), Int(dim.8),
+    ]
+  } else if dim.10 == 0 {
+    return [
+      Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6),
+      Int(dim.7), Int(dim.8), Int(dim.9),
+    ]
+  } else if dim.11 == 0 {
+    return [
+      Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6),
+      Int(dim.7), Int(dim.8), Int(dim.9), Int(dim.10),
+    ]
+  } else {
+    return [
+      Int(dim.0), Int(dim.1), Int(dim.2), Int(dim.3), Int(dim.4), Int(dim.5), Int(dim.6),
+      Int(dim.7), Int(dim.8), Int(dim.9), Int(dim.10), Int(dim.11),
     ]
   }
 }

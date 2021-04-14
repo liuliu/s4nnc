@@ -28,7 +28,7 @@ public struct SoftmaxCrossEntropyLoss: Loss {
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.label_smoothing.trim0 = trim0
     params.label_smoothing.trim1 = trim1
     let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_CROSSENTROPY_FORWARD, nil, params, 0)
@@ -49,7 +49,7 @@ public struct SigmoidBinaryCrossEntropyLoss: Loss {
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.binary_crossentropy.pos_weight = posWeight
     let cmd = ccv_nnc_cmd(CCV_NNC_SIGMOID_BINARY_CROSSENTROPY_FORWARD, nil, params, 0)
     return Functional.exec(
@@ -68,7 +68,7 @@ public struct BinaryCrossEntropyLoss: Loss {
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.binary_crossentropy.pos_weight = posWeight
     let cmd = ccv_nnc_cmd(CCV_NNC_BINARY_CROSSENTROPY_FORWARD, nil, params, 0)
     return Functional.exec(
@@ -89,7 +89,7 @@ public struct CategoricalCrossEntropyLoss: Loss {
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.label_smoothing.trim0 = trim0
     params.label_smoothing.trim1 = trim1
     let cmd = ccv_nnc_cmd(CCV_NNC_CATEGORICAL_CROSSENTROPY_FORWARD, nil, params, 0)
@@ -109,7 +109,7 @@ public struct SmoothL1Loss: Loss {
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.smooth_l1.beta = beta
     let cmd = ccv_nnc_cmd(CCV_NNC_SMOOTH_L1_FORWARD, nil, params, 0)
     return Functional.exec(

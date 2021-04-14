@@ -52,7 +52,7 @@ extension Model.Parameters {
       toModel = owner
     }
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     let graph = toModel.graph
@@ -75,7 +75,7 @@ extension Model.Parameters {
       toModel = owner
     }
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)

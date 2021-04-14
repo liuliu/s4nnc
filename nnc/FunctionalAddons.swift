@@ -24,7 +24,7 @@ extension Functional {
     left: T, right: T, scalar: Float32 = 1, streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (scalar, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MUL_FORWARD, nil, params, 0)
     let outputs = exec(
@@ -39,7 +39,7 @@ extension Functional {
     streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (leftScalar, rightScalar, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     let outputs = exec(
@@ -65,7 +65,7 @@ extension Functional {
     streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (1, 1, 0)
     params.blas.transpose_a = (Int32(leftTranspose.0), Int32(leftTranspose.1))
     params.blas.transpose_b = (Int32(rightTranspose.0), Int32(rightTranspose.1))
@@ -81,7 +81,7 @@ extension Functional {
     left: Float, right: T, streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (left, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALAR_MUL_FORWARD, nil, params, 0)
     let outputs = exec(
@@ -103,7 +103,7 @@ extension Functional {
     input: T, index: U, streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_INDEX_SELECT_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, index, outputSize: 1,
@@ -116,7 +116,7 @@ extension Functional {
     _ left: T, _ right: T, streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MIN_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
@@ -129,7 +129,7 @@ extension Functional {
     _ left: T, _ right: T, streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MAX_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
@@ -252,7 +252,7 @@ extension DynamicGraph.Tensor {
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.transpose.axis = (Int32(axisA), Int32(axisB))
     let cmd = ccv_nnc_cmd(CCV_NNC_TRANSPOSE_FORWARD, nil, params, 0)
     let outputs = Functional.exec(
@@ -267,7 +267,7 @@ extension DynamicGraph.Group {
     -> DynamicGraph.Group<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.transpose.axis = (Int32(axisA), Int32(axisB))
     let cmd = ccv_nnc_cmd(CCV_NNC_TRANSPOSE_FORWARD, nil, params, 0)
     let outputs = Functional.exec(
@@ -282,7 +282,7 @@ extension DynamicGraph.Tensor {
     _ range: ClosedRange<Float> = 0...1, streamContext: StreamContext? = nil
   ) {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (range.lowerBound, range.upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -300,7 +300,7 @@ extension DynamicGraph.Group {
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (range.lowerBound, range.upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
@@ -327,7 +327,7 @@ extension DynamicGraph.Tensor {
     std: Float = 1, mean: Float = 0, streamContext: StreamContext? = nil
   ) {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (std, mean, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_NORMAL_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -345,7 +345,7 @@ extension DynamicGraph.Group {
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (std, mean, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_NORMAL_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
@@ -372,7 +372,7 @@ extension DynamicGraph.Tensor {
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
     var _input: ccv_nnc_tensor_variable_t? = self._tensor
     let rawInput = self.rawValue
@@ -389,7 +389,7 @@ extension DynamicGraph.Tensor {
   /// Copy the given tensor to CPU.
   public func toCPU(streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
     var _input: ccv_nnc_tensor_variable_t? = self._tensor
     let rawInput = self.rawValue
@@ -410,7 +410,7 @@ extension DynamicGraph.Tensor {
     _ value: Float = 0, streamContext: StreamContext? = nil
   ) {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (value, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SET_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -428,7 +428,7 @@ extension DynamicGraph.Group {
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (value, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SET_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
@@ -453,7 +453,7 @@ extension DynamicGraph.Tensor {
   ) {
     precondition(weight >= 0 && weight <= 1)
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -474,7 +474,7 @@ extension DynamicGraph.Group {
     guard underlyingArray.count > 0 else { return }
     precondition(to.underlyingArray.count == underlyingArray.count)
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
@@ -502,7 +502,7 @@ extension DynamicGraph.Tensor {
   ) {
     precondition(min != nil || max != nil)
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
@@ -536,7 +536,7 @@ extension DynamicGraph.Group {
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
@@ -578,7 +578,7 @@ extension DynamicGraph.Tensor {
   ) -> DynamicGraph.Tensor<Element> {
     precondition(min != nil || max != nil)
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
@@ -614,7 +614,7 @@ extension DynamicGraph.Group {
     min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
   ) -> DynamicGraph.Group<Element> {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
@@ -650,7 +650,7 @@ extension DynamicGraph.Tensor {
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.reduce.axis = toCDimensions(axis)
     params.reduce.count = Int32(axis.count)
     let cmd: ccv_nnc_cmd_t
@@ -671,7 +671,7 @@ extension DynamicGraph.Group {
     -> DynamicGraph.Group<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.reduce.axis = toCDimensions(axis)
     params.reduce.count = Int32(axis.count)
     let cmd: ccv_nnc_cmd_t
