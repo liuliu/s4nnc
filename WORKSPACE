@@ -39,22 +39,18 @@ ccv_setting(
 
 git_repository(
     name = "build_bazel_rules_swift",
-    commit = "08e3036c6511dd5a0f0fe6b52e9a95a13e1a471c",
+    commit = "b0ea825d68534de46c328342cd5a737095089ce7",
     remote = "https://github.com/bazelbuild/rules_swift.git",
-    shallow_since = "1611278652 -0800",
+    shallow_since = "1628193430 -0500",
 )
 
 load("@build_bazel_rules_swift//swift:repositories.bzl", "swift_rules_dependencies")
 
 swift_rules_dependencies()
 
-load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")
+load("@build_bazel_rules_swift//swift:extras.bzl", "swift_rules_extra_dependencies")
 
-apple_support_dependencies()
-
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()
+swift_rules_extra_dependencies()
 
 new_git_repository(
     name = "PythonKit",
@@ -75,17 +71,17 @@ new_git_repository(
 new_git_repository(
     name = "SwiftSyntax",
     build_file = "swift-syntax.BUILD",
-    commit = "844574d683f53d0737a9c6d706c3ef31ed2955eb",
+    commit = "d81b6a6dc2698a93dcc04304fb15a5446b5278a4",
     remote = "https://github.com/apple/swift-syntax.git",
-    shallow_since = "1600388447 -0700",
+    shallow_since = "1619981602 -0700",
 )
 
 new_git_repository(
     name = "SwiftFormat",
     build_file = "swift-format.BUILD",
-    commit = "12089179aa1668a2478b2b2111d98fa37f3531e3",
+    commit = "9c15831b798d767c9af0927a931de5d557004936",
     remote = "https://github.com/apple/swift-format.git",
-    shallow_since = "1600489295 -0700",
+    shallow_since = "1619649132 -0700",
 )
 
 new_git_repository(
