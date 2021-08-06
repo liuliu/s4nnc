@@ -132,10 +132,10 @@ public struct DataFrame {
         }
       }
       propertyType = .object
-    }
-    column_data.data_deinit = { data, _ in
-      guard let data = data else { return }
-      Unmanaged<AnyObject>.fromOpaque(data).release()
+      column_data.data_deinit = { data, _ in
+        guard let data = data else { return }
+        Unmanaged<AnyObject>.fromOpaque(data).release()
+      }
     }
     column_data.context_deinit = { context in
       guard let context = context else { return }
@@ -531,11 +531,7 @@ extension DataFrame {
             let tensor = underlying.value[idx] as! AnyTensor
             (data + i).initialize(to: tensor.cTensor)
           }
-        }, 0,
-        { data, _ in
-          guard let data = data else { return }
-          Unmanaged<AnyObject>.fromOpaque(data).release()
-        }, Unmanaged.passRetained(sequence).toOpaque(),
+        }, 0, nil, Unmanaged.passRetained(sequence).toOpaque(),
         { context in
           guard let context = context else { return }
           Unmanaged<Wrapped<[AnyObject]>>.fromOpaque(context).release()
