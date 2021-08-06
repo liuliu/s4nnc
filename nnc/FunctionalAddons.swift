@@ -139,7 +139,7 @@ extension Functional {
 }
 
 extension DynamicGraph.Tensor {
-  public subscript(ranges: Range<Int>..., streamContext: StreamContext? = nil)
+  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext? = nil)
     -> DynamicGraph.Tensor<Element>
   {
     get {
@@ -187,7 +187,7 @@ extension DynamicGraph.Tensor {
 }
 
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
-  public subscript(ranges: Range<Int>..., streamContext: StreamContext? = nil)
+  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext? = nil)
     -> DynamicGraph.Group<Element>
   {
     get {

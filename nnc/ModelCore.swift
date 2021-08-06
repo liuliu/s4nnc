@@ -1,4 +1,4 @@
-@_functionBuilder
+@resultBuilder
 public struct Sequential {
 
   public typealias Expression = Model
