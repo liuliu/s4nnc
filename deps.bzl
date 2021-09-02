@@ -25,7 +25,7 @@ def s4nnc_deps():
         new_git_repository,
         name = "PythonKit",
         remote = "https://github.com/liuliu/PythonKit.git",
-        commit = "0973cebf0dfc66ffd486639108ea8e439c8212bd",
-        shallow_since = "1611461724 -0500",
+        commit = "e7d0bbc18c9b7937a04dd876e21f04c19bf902d8",
+        shallow_since = "1630607311 -0400",
         build_file = "@s4nnc//:external/PythonKit.BUILD",
     )
