@@ -55,9 +55,9 @@ swift_rules_extra_dependencies()
 new_git_repository(
     name = "PythonKit",
     build_file = "PythonKit.BUILD",
-    commit = "e7d0bbc18c9b7937a04dd876e21f04c19bf902d8",
+    commit = "93b50a0e5782b677dba26594a7ff2a98ae08c81e",
     remote = "https://github.com/liuliu/PythonKit.git",
-    shallow_since = "1630607311 -0400",
+    shallow_since = "1631652660 -0400",
 )
 
 new_git_repository(
