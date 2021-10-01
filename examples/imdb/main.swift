@@ -45,7 +45,7 @@ func TransformerBlock(k: Int, h: Int, b: Int, t: Int, ff: Int, dropout: Float) -
   }
   out = out.reshaped([b * t, k])
   out = Dense(count: ff)(out)
-  out = RELU()(out)
+  out = ReLU()(out)
   out = Dense(count: k)(out)
   out = out.reshaped([t, b, k])
   out = first + out

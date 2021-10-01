@@ -418,7 +418,7 @@ extension DynamicGraph {
   }
 
   public func variable<Element: TensorNumeric>(
-    _ device: DeviceKind, format: TensorFormat, dimensions: [Int]
+    _ device: DeviceKind, format: TensorFormat, dimensions: [Int], of: Element.Type = Element.self
   ) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(
       _graph,
@@ -427,7 +427,7 @@ extension DynamicGraph {
   }
 
   public func constant<Element: TensorNumeric>(
-    _ device: DeviceKind, format: TensorFormat, dimensions: [Int]
+    _ device: DeviceKind, format: TensorFormat, dimensions: [Int], of: Element.Type = Element.self
   ) -> Tensor<Element> {
     let tensor = ccv_nnc_tensor_constant_new_impl(
       _graph,
@@ -436,13 +436,13 @@ extension DynamicGraph {
   }
 
   public func variable<Element: TensorNumeric>(
-    _ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat
+    _ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat, of: Element.Type = Element.self
   ) -> Tensor<Element> {
     return variable(device, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }
 
   public func constant<Element: TensorNumeric>(
-    _ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat
+    _ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat, of: Element.Type = Element.self
   ) -> Tensor<Element> {
     return constant(device, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
   }

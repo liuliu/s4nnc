@@ -51,7 +51,7 @@ final class ModelTests: XCTestCase {
     @Sequential
     func MulAdd() -> Model {
       Dense(count: 1)
-      RELU()
+      ReLU()
     }
 
     let muladd = MulAdd()

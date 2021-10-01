@@ -133,7 +133,7 @@ extension Model.IO {
 }
 
 /// A ReLU activation model.
-public final class RELU: Model {
+public final class ReLU: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
@@ -147,6 +147,17 @@ public final class RELU: Model {
   ) -> T {
     let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+private typealias _ReLU = ReLU
+
+extension Model.IO {
+  /**
+   * Apply ReLU activation to the said IO.
+   */
+  public func ReLU() -> Model.IO {
+    return _ReLU()(self)
   }
 }
 
@@ -168,6 +179,15 @@ public final class Softmax: Model {
   }
 }
 
+extension Model.IO {
+  /**
+   * Apply softmax activation to the said IO.
+   */
+  public func softmax() -> Model.IO {
+    return Softmax()(self)
+  }
+}
+
 /// A sigmoid activation model.
 public final class Sigmoid: Model {
   required init(_ model: OpaquePointer) {
@@ -186,6 +206,42 @@ public final class Sigmoid: Model {
   }
 }
 
+extension Model.IO {
+  /**
+   * Apply sigmoid activation to the said IO.
+   */
+  public func sigmoid() -> Model.IO {
+    return Sigmoid()(self)
+  }
+}
+
+/// A tanh activation model.
+public final class Tanh: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_tanh(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  /**
+   * Apply tanh activation to the said IO.
+   */
+  public func tanh() -> Model.IO {
+    return Tanh()(self)
+  }
+}
+
 /// A swish activation model.
 public final class Swish: Model {
   required init(_ model: OpaquePointer) {
@@ -201,6 +257,15 @@ public final class Swish: Model {
   ) -> T {
     let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  /**
+   * Apply swish activation to the said IO.
+   */
+  public func swish() -> Model.IO {
+    return Swish()(self)
   }
 }
 

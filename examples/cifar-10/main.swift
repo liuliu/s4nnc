@@ -8,7 +8,7 @@ func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
       groups: 1, filters: filters, filterSize: [3, 3], noBias: false,
       hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
     BatchNorm(momentum: 0.9, epsilon: 1e-4),
-    RELU(),
+    ReLU(),
   ])
   var output = conv(input)
   let pool = MaxPool(filterSize: [strides, strides], hint: Hint(stride: [strides, strides]))
@@ -20,7 +20,7 @@ func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
         groups: 1, filters: filters, filterSize: [3, 3], noBias: false,
         hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
       BatchNorm(momentum: 0.9, epsilon: 1e-4),
-      RELU(),
+      ReLU(),
     ])
     output = res1(output)
     let res2 = Model([
@@ -28,7 +28,7 @@ func DawnLayer(filters: Int, strides: Int, residual: Bool) -> Model {
         groups: 1, filters: filters, filterSize: [3, 3], noBias: false,
         hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
       BatchNorm(momentum: 0.9, epsilon: 1e-4),
-      RELU(),
+      ReLU(),
     ])
     output = res2(output)
     output = output .+ shortcut
@@ -42,7 +42,7 @@ func CIFAR10Dawn() -> Model {
       groups: 1, filters: 64, filterSize: [3, 3], noBias: false,
       hint: Hint(stride: [1, 1], border: Hint.Border([1, 1]))),
     BatchNorm(momentum: 0.9, epsilon: 1e-4),
-    RELU(),
+    ReLU(),
   ])
   let layer1 = DawnLayer(filters: 128, strides: 2, residual: true)
   let layer2 = DawnLayer(filters: 256, strides: 2, residual: false)

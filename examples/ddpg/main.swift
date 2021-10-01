@@ -8,9 +8,9 @@ import PythonKit
 @Sequential
 func Net() -> Model {
   Dense(count: 128)
-  RELU()
+  ReLU()
   Dense(count: 128)
-  RELU()
+  ReLU()
   Dense(count: 1)
 }
 

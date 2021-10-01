@@ -44,7 +44,7 @@ final class GraphTests: XCTestCase {
 
   func testLerp() throws {
     let dynamicGraph = DynamicGraph()
-    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    let a0 = dynamicGraph.variable(.CPU, .NC(2, 1), of: Float32.self)
     let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
     a0.full(10)
     a1.full(-1)
@@ -58,7 +58,7 @@ final class GraphTests: XCTestCase {
     let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
     a0[0, 0] = 10
     a0[1, 0] = 2
-    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 1))
+    let a1 = dynamicGraph.variable(.CPU, .NC(2, 1), of: Float32.self)
     a1[0, 0] = -1
     a1[1, 0] = -2
     a0.clamp(3...6)
@@ -155,6 +155,43 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[1, 0], 5, accuracy: 1e-5)
   }
 
+  func testScale() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, -1.1], .CPU, .C(2)))
+    a0.scale(by: -2)
+    XCTAssertEqual(a0.rawValue[0], -2.2, accuracy: 1e-5)
+    XCTAssertEqual(a0.rawValue[1], 2.2, accuracy: 1e-5)
+  }
+
+  func testReLU() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, -1.1], .CPU, .C(2)))
+    a0.ReLU()
+    XCTAssertEqual(a0.rawValue[0], 1.1, accuracy: 1e-5)
+    XCTAssertEqual(a0.rawValue[1], 0, accuracy: 1e-5)
+  }
+
+  func testSigmoid() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    a0.sigmoid()
+    XCTAssertEqual(a0.rawValue[0], 1.0 / (1.0 + exp(-1.1)), accuracy: 1e-5)
+  }
+
+  func testTanh() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([4.4], .CPU, .C(1)))
+    a0.tanh()
+    XCTAssertEqual(a0.rawValue[0], tanh(4.4), accuracy: 1e-5)
+  }
+
+  func testSwish() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([4.4], .CPU, .C(1)))
+    a0.swish()
+    XCTAssertEqual(a0.rawValue[0], 4.4 / (1.0 + exp(-4.4)), accuracy: 1e-5)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -165,5 +202,10 @@ final class GraphTests: XCTestCase {
     ("testPartialAssignWithGroup", testPartialAssignWithGroup),
     ("testMin", testMin),
     ("testMax", testMax),
+    ("testScale", testScale),
+    ("testReLU", testReLU),
+    ("testSigmoid", testSigmoid),
+    ("testTanh", testTanh),
+    ("testSwish", testSwish),
   ]
 }
