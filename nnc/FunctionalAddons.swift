@@ -821,6 +821,44 @@ extension DynamicGraph.Group {
 }
 
 extension DynamicGraph.Tensor {
+  /// Apply softmax activation to the given tensor inplace.
+  public func softmax(streamContext: StreamContext? = nil) {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_FORWARD, nil, params, 0)
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    var _input: ccv_nnc_tensor_variable_t? = _tensor
+    var _output: ccv_nnc_tensor_variable_t? = _tensor
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
+  }
+
+}
+
+extension DynamicGraph.Group {
+  /// Apply softmax activation to the given tensor inplace.
+  public func softmax(streamContext: StreamContext? = nil) {
+    guard underlyingArray.count > 0 else { return }
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_FORWARD, nil, params, 0)
+    let graph = underlyingArray[0].graph
+    let _graph = graph._graph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
+    let outputSize = Int32(underlyingArray.count)
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+      capacity: Int(outputSize))
+    for (i, variable) in underlyingArray.enumerated() {
+      (_outputs + i).initialize(to: variable._tensor)
+    }
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
+      _streamContext)
+    _outputs.deallocate()
+  }
+}
+
+extension DynamicGraph.Tensor {
   /// Apply ReLU activation to the given tensor inplace.
   public func ReLU(streamContext: StreamContext? = nil) {
     let params = CmdParamsFactory.factory.newParams()
