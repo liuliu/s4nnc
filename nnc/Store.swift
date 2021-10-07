@@ -9,6 +9,9 @@ extension DynamicGraph {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
     }
     deinit {
+      // If the database is opened with WAL mode, this makes sure everything write back to the main
+      // database, much easier to operate without worrying the data left in the wal log.
+      sqlite3_wal_checkpoint_v2(OpaquePointer(sqlite), nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil)
       sqlite3_close(OpaquePointer(sqlite))
     }
   }
