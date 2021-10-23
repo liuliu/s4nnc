@@ -70,11 +70,11 @@ let actorOld = actor.copy()
 let critic1Old = critic1.copy()
 let critic2Old = critic2.copy()
 
-var actorOptim = AdamOptimizer(graph, rate: actor_lr)
+var actorOptim = LAMBOptimizer(graph, rate: actor_lr)
 actorOptim.parameters = [actor.parameters]
-var critic1Optim = AdamOptimizer(graph, rate: critic_lr)
+var critic1Optim = LAMBOptimizer(graph, rate: critic_lr)
 critic1Optim.parameters = [critic1.parameters]
-var critic2Optim = AdamOptimizer(graph, rate: critic_lr)
+var critic2Optim = LAMBOptimizer(graph, rate: critic_lr)
 critic2Optim.parameters = [critic2.parameters]
 
 let actionLow: Float = Float(env.action_space.low[0])!
