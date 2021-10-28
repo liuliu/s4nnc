@@ -192,6 +192,21 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a0.rawValue[0], 4.4 / (1.0 + exp(-4.4)), accuracy: 1e-5)
   }
 
+  func testArgmax() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2, 3.2, 3.4], .CPU, .C(4)))
+    let b0 = Functional.argmax(a0, axis: 0)
+    XCTAssertEqual(b0.rawValue[0], 3)
+    let a1 = dynamicGraph.variable(Tensor<Float32>([1, 3.1, 2, 2, 3, 4], .CPU, .NC(2, 3)))
+    let b10 = Functional.argmax(a1, axis: 0)
+    let b11 = Functional.argmax(a1, axis: 1)
+    XCTAssertEqual(b10.rawValue[0, 0], 1)
+    XCTAssertEqual(b10.rawValue[0, 1], 0)
+    XCTAssertEqual(b10.rawValue[0, 2], 1)
+    XCTAssertEqual(b11.rawValue[0, 0], 1)
+    XCTAssertEqual(b11.rawValue[1, 0], 2)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -207,5 +222,6 @@ final class GraphTests: XCTestCase {
     ("testSigmoid", testSigmoid),
     ("testTanh", testTanh),
     ("testSwish", testSwish),
+    ("testArgmax", testArgmax),
   ]
 }
