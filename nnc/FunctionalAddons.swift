@@ -231,6 +231,19 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Masked fill a tensor based on other tensor's content equal to another.
+  public static func maskedFill<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    input: T, mask: U, equalTo: Float, fillWith: Float, streamContext: StreamContext? = nil
+  ) -> T {
+    var params = CmdParamsFactory.factory.newParams()
+    params.blas.a = (equalTo, fillWith, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_MASKED_FILL_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, mask, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Element-wise min for two input tensors
   public static func min<T: DynamicGraph.TensorGroup>(
     _ left: T, _ right: T, streamContext: StreamContext? = nil

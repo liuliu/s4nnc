@@ -207,6 +207,17 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(b11.rawValue[1, 0], 2)
   }
 
+  func testMaskedFill() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1, 2, 3, 4], .CPU, .C(4)))
+    let m0 = dynamicGraph.variable(Tensor<Int32>([0, 3, 0, 1], .CPU, .C(4)))
+    let b0 = Functional.maskedFill(input: a0, mask: m0, equalTo: 3, fillWith: 5)
+    XCTAssertEqual(b0.rawValue[0], 1, accuracy: 1e-5)
+    XCTAssertEqual(b0.rawValue[1], 5, accuracy: 1e-5)
+    XCTAssertEqual(b0.rawValue[2], 3, accuracy: 1e-5)
+    XCTAssertEqual(b0.rawValue[3], 4, accuracy: 1e-5)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -223,5 +234,6 @@ final class GraphTests: XCTestCase {
     ("testTanh", testTanh),
     ("testSwish", testSwish),
     ("testArgmax", testArgmax),
+    ("testMaskedFill", testMaskedFill),
   ]
 }
