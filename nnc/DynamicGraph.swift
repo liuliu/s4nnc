@@ -215,7 +215,7 @@ extension DynamicGraph {
   /**
    * Set the log level on a dynamic graph.
    */
-  public var logLevel: LogLevel {
+  public static var logLevel: LogLevel {
     get {
       let cliLevels = ccv_cli_get_output_levels()
       if (cliLevels & 1) != 0 {
