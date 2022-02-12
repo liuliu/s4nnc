@@ -585,3 +585,73 @@ extension Functional {
     return Concat(axis: axis).apply(inputs)
   }
 }
+
+/// LSTM model.
+public final class LSTM: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    masked: Bool, hiddenSize: Int, numberOfLayers: Int, projectSize: Int? = nil, bias: Bool = true,
+    batchFirst: Bool = true, bidirectional: Bool = false, dropout: Float? = nil, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_lstm(
+        masked ? 1 : 0, Int32(hiddenSize), Int32(projectSize ?? 0), Int32(numberOfLayers),
+        bias ? 1 : 0, batchFirst ? 1 : 0, bidirectional ? 1 : 0, dropout ?? 0, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: T, mask: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, mask, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ x: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: x, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// Embedding model.
+public final class Embedding: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init<T: TensorNumeric>(
+    _ dataType: T.Type, vocabularySize: Int, embeddingSize: Int, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_embedding(T.dataType.toC, Int32(vocabularySize), Int32(embeddingSize), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// IndexSelect model.
+public final class IndexSelect: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_index_select(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: T, index: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, index, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}

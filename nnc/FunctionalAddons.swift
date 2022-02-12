@@ -221,7 +221,7 @@ extension Functional {
   /// Select input tensor with another index tensor.
   public static func indexSelect<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
     input: T, index: U, streamContext: StreamContext? = nil
-  ) -> T {
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_INDEX_SELECT_FORWARD, nil, params, 0)
@@ -234,7 +234,7 @@ extension Functional {
   /// Masked fill a tensor based on other tensor's content equal to another.
   public static func maskedFill<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
     input: T, mask: U, equalTo: Float, fillWith: Float, streamContext: StreamContext? = nil
-  ) -> T {
+  ) -> T where T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
     params.blas.a = (equalTo, fillWith, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MASKED_FILL_FORWARD, nil, params, 0)
