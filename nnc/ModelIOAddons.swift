@@ -58,7 +58,8 @@ extension Model.Parameters {
     let graph = toModel.graph
     let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_zip_map(
-      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, _streamContext, fromModel._model, parameters._io
+      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, 0, nil, 0, _streamContext,
+      fromModel._model, parameters._io
     )
   }
 }
@@ -82,7 +83,7 @@ extension Model.Parameters {
     let graph = toModel.graph
     let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_map(
-      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, _streamContext)
+      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, 0, nil, 0, _streamContext)
   }
 
   /**
@@ -104,5 +105,28 @@ extension Model.Parameters {
    */
   public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
     clamp(min: nil, max: range.upperBound, streamContext: streamContext)
+  }
+}
+
+extension Model.Parameters {
+  public enum NormType: Int32 {
+    case norm2 = 2
+  }
+  public func clipGradNorm(
+    maxNorm: Float, normType: NormType = .norm2, streamContext: StreamContext? = nil
+  ) {
+    precondition(maxNorm >= 0)
+    guard var toModel = model else {
+      fatalError()
+    }
+    // We can only copy parameters from fully compiled model, i.e., the owner of the sub-models.
+    // Try to find them.
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    let graph = toModel.graph
+    let _streamContext = (streamContext ?? graph?.streamContext)?._stream
+    ccv_cnnp_model_parameters_clip_grad_norm(
+      toModel._model, _io, normType.rawValue, maxNorm, _streamContext)
   }
 }

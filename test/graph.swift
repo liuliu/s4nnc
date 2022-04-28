@@ -61,12 +61,15 @@ final class GraphTests: XCTestCase {
     let a1 = dynamicGraph.variable(.CPU, .NC(2, 1), of: Float32.self)
     a1[0, 0] = -1
     a1[1, 0] = -2
+    let a3 = a0.clamped(0...8)
     a0.clamp(3...6)
     let a2 = a1.clamped((-1.1)...)
     XCTAssertEqual(a0.rawValue[0, 0], 6, accuracy: 1e-5)
     XCTAssertEqual(a0.rawValue[1, 0], 3, accuracy: 1e-5)
     XCTAssertEqual(a2.rawValue[0, 0], -1, accuracy: 1e-5)
     XCTAssertEqual(a2.rawValue[1, 0], -1.1, accuracy: 1e-5)
+    XCTAssertEqual(a3.rawValue[0, 0], 8, accuracy: 1e-5)
+    XCTAssertEqual(a3.rawValue[1, 0], 2, accuracy: 1e-5)
   }
 
   func testPartialAssign() throws {

@@ -59,3 +59,15 @@ swift_binary(
         "@SwiftNumerics//:Numerics",
     ],
 )
+
+swift_binary(
+    name = "ppo",
+    srcs = ["ppo/main.swift"],
+    deps = [
+        "//nnc",
+        "//nnc:nnc_python",
+        "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
+        "@SwiftNumerics//:Numerics",
+    ],
+)

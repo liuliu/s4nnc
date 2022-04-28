@@ -809,6 +809,23 @@ extension Tensor {
 
 extension Tensor {
 
+  /**
+   * Make an explicit copy of the existing tensor. Raw tensors conforms to copy-on-write
+   * semantics. But sometimes, it is better to have explicit copy for better memory management
+   * hygiene. For example, if the tensor is obtained with .rawValue from a DynamicGraph
+   * variable, keeping that tensor alive would keep the whole computation graph available.
+   * Making an explicit copy would break that chain.
+   *
+   * - Returns: A new tensor copied from the existing one.
+   */
+  public func copied() -> Self {
+    return Self(storage.copy())
+  }
+
+}
+
+extension Tensor {
+
   public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
