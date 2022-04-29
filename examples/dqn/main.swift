@@ -17,7 +17,7 @@ func Net() -> Model {
   Dense(count: 2)
 }
 
-let name = "CartPole-v0"
+let name = "CartPole-v1"
 
 let gym = Python.import("gym")
 
@@ -60,7 +60,7 @@ let obs = env.reset()
 var adamOptimizer = AdamOptimizer(graph, rate: lr)
 adamOptimizer.parameters = [net.parameters]
 var buffer = [(obs: Tensor<Float32>, reward: Float32, act: Int)]()
-var last_obs: Tensor<Float32> = Tensor(from: try! Tensor<Float64>(numpy: obs))
+var last_obs: Tensor<Float32> = try! Tensor<Float32>(numpy: obs)
 var env_step = 0
 var step_count = 0
 for epoch in 0..<max_epoch {
@@ -89,12 +89,12 @@ for epoch in 0..<max_epoch {
           }
           let (obs, reward, done, _) = env.step(act).tuple4
           buffer.append((obs: last_obs, reward: Float32(reward)!, act: act))
-          last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+          last_obs = try! Tensor<Float32>(numpy: obs)
           if Bool(done)! {
             let obs = env.reset()
             episodes += 1
             env_step_count += buffer.count
-            last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+            last_obs = try! Tensor<Float32>(numpy: obs)
             // Organizing data into ReplayBuffer.
             for (i, play) in buffer.enumerated() {
               var rewards = [Float32]()
@@ -197,11 +197,11 @@ for epoch in 0..<max_epoch {
       let output = DynamicGraph.Tensor<Float32>(net(inputs: variable)[0])
       let act = output[0] > output[1] ? 0 : 1
       let (obs, _, done, _) = env.step(act).tuple4
-      last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+      last_obs = try! Tensor<Float32>(numpy: obs)
       env_step_count += 1
       if Bool(done)! {
         let obs = env.reset()
-        last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+        last_obs = try! Tensor<Float32>(numpy: obs)
         break
       }
     }
@@ -223,10 +223,10 @@ while episodes < 10 {
   let output = DynamicGraph.Tensor<Float32>(net(inputs: variable)[0])
   let act = output[0] > output[1] ? 0 : 1
   let (obs, _, done, _) = env.step(act).tuple4
-  last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+  last_obs = try! Tensor<Float32>(numpy: obs)
   if Bool(done)! {
     let obs = env.reset()
-    last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+    last_obs = try! Tensor<Float32>(numpy: obs)
     episodes += 1
   }
   env.render()
