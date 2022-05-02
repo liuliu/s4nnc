@@ -5,13 +5,17 @@ import NNCPythonConversion
 import Numerics
 import PythonKit
 
-@Sequential
-func NetA() -> Model {
-  Dense(count: 64)
-  Tanh()
-  Dense(count: 64)
-  Tanh()
-  Dense(count: 8)
+func NetA() -> (Model, Model) {
+  let lastLayer = Dense(count: 8)
+  return (
+    Model([
+      Dense(count: 64),
+      Tanh(),
+      Dense(count: 64),
+      Tanh(),
+      lastLayer,
+    ]), lastLayer
+  )
 }
 
 @Sequential
@@ -21,6 +25,7 @@ func NetC() -> Model {
   Dense(count: 64)
   Tanh()
   Dense(count: 1)
+  Tanh()
 }
 
 let graph = DynamicGraph()
@@ -49,7 +54,7 @@ let max_epoch = 100
 let gamma = 0.99
 let step_per_epoch = 30_000
 let step_per_collect = 2_048
-let exploration_noise: Float = 0.5
+let exploration_noise: Float = 0.001
 let collect_per_step = 2_048
 let update_per_step = 1
 let batch_size = 64
@@ -77,12 +82,12 @@ let action_space = env.action_space
 let obs = env.reset(seed: 0)
 var episodes = 0
 
-let actor = NetA()
+let (actor, actorLastLayer) = NetA()
 let critic = NetC()
 
-var actorOptim = LAMBOptimizer(graph, rate: actor_lr)
+var actorOptim = AdamOptimizer(graph, rate: actor_lr)
 actorOptim.parameters = [actor.parameters]
-var criticOptim = LAMBOptimizer(graph, rate: critic_lr)
+var criticOptim = AdamOptimizer(graph, rate: critic_lr)
 criticOptim.parameters = [critic.parameters]
 
 func noise(_ std: Float) -> Float {
@@ -105,10 +110,10 @@ func compute_episodic_return(replay: Replay, gamma: Float = 0.99, gae_gamma: Flo
     gae = delta + gamma * gae_gamma * gae
     return gae
   }).reversed()
-  let returns = advantages.enumerated().map { i, adv in
+  let unnormalized_returns = advantages.enumerated().map { i, adv in
     vs[i] + adv
   }
-  return (advantages, returns)
+  return (advantages, unnormalized_returns)
 }
 
 let actionLow: [Float] = env.action_space.low.map { Float($0)! }
@@ -121,6 +126,10 @@ var buffer = [
 var last_obs: Tensor<Float32> = Tensor(from: try! Tensor<Float64>(numpy: obs))
 var env_step = 0
 var step_count = 0
+var rew_var: Double = 0
+var rew_mean: Double = 0
+var rew_total = 0
+var initActorLastLayer = false
 for epoch in 0..<max_epoch {
   var step_in_epoch = 0
   while step_in_epoch < step_per_epoch {
@@ -132,6 +141,17 @@ for epoch in 0..<max_epoch {
         while true {
           let variable = graph.variable(last_obs.toGPU(0))
           let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0]).toCPU()
+          if !initActorLastLayer {
+            // Try to init actor's last layer with reduced weights.
+            let bias = graph.variable(.CPU, .C(8), of: Float32.self)
+            bias.full(0)
+            actorLastLayer.parameters(for: .bias).copy(from: bias)
+            let weight = graph.variable(.CPU, .NC(64, 8), of: Float32.self)
+            actorLastLayer.parameters(for: .weight).copy(to: weight)
+            let updatedWeight = 0.01 * weight
+            actorLastLayer.parameters(for: .weight).copy(from: updatedWeight)
+            initActorLastLayer = true
+          }
           let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0]).toCPU()
           let f = (0..<8).map {
             max(min(act[$0] + noise(exploration_noise), actionHigh[$0]), actionLow[$0])
@@ -176,25 +196,42 @@ for epoch in 0..<max_epoch {
     env_step += env_step_count
     // Now update the model. First, get some samples out of replay buffer.
     let update_steps = min(
-      update_per_step * (env_step_count / collect_per_step), step_per_epoch - step_in_epoch)
+      1,
+      min(
+        update_per_step * (env_step_count / collect_per_step), step_per_epoch - step_in_epoch))
     var criticLoss: Float = 0
     var actorLoss: Float = 0
     var update_count = 0
     for _ in 0..<update_steps {
-      let batch = replays.randomSample(count: batch_size)
+      let replayBatch = replays.randomSample(count: batch_size)
       var data = [Data]()
       // Sample from these batches into smaller batch sizes and do the update.
-      for replay in batch {
-        let (advantages, returns) = compute_episodic_return(replay: replay)
+      for replay in replayBatch {
+        let (advantages, unnormalized_returns) = compute_episodic_return(replay: replay)
         let obs = replay.obs
         let mu = replay.mu
         let act = replay.act
+        var inv_std: Float = 1
+        if rew_total > 0 {
+          let rew_std =
+            (rew_var / Double(rew_total)
+            - (rew_mean / Double(rew_total)) * (rew_mean / Double(rew_total))).squareRoot()
+          inv_std = 1.0 / (Float(rew_std) + 1e-4)
+        }
         for (i, adv) in advantages.enumerated() {
           let muv = graph.constant(mu[i])
           let actv = graph.constant(act[i])
           let distOld = ((muv - actv) .* (muv - actv)).rawValue.copied()
-          data.append(Data(obs: obs[i], mu: mu[i], adv: adv, ret: returns[i], distOld: distOld))
+          data.append(
+            Data(
+              obs: obs[i], mu: mu[i], adv: adv, ret: inv_std * unnormalized_returns[i],
+              distOld: distOld))
         }
+        for rew in unnormalized_returns {
+          rew_var += Double(rew * rew)
+          rew_mean += Double(rew)
+        }
+        rew_total += unnormalized_returns.count
       }
       for _ in 0..<(data.count / batch_size) {
         let batch = data.randomSample(count: batch_size)
@@ -223,11 +260,13 @@ for epoch in 0..<max_epoch {
         let surr2 = advantagesv .* ratio.clamped((1.0 - eps_clip)...(1.0 + eps_clip))
         let clip_loss = Functional.min(surr1, surr2)
         let cpu_clip_loss = clip_loss.toCPU()
+        var totalLoss: Float = 0
         for i in 0..<batch_size {
           for j in 0..<8 {
-            actorLoss += cpu_clip_loss[i, j]
+            totalLoss += cpu_clip_loss[i, j]
           }
         }
+        actorLoss += totalLoss
         let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 8))
         grad.full(-1.0 / Float(batch_size * 8))
         clip_loss.grad = grad

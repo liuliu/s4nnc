@@ -22,6 +22,54 @@ extension Model.Parameters {
     }
     ccv_cnnp_model_set_parameters(toModel._model, _io, fromModel._model, parameters._io)
   }
+
+  /**
+   * Copy parameters from a tensor.
+   *
+   * - Parameter tensor: The tensor contains some values, it must match the parameters copy to.
+   */
+  public func copy(from tensor: AnyTensor) {
+    guard var toModel = model else {
+      fatalError()
+    }
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    ccv_cnnp_model_set_parameter(toModel._model, _io, tensor.cTensor)
+  }
+
+  /**
+   * Copy parameters from a tensor.
+   *
+   * - Parameter tensor: The tensor contains some values, it must match the parameters copy to.
+   */
+  public func copy<Element: TensorNumeric>(from tensor: DynamicGraph.Tensor<Element>) {
+    copy(from: tensor.rawValue)
+  }
+
+  /**
+   * Copy parameters to a tensor.
+   *
+   * - Parameter tensor: The tensor to copy to, it must match the parameters copy from.
+   */
+  public func copy(to tensor: AnyTensor) {
+    guard var toModel = model else {
+      fatalError()
+    }
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    ccv_cnnp_model_parameter_copy(toModel._model, _io, tensor.cTensor)
+  }
+
+  /**
+   * Copy parameters to a tensor.
+   *
+   * - Parameter tensor: The tensor to copy to, it must match the parameters copy from.
+   */
+  public func copy<Element: TensorNumeric>(to tensor: DynamicGraph.Tensor<Element>) {
+    copy(to: tensor.rawValue)
+  }
 }
 
 extension Model.Parameters {
