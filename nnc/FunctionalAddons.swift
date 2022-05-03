@@ -3,6 +3,7 @@ import C_nnc
 public enum ReduceOp {
   case sum
   case max
+  case norm2
 }
 
 extension Functional {
@@ -794,6 +795,8 @@ extension DynamicGraph.Tensor {
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_SUM_FORWARD, nil, params, 0)
     case .max:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
+    case .norm2:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_NORM2_FORWARD, nil, params, 0)
     }
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
@@ -815,6 +818,8 @@ extension DynamicGraph.Group {
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_SUM_FORWARD, nil, params, 0)
     case .max:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
+    case .norm2:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_NORM2_FORWARD, nil, params, 0)
     }
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)

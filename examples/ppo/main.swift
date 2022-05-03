@@ -86,7 +86,9 @@ let (actor, actorLastLayer) = NetA()
 let critic = NetC()
 
 var actorOptim = AdamOptimizer(graph, rate: actor_lr)
-actorOptim.parameters = [actor.parameters]
+let scale = graph.variable(.GPU(0), .C(8), of: Float32.self)
+scale.full(-5)
+actorOptim.parameters = [actor.parameters, scale]
 var criticOptim = AdamOptimizer(graph, rate: critic_lr)
 criticOptim.parameters = [critic.parameters]
 
@@ -140,24 +142,23 @@ for epoch in 0..<max_epoch {
       for _ in 0..<training_num {
         while true {
           let variable = graph.variable(last_obs.toGPU(0))
-          let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0]).toCPU()
+          let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
           if !initActorLastLayer {
             // Try to init actor's last layer with reduced weights.
             let bias = graph.variable(.CPU, .C(8), of: Float32.self)
             bias.full(0)
             actorLastLayer.parameters(for: .bias).copy(from: bias)
-            let weight = graph.variable(.CPU, .NC(64, 8), of: Float32.self)
-            actorLastLayer.parameters(for: .weight).copy(to: weight)
+            let weight = graph.variable(
+              actorLastLayer.parameters(for: .weight).copied(Float32.self))
             let updatedWeight = 0.01 * weight
             actorLastLayer.parameters(for: .weight).copy(from: updatedWeight)
             initActorLastLayer = true
           }
           let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0]).toCPU()
-          let f = (0..<8).map {
-            max(min(act[$0] + noise(exploration_noise), actionHigh[$0]), actionLow[$0])
-          }
-          let act_f = Tensor<Float32>(f, .CPU, .C(8))
-          let act_mu = act.rawValue.copied()
+          let n = graph.variable(.GPU(0), .C(8), of: Float32.self)
+          n.randn(std: 1, mean: 0)
+          let act_f = (n .* Functional.exp(scale) + act).toCPU().rawValue.copied()
+          let act_mu = act.toCPU().rawValue.copied()
           let (obs, reward, done, _) = env.step(act_f).tuple4
           buffer.append((obs: last_obs, reward: Float32(reward)!, mu: act_mu, act: act_f, v: v[0]))
           last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
@@ -250,25 +251,29 @@ for epoch in 0..<max_epoch {
         }
         let variable = graph.variable(obs.toGPU(0))
         let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
+        let n = graph.variable(.GPU(0), .C(8), of: Float32.self)
+        n.randn(std: 1, mean: 0)
+        let exp_scale = Functional.exp(scale)
+        let act_f = n .* Functional.exp(scale) + act
         let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0])
         let muv = graph.constant(mu.toGPU(0))
         let distOldv = graph.constant(distOld.toGPU(0))
-        let dist = ((muv - act) .* (muv - act))
+        let dist = ((muv - act_f) .* (muv - act_f))
         let ratio = Functional.exp(distOldv - dist)
         let advantagesv = graph.constant(advantages.toGPU(0))
         let surr1 = advantagesv .* ratio
         let surr2 = advantagesv .* ratio.clamped((1.0 - eps_clip)...(1.0 + eps_clip))
-        let clip_loss = Functional.min(surr1, surr2)
+        let clip_loss =
+          0.00125 * exp_scale.reduced(.sum, axis: [1])
+          - Functional.min(surr1, surr2).reduced(.sum, axis: [1])
         let cpu_clip_loss = clip_loss.toCPU()
         var totalLoss: Float = 0
         for i in 0..<batch_size {
-          for j in 0..<8 {
-            totalLoss += cpu_clip_loss[i, j]
-          }
+          totalLoss += cpu_clip_loss[i, 0]
         }
         actorLoss += totalLoss
         let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 8))
-        grad.full(-1.0 / Float(batch_size * 8))
+        grad.full(1.0 / Float(batch_size))
         clip_loss.grad = grad
         clip_loss.backward(to: variable)
         actor.parameters.clipGradNorm(maxNorm: 0.5)
@@ -290,7 +295,7 @@ for epoch in 0..<max_epoch {
     }
     step_in_epoch += update_count
     criticLoss = criticLoss / Float(batch_size * update_count)
-    actorLoss = -actorLoss / Float(batch_size * 8 * update_count)
+    actorLoss = actorLoss / Float(batch_size * 8 * update_count)
     replays.removeAll()
     print(
       "Epoch \(epoch), step \(step_in_epoch), critic loss \(criticLoss), actor loss \(actorLoss), reward \(Float(training_rewards) / Float(episodes))"

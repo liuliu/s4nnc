@@ -501,6 +501,25 @@ public final class ReduceMax: Model {
   }
 }
 
+/// reduce norm2 model.
+public final class ReduceNorm2: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: [Int], name: String = "") {
+    precondition(axis.count > 0)
+    super.init(ccv_cnnp_reduce_norm2(axis.map { Int32($0) }, Int32(axis.count), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 extension Model.IO {
   public func reduced(_ op: ReduceOp, axis: [Int]) -> Model.IO {
     switch op {
@@ -508,6 +527,8 @@ extension Model.IO {
       return ReduceSum(axis: axis)(self)
     case .max:
       return ReduceMax(axis: axis)(self)
+    case .norm2:
+      return ReduceNorm2(axis: axis)(self)
     }
   }
 }
