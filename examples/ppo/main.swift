@@ -54,7 +54,7 @@ let max_epoch = 100
 let gamma = 0.99
 let step_per_epoch = 30_000
 let step_per_collect = 2_048
-let exploration_noise: Float = 0.001
+let exploration_noise: Float = 0.2
 let collect_per_step = 2_048
 let update_per_step = 1
 let batch_size = 64
@@ -254,7 +254,7 @@ for epoch in 0..<max_epoch {
         let muv = graph.constant(mu.toGPU(0))
         let distOldv = graph.constant(distOld.toGPU(0))
         let dist = ((muv - act) .* (muv - act))
-        let ratio = Functional.exp(dist - distOldv)
+        let ratio = Functional.exp(distOldv - dist)
         let advantagesv = graph.constant(advantages.toGPU(0))
         let surr1 = advantagesv .* ratio
         let surr2 = advantagesv .* ratio.clamped((1.0 - eps_clip)...(1.0 + eps_clip))

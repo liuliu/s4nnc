@@ -63,6 +63,25 @@ extension Model.Parameters {
   }
 
   /**
+   * Copy parameter out into a tensor.
+   *
+   * - Parameter type: The element type of a tensor.
+   */
+  public func copied<Element: TensorNumeric>(_ type: Element.Type = Element.self) -> Tensor<Element>
+  {
+    guard var toModel = model else {
+      fatalError()
+    }
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    let params = ccv_cnnp_model_parameter_tensor_params(toModel._model, _io)
+    let output = ccv_nnc_tensor_new(nil, params, 0)
+    ccv_cnnp_model_parameter_copy(toModel._model, _io, output)
+    return AnyTensorStorage(output!).toTensor(Tensor<Element>.self)
+  }
+
+  /**
    * Copy parameters to a tensor.
    *
    * - Parameter tensor: The tensor to copy to, it must match the parameters copy from.
