@@ -41,7 +41,7 @@ struct Replay {
 
 struct Data {
   var obs: Tensor<Float32>
-  var mu: Tensor<Float32>
+  var act: Tensor<Float32>
   var adv: Float
   var ret: Float
   var distOld: Tensor<Float32>
@@ -54,7 +54,6 @@ let max_epoch = 100
 let gamma = 0.99
 let step_per_epoch = 30_000
 let step_per_collect = 2_048
-let exploration_noise: Float = 0.2
 let collect_per_step = 2_048
 let update_per_step = 1
 let batch_size = 64
@@ -87,8 +86,8 @@ let critic = NetC()
 
 var actorOptim = AdamOptimizer(graph, rate: actor_lr)
 let scale = graph.variable(.GPU(0), .C(8), of: Float32.self)
-scale.full(-5)
-actorOptim.parameters = [actor.parameters, scale]
+scale.full(0)
+actorOptim.parameters = [actor.parameters]
 var criticOptim = AdamOptimizer(graph, rate: critic_lr)
 criticOptim.parameters = [critic.parameters]
 
@@ -108,7 +107,7 @@ func compute_episodic_return(replay: Replay, gamma: Float = 0.99, gae_gamma: Flo
     rew + (i + 1 < count ? vs[i + 1] : 0) * gamma - vs[i]
   }
   var gae: Float = 0
-  let advantages: [Float32] = delta.enumerated().reversed().map({ (_: Int, delta: Float) -> Float in
+  let advantages: [Float32] = delta.reversed().map({ (delta: Float) -> Float in
     gae = delta + gamma * gae_gamma * gae
     return gae
   }).reversed()
@@ -157,7 +156,7 @@ for epoch in 0..<max_epoch {
           let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0]).toCPU()
           let n = graph.variable(.GPU(0), .C(8), of: Float32.self)
           n.randn(std: 1, mean: 0)
-          let act_f = (n .* Functional.exp(scale) + act).toCPU().rawValue.copied()
+          let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
           let act_mu = act.toCPU().rawValue.copied()
           let (obs, reward, done, _) = env.step(act_f).tuple4
           buffer.append((obs: last_obs, reward: Float32(reward)!, mu: act_mu, act: act_f, v: v[0]))
@@ -225,7 +224,7 @@ for epoch in 0..<max_epoch {
           let distOld = ((muv - actv) .* (muv - actv)).rawValue.copied()
           data.append(
             Data(
-              obs: obs[i], mu: mu[i], adv: adv, ret: inv_std * unnormalized_returns[i],
+              obs: obs[i], act: act[i], adv: adv, ret: inv_std * unnormalized_returns[i],
               distOld: distOld))
         }
         for rew in unnormalized_returns {
@@ -234,48 +233,47 @@ for epoch in 0..<max_epoch {
         }
         rew_total += unnormalized_returns.count
       }
+      let batch = data.randomSample(count: batch_size)
       for _ in 0..<(data.count / batch_size) {
-        let batch = data.randomSample(count: batch_size)
         var obs = Tensor<Float32>(.CPU, .NC(batch_size, 111))
-        var mu = Tensor<Float32>(.CPU, .NC(batch_size, 8))
+        var act = Tensor<Float32>(.CPU, .NC(batch_size, 8))
         var advantages = Tensor<Float32>(.CPU, .NC(batch_size, 1))
         var returns = Tensor<Float32>(.CPU, .NC(batch_size, 1))
         var distOld = Tensor<Float32>(.CPU, .NC(batch_size, 8))
+        var maxLoss: Float = 0
         for i in 0..<batch_size {
           let data = batch[i % batch.count]
           obs[i, ...] = data.obs[...]
-          mu[i, ...] = data.mu[...]
+          act[i, ...] = data.act[...]
           advantages[i, 0] = data.adv
           returns[i, 0] = data.ret
           distOld[i, ...] = data.distOld[...]
+          maxLoss += data.adv > 0 ? data.adv * 1.2 : data.adv * 0.8
         }
         let variable = graph.variable(obs.toGPU(0))
-        let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-        let n = graph.variable(.GPU(0), .C(8), of: Float32.self)
-        n.randn(std: 1, mean: 0)
-        let exp_scale = Functional.exp(scale)
-        let act_f = n .* Functional.exp(scale) + act
+        let mu = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
         let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0])
-        let muv = graph.constant(mu.toGPU(0))
+        let actv = graph.constant(act.toGPU(0))
         let distOldv = graph.constant(distOld.toGPU(0))
-        let dist = ((muv - act_f) .* (muv - act_f))
+        let dist = ((mu - actv) .* (mu - actv))
         let ratio = Functional.exp(distOldv - dist)
         let advantagesv = graph.constant(advantages.toGPU(0))
         let surr1 = advantagesv .* ratio
         let surr2 = advantagesv .* ratio.clamped((1.0 - eps_clip)...(1.0 + eps_clip))
         let clip_loss =
-          0.00125 * exp_scale.reduced(.sum, axis: [1])
-          - Functional.min(surr1, surr2).reduced(.sum, axis: [1])
+          // 0.00125 * scale.reduced(.sum, axis: [0])
+          Functional.min(surr1, surr2).reduced(.sum, axis: [1])
         let cpu_clip_loss = clip_loss.toCPU()
         var totalLoss: Float = 0
         for i in 0..<batch_size {
           totalLoss += cpu_clip_loss[i, 0]
         }
         actorLoss += totalLoss
-        let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 8))
-        grad.full(1.0 / Float(batch_size))
+        print("total loss: \(totalLoss), max loss: \(maxLoss * 8)")
+        let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 1))
+        grad.full(-1.0 / Float(batch_size))
         clip_loss.grad = grad
-        clip_loss.backward(to: variable)
+        clip_loss.backward(to: [variable])
         actor.parameters.clipGradNorm(maxNorm: 0.5)
         actorOptim.step()
         let returnsv = graph.constant(returns.toGPU(0))
@@ -292,10 +290,15 @@ for epoch in 0..<max_epoch {
         criticOptim.step()
         update_count += 1
       }
+      fatalError()
     }
     step_in_epoch += update_count
     criticLoss = criticLoss / Float(batch_size * update_count)
-    actorLoss = actorLoss / Float(batch_size * 8 * update_count)
+    actorLoss = -actorLoss / Float(batch_size * update_count)
+    let scaleCPU = scale.toCPU()
+    print(
+      "scale \(scaleCPU[0]) \(scaleCPU[1]) \(scaleCPU[2]) \(scaleCPU[3]) \(scaleCPU[4]) \(scaleCPU[5]) \(scaleCPU[6]) \(scaleCPU[7])"
+    )
     replays.removeAll()
     print(
       "Epoch \(epoch), step \(step_in_epoch), critic loss \(criticLoss), actor loss \(actorLoss), reward \(Float(training_rewards) / Float(episodes))"

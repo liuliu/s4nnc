@@ -3,6 +3,25 @@ import XCTest
 
 final class OpsTests: XCTestCase {
 
+  func testDivision() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2], .CPU, .NC(2, 1)))
+    let a1 = dynamicGraph.variable(Tensor<Float32>([3.3, 4.4], .CPU, .NC(2, 1)))
+    let a2 = a0 ./ a1
+    XCTAssertEqual(a2.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a2.rawValue[0, 0], 1.1 / 3.3, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 0], 2.2 / 4.4, accuracy: 1e-5)
+  }
+
+  func testScalarDivision() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2], .CPU, .NC(2, 1)))
+    let a1 = 0.5 / a0
+    XCTAssertEqual(a1.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a1.rawValue[0, 0], 0.5 / 1.1, accuracy: 1e-5)
+    XCTAssertEqual(a1.rawValue[1, 0], 0.5 / 2.2, accuracy: 1e-5)
+  }
+
   func testReduceSum() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
@@ -85,6 +104,8 @@ final class OpsTests: XCTestCase {
   }
 
   static let allTests = [
+    ("testDivision", testDivision),
+    ("testScalarDivision", testScalarDivision),
     ("testReduceSum", testReduceSum),
     ("testReduceMax", testReduceMax),
     ("testReduceSumModel", testReduceSumModel),

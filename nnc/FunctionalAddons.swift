@@ -49,6 +49,32 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Element-wise division
+  public static func div<T: DynamicGraph.TensorGroup>(
+    left: T, right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWDIV_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  /// Element-wise reciprocal
+  public static func reciprocal<T: DynamicGraph.TensorGroup>(
+    _ one: T, streamContext: StreamContext? = nil
+  )
+    -> T
+  {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWDIV_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: nil as T?, one, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Element-wise log
   public static func log<T: DynamicGraph.TensorGroup>(_ one: T, streamContext: StreamContext? = nil)
     -> T

@@ -1,4 +1,5 @@
 infix operator .*: MultiplicationPrecedence
+infix operator ./: MultiplicationPrecedence
 infix operator .+: AdditionPrecedence
 
 // Element-wise addition
@@ -8,6 +9,11 @@ public func .+ <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
 
 public func .+ (left: Model.IO, right: Model.IO) -> Model.IO {
   return Sum()(left, right)
+}
+
+// Element-wise division
+public func ./ <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
+  return Functional.div(left: left, right: right)
 }
 
 // Broadcast element-wise multiplication
@@ -44,6 +50,23 @@ public func * <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
 
 public func * (left: Model.IO, right: Model.IO) -> Model.IO {
   return Matmul()(left, right)
+}
+
+// Scalar division
+public func ./ <T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
+  if left == 1 {
+    return Functional.reciprocal(right)
+  } else {
+    return Functional.scalmul(left: left, right: Functional.reciprocal(right))
+  }
+}
+
+public func / <T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
+  if left == 1 {
+    return Functional.reciprocal(right)
+  } else {
+    return Functional.scalmul(left: left, right: Functional.reciprocal(right))
+  }
 }
 
 // Scalar-matrix multiplication
