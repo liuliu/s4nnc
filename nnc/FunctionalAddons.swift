@@ -9,7 +9,7 @@ public enum ReduceOp {
 extension Functional {
   /// Element-wise addition
   public static func sum<T: DynamicGraph.TensorGroup>(
-    _ inputs: T..., streamContext: StreamContext? = nil
+    _ inputs: [T], streamContext: StreamContext? = nil
   ) -> T {
     precondition(inputs.count >= 2)
     let params = CmdParamsFactory.factory.newParams()
@@ -18,6 +18,13 @@ extension Functional {
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: inputs[0], Array(inputs.suffix(from: 1)),
       outputSize: 1, streamContext: streamContext)
     return T(outputs[0])
+  }
+
+  /// Element-wise addition
+  public static func sum<T: DynamicGraph.TensorGroup>(
+    _ inputs: T..., streamContext: StreamContext? = nil
+  ) -> T {
+    return sum(inputs, streamContext: streamContext)
   }
 
   /// Broadcast element-wise multiplication

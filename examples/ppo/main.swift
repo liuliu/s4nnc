@@ -5,6 +5,44 @@ import NNCPythonConversion
 import Numerics
 import PythonKit
 
+struct RunningMeanStd {
+  var mean: DynamicGraph.Tensor<Float>
+  var variance: DynamicGraph.Tensor<Float>
+  var count: Int
+  init(mean: DynamicGraph.Tensor<Float>, variance: DynamicGraph.Tensor<Float>) {
+    self.mean = mean
+    self.variance = variance
+    count = 0
+  }
+  mutating func update(_ data: [DynamicGraph.Tensor<Float>]) {
+    let graph = mean.graph
+    precondition(data.count >= 1)
+    graph.withNoGrad {
+      let batchMean: DynamicGraph.Tensor<Float>
+      let batchVar: DynamicGraph.Tensor<Float>
+      if data.count > 1 {
+        batchMean = 1 / Float(data.count) * Functional.sum(data)
+        batchVar =
+          1 / Float(data.count) * Functional.sum(data.map { ($0 - batchMean) .* ($0 - batchMean) })
+      } else {
+        batchMean = data[0]
+        batchVar = graph.variable(
+          batchMean.kind, format: batchMean.format, dimensions: batchMean.dimensions)
+        batchVar.full(0)
+      }
+      let delta = batchMean - mean
+      let totalCount = count + data.count
+      mean = mean + Float(data.count) / Float(totalCount) * delta
+      let mA = Float(count) * variance
+      let mB = Float(data.count) * batchVar
+      let m2 = Functional.sum(
+        mA, mB, Float(count) * Float(data.count) / Float(totalCount) * (delta .* delta))
+      variance = 1.0 / Float(totalCount) * m2
+      count = totalCount
+    }
+  }
+}
+
 func NetA() -> (Model, Model) {
   let lastLayer = Dense(count: 6)
   return (
@@ -121,6 +159,17 @@ func compute_episodic_return(
 let actionLow: [Float] = env.action_space.low.map { Float($0)! }
 let actionHigh: [Float] = env.action_space.high.map { Float($0)! }
 
+var obsRms = RunningMeanStd(
+  mean: ({ () -> DynamicGraph.Tensor<Float> in
+    let mean = graph.constant(.GPU(0), .C(17), of: Float32.self)
+    mean.full(0)
+    return mean
+  })(),
+  variance: ({ () -> DynamicGraph.Tensor<Float> in
+    let variance = graph.constant(.GPU(0), .C(17), of: Float32.self)
+    variance.full(1)
+    return variance
+  })())
 var replays = [Replay]()
 var buffer = [
   (obs: Tensor<Float32>, reward: Float32, mu: Tensor<Float32>, act: Tensor<Float32>, v: Float32)
@@ -141,7 +190,10 @@ for epoch in 0..<max_epoch {
     while env_step_count < collect_per_step {
       for _ in 0..<training_num {
         while true {
-          let variable = graph.variable(last_obs.toGPU(0))
+          var lastObs = graph.variable(last_obs.toGPU(0))
+          let variable =
+            (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
+          obsRms.update([lastObs])
           let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
           if !initActorLastLayer {
             // Try to init actor's last layer with reduced weights.
@@ -159,9 +211,14 @@ for epoch in 0..<max_epoch {
           let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
           let act_mu = act.toCPU().rawValue.copied()
           let (obs, reward, done, _) = env.step(act_f).tuple4
-          buffer.append((obs: last_obs, reward: Float32(reward)!, mu: act_mu, act: act_f, v: 0))
+          buffer.append(
+            (obs: variable.rawValue.toCPU(), reward: Float32(reward)!, mu: act_mu, act: act_f, v: 0)
+          )
           last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
           if Bool(done)! {
+            lastObs = graph.variable(last_obs.toGPU(0))
+            let variable = (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance)
+            obsRms.update([lastObs])
             let obs = env.reset()
             episodes += 1
             env_step_count += buffer.count
@@ -182,7 +239,7 @@ for epoch in 0..<max_epoch {
             vs.append(0)
             let replay = Replay(
               obs: obss,
-              lastObs: last_obs,
+              lastObs: variable.rawValue.toCPU(),
               rewards: rewards,
               mu: mus,
               act: acts,
@@ -208,7 +265,6 @@ for epoch in 0..<max_epoch {
     for _ in 0..<update_steps {
       let replayBatch = replays.randomSample(count: batch_size)
       var data = [Data]()
-      print("rew_std \(rew_var.squareRoot())")
       // Sample from these batches into smaller batch sizes and do the update.
       for var replay in replayBatch {
         var rew_std: Float = 1
@@ -325,7 +381,7 @@ for epoch in 0..<max_epoch {
     actorLoss = -actorLoss / Float(batch_size * update_count)
     let scaleCPU = scale.toCPU()
     print(
-      "scale \(scaleCPU[0]) \(scaleCPU[1]) \(scaleCPU[2]) \(scaleCPU[3]) \(scaleCPU[4]) \(scaleCPU[5])"
+      "rew std \(rew_var.squareRoot()), log scale [\(scaleCPU[0]), \(scaleCPU[1]), \(scaleCPU[2]), \(scaleCPU[3]), \(scaleCPU[4]), \(scaleCPU[5])]"
     )
     replays.removeAll()
     print(
@@ -336,7 +392,8 @@ for epoch in 0..<max_epoch {
   var testing_rewards: Float = 0
   for _ in 0..<testing_num {
     while true {
-      let variable = graph.variable(last_obs.toGPU(0))
+      let lastObs = graph.variable(last_obs.toGPU(0))
+      let variable = (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(-1...1)
       let act_v = act.rawValue.toCPU()

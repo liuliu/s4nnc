@@ -82,6 +82,12 @@ public final class DynamicGraph {
       return fromCDimensions(info.dim)
     }
 
+    public var kind: DeviceKind {
+      let _graph = graph._graph
+      let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
+      return DeviceKind.from(cTensorParams: info)
+    }
+
     public var format: TensorFormat {
       let _graph = graph._graph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
