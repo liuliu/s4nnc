@@ -86,8 +86,8 @@ struct Data {
 }
 
 let buffer_size = 4_096
-let actor_lr: Float = 3e-4
-let critic_lr: Float = 3e-4
+let actor_lr: Float = 1e-4
+let critic_lr: Float = 1e-4
 let max_epoch = 100
 let gamma = 0.99
 let step_per_epoch = 30_000
@@ -217,7 +217,8 @@ for epoch in 0..<max_epoch {
           last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
           if Bool(done)! {
             lastObs = graph.variable(last_obs.toGPU(0))
-            let variable = (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance)
+            let variable =
+              (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
             obsRms.update([lastObs])
             let obs = env.reset()
             episodes += 1
@@ -349,7 +350,7 @@ for epoch in 0..<max_epoch {
         let surr1 = advantagesv .* ratio
         let surr2 = advantagesv .* ratio.clamped((1.0 - eps_clip)...(1.0 + eps_clip))
         let clip_loss =
-          0.01 * scale.reduced(.sum, axis: [0])
+          0.001 * scale.reduced(.sum, axis: [0])
           + Functional.min(surr1, surr2).reduced(.sum, axis: [1])
         let cpu_clip_loss = clip_loss.toCPU()
         var totalLoss: Float = 0
@@ -393,7 +394,8 @@ for epoch in 0..<max_epoch {
   for _ in 0..<testing_num {
     while true {
       let lastObs = graph.variable(last_obs.toGPU(0))
-      let variable = (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance)
+      let variable =
+        (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(-1...1)
       let act_v = act.rawValue.toCPU()
