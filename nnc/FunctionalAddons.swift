@@ -508,7 +508,7 @@ extension DynamicGraph.Tensor {
 extension DynamicGraph.Group {
   /// Fill the given tensor with normal-distributed random values.
   public func randn(
-    std: Float = 0, mean: Float = 1, streamContext: StreamContext? = nil
+    std: Float = 1, mean: Float = 0, streamContext: StreamContext? = nil
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
