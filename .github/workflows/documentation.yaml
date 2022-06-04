@@ -1,5 +1,8 @@
-name: ubuntu-bazel
-on: [push]
+name: documentation
+on:
+  push:
+    branches:
+      - main
 jobs:
   build:
     runs-on: ubuntu-20.04
@@ -27,6 +30,22 @@ jobs:
           echo "build --config=clang" >> "${GITHUB_WORKSPACE}/.bazelrc"
           echo "try-import %workspace%/clang.bazelrc" >> "${GITHUB_WORKSPACE}/.bazelrc"
 
-      - name: Run tests
+      - name: Clean up documentation branch
         run: |
-          "${GITHUB_WORKSPACE}/bin/bazel" test //test:nnc
+          git branch -D documentation || true
+          git checkout -b documentation
+
+      - name: Run docc
+        run: |
+          cd "${GITHUB_WORKSPACE}" && ./scripts/docc.sh
+
+      - name: Add and commit documentation
+        run: |
+          git config --global user.email "docbot@github.com"
+          git config --global user.name "docbot"
+          cd "${GITHUB_WORKSPACE}" && git add "docs/*" && git commit -m "Update docs."
+
+      - name: Push the new branch
+        run: |
+          cd "${GITHUB_WORKSPACE}" && git push --force origin documentation:documentation
+
