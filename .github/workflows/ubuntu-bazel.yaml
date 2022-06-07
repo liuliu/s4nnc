@@ -24,8 +24,7 @@ jobs:
         run: |
           sudo apt -y install libpng-dev libjpeg-dev libatlas-base-dev libblas-dev libgsl-dev clang llvm libdispatch-dev libomp-dev liblinear-dev libfftw3-dev libtesseract-dev
           ./bazel/setup_clang.sh
-          echo "build --config=clang" >> "${GITHUB_WORKSPACE}/.bazelrc"
-          echo "try-import %workspace%/clang.bazelrc" >> "${GITHUB_WORKSPACE}/.bazelrc"
+          echo "build --config=clang" >> "${GITHUB_WORKSPACE}/.bazelrc.local"
 
       - name: Run tests
         run: |
