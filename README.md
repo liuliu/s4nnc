@@ -1,6 +1,7 @@
 # Swift for NNC
 
 [![ubuntu-bazel](https://github.com/liuliu/s4nnc/actions/workflows/ubuntu-bazel.yaml/badge.svg?branch=main)](https://github.com/liuliu/s4nnc/actions/workflows/ubuntu-bazel.yaml?query=branch%3Amain)
+[![documentation](https://github.com/liuliu/s4nnc/actions/workflows/documentation.yaml/badge.svg?branch=main)](https://github.com/liuliu/s4nnc/actions/workflows/documentation.yaml?query=branch%3Amain)
 
 s4nnc is a Swift interface for [libnnc](https://libnnc.org) library.
 
