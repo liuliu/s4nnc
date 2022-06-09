@@ -52,6 +52,17 @@ load("@build_bazel_rules_swift//swift:extras.bzl", "swift_rules_extra_dependenci
 
 swift_rules_extra_dependencies()
 
+git_repository(
+    name = "swift-mujoco",
+    commit = "a40cf47e238959b1a12d9ec6cf1e1e7f2ab9674a",
+    remote = "https://github.com/liuliu/swift-mujoco.git",
+    shallow_since = "1654817288 -0400"
+)
+
+load("@swift-mujoco//:deps.bzl", "swift_mujoco_deps")
+
+swift_mujoco_deps()
+
 new_git_repository(
     name = "PythonKit",
     build_file = "PythonKit.BUILD",
