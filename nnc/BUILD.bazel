@@ -44,3 +44,16 @@ swift_library(
         "@PythonKit",
     ],
 )
+
+swift_library(
+    name = "nnc_mujoco",
+    srcs = [
+        "MuJoCoConversion.swift",
+    ],
+    module_name = "NNCMuJoCoConversion",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":nnc",
+        "@swift-mujoco",
+    ],
+)

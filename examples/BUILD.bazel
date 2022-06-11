@@ -1,4 +1,13 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary", "swift_library")
+
+swift_library(
+    name = "gym",
+    srcs = glob(["gym/**/*.swift"]),
+    deps = [
+        "//nnc",
+        "@swift-mujoco//:swift-mujoco",
+    ],
+)
 
 swift_binary(
     name = "imdb",
@@ -64,6 +73,7 @@ swift_binary(
     name = "ppo",
     srcs = ["ppo/main.swift"],
     deps = [
+        ":gym",
         "//nnc",
         "//nnc:nnc_python",
         "@PythonKit",

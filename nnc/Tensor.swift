@@ -453,6 +453,7 @@ extension AnyTensor {
 }
 
 extension Tensor {
+  @inlinable
   public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
     let count = increments.reduce(MemoryLayout<Element>.size, *)
     return try body(UnsafeRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
