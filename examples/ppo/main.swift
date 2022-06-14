@@ -1,9 +1,9 @@
 import Algorithms
 import Foundation
+import Gym
 import NNC
 import NNCPythonConversion
 import Numerics
-import PythonKit
 
 struct RunningMeanStd {
   var mean: DynamicGraph.Tensor<Float>
@@ -43,7 +43,7 @@ struct RunningMeanStd {
   }
 }
 
-let input_dim = 111
+let input_dim = 27
 let output_dim = 8
 
 func NetA() -> (Model, Model) {
@@ -107,15 +107,8 @@ let max_grad_norm = 0.5
 let eps_clip: Float = 0.2
 let recompute_adv = true
 
-let name = "Ant-v3"
-
-let gym = Python.import("gym")
-
-let env = gym.make(name)
-
-let action_space = env.action_space
-
-let obs = env.reset(seed: 0)
+let env = try Ant()
+let (obs, _) = env.reset(seed: 0)
 var episodes = 0
 
 let (actor, actorLastLayer) = NetA()
@@ -148,9 +141,6 @@ func compute_episodic_return(
   return (advantages, unnormalized_returns)
 }
 
-let actionLow: [Float] = env.action_space.low.map { Float($0)! }
-let actionHigh: [Float] = env.action_space.high.map { Float($0)! }
-
 var obsRms = RunningMeanStd(
   mean: ({ () -> DynamicGraph.Tensor<Float> in
     let mean = graph.constant(.GPU(0), .C(input_dim), of: Float32.self)
@@ -166,7 +156,7 @@ var replays = [Replay]()
 var buffer = [
   (obs: Tensor<Float32>, reward: Float32, mu: Tensor<Float32>, act: Tensor<Float32>, v: Float32)
 ]()
-var last_obs: Tensor<Float32> = Tensor(from: try! Tensor<Float64>(numpy: obs))
+var last_obs: Tensor<Float32> = obs
 var env_step = 0
 var rew_var: Double = 1
 var rew_mean: Double = 0
@@ -201,17 +191,17 @@ for epoch in 0..<max_epoch {
           n.randn(std: 1, mean: 0)
           let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
           let act_mu = act.toCPU().rawValue.copied()
-          let (obs, reward, done, _) = env.step(act_f).tuple4
+          let (obs, reward, done, _) = env.step(action: act_f)
           buffer.append(
-            (obs: variable.rawValue.toCPU(), reward: Float32(reward)!, mu: act_mu, act: act_f, v: 0)
+            (obs: variable.rawValue.toCPU(), reward: reward, mu: act_mu, act: act_f, v: 0)
           )
-          last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
-          if Bool(done)! {
+          last_obs = obs
+          if done {
             lastObs = graph.variable(last_obs.toGPU(0))
             let variable =
               (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
             obsRms.update([lastObs])
-            let obs = env.reset()
+            let (obs, _) = env.reset()
             episodes += 1
             env_step_count += buffer.count
             var obss = [Tensor<Float32>]()
@@ -237,7 +227,7 @@ for epoch in 0..<max_epoch {
               act: acts,
               vs: vs)
             replays.append(replay)
-            last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+            last_obs = obs
             buffer.removeAll()
             break
           }
@@ -393,12 +383,12 @@ for epoch in 0..<max_epoch {
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(-1...1)
       let act_v = act.rawValue.toCPU()
-      let (obs, reward, done, _) = env.step(act_v).tuple4
-      last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
-      testing_rewards += Float(reward)!
-      if Bool(done)! {
-        let obs = env.reset()
-        last_obs = Tensor(from: try! Tensor<Float64>(numpy: obs))
+      let (obs, reward, done, _) = env.step(action: act_v)
+      last_obs = obs
+      testing_rewards += reward
+      if done {
+        let (obs, _) = env.reset()
+        last_obs = obs
         break
       }
     }
@@ -419,4 +409,3 @@ while episodes < 10 {
   Thread.sleep(forTimeInterval: 0.0166667)
 }
 */
-env.close()
