@@ -1,20 +1,20 @@
+import C_sfmt
 import MuJoCo
 import NNC
 import NNCMuJoCoConversion
 import Numerics
 
 public final class Ant {
-  let model: MjModel
-  let initData: MjData
-  let ctrlCostWeight: Double
-  let healthyReward: Double
-  let terminateWhenUnhealthy: Bool
-  let healthyZRange: ClosedRange<Double>
-  let resetNoiseScale: Double
-  let maxEpisodeSteps: Int = 1_000
+  private let model: MjModel
+  private let initData: MjData
+  private let ctrlCostWeight: Double
+  private let healthyReward: Double
+  private let terminateWhenUnhealthy: Bool
+  private let healthyZRange: ClosedRange<Double>
+  private let resetNoiseScale: Double
 
-  var data: MjData
-  var elapsedSteps: Int
+  private var sfmt = SFMT(seed: 0)
+  private var data: MjData
 
   public init(
     ctrlCostWeight: Double = 0.5, healthyReward: Double = 0.1, terminateWhenUnhealthy: Bool = true,
@@ -28,13 +28,23 @@ public final class Ant {
     self.terminateWhenUnhealthy = terminateWhenUnhealthy
     self.healthyZRange = healthyZRange
     self.resetNoiseScale = resetNoiseScale
-    self.elapsedSteps = 0
   }
 }
 
-func noise(_ std: Double) -> Double {
-  let u1 = Double.random(in: 0...1)
-  let u2 = Double.random(in: 0...1)
+struct SFMT: RandomNumberGenerator {
+  private var state: sfmt_t
+  init(seed: UInt64) {
+    state = sfmt_t()
+    sfmt_init_gen_rand(&state, UInt32(truncatingIfNeeded: seed))
+  }
+  mutating func next() -> UInt64 {
+    return sfmt_genrand_uint64(&state)
+  }
+}
+
+func noise<T: RandomNumberGenerator>(_ std: Double, using: inout T) -> Double {
+  let u1 = Double.random(in: 0...1, using: &using)
+  let u2 = Double.random(in: 0...1, using: &using)
   let mag = std * (-2.0 * .log(u1)).squareRoot()
   return mag * .cos(.pi * 2 * u2)
 }
@@ -43,7 +53,7 @@ extension Ant: Env {
   public typealias ActType = Tensor<Float32>
   public typealias ObsType = Tensor<Float32>
 
-  public var isHealthy: Bool {
+  private var isHealthy: Bool {
     let qpos = data.qpos
     let z = qpos[2]
     for i in 0..<qpos.count {
@@ -60,7 +70,7 @@ extension Ant: Env {
     return healthyZRange.contains(z)
   }
 
-  public var done: Bool {
+  private var done: Bool {
     return !isHealthy ? terminateWhenUnhealthy : false
   }
 
@@ -73,7 +83,7 @@ extension Ant: Env {
     return tensor
   }
 
-  public func step(action: ActType) -> (ObsType, Float, Bool, [String: Any]?) {
+  public func step(action: ActType) -> (ObsType, Float, Bool, [String: Any]) {
     let id = model.name2id(type: .body, name: "torso")
     precondition(id >= 0)
     let xyPositionBefore = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
@@ -99,7 +109,7 @@ extension Ant: Env {
     let costs = ctrlCost
     let obs = observations()
     let reward = Float(rewards - costs)
-    var info: [String: Any] = [
+    let info: [String: Any] = [
       "reward_forward": forwardReward,
       "reward_ctrl": -ctrlCost,
       "reward_survive": healthyReward,
@@ -111,31 +121,30 @@ extension Ant: Env {
       "x_velocity": xyVelocity.0,
       "y_velocity": xyVelocity.1,
     ]
-    elapsedSteps += 1
-    var done = self.done
-    if elapsedSteps >= maxEpisodeSteps {
-      info["TimeLimit.truncated"] = !done
-      done = true
-    }
     return (obs, reward, done, info)
   }
 
-  public func reset(seed: Int?) -> (ObsType, [String: Any]?) {
+  public func reset(seed: Int?) -> (ObsType, [String: Any]) {
     let initQpos = initData.qpos
     let initQvel = initData.qvel
     var qpos = data.qpos
     var qvel = data.qvel
+    if let seed = seed {
+      sfmt = SFMT(seed: UInt64(bitPattern: Int64(seed)))
+    } else {
+      var g = SystemRandomNumberGenerator()
+      sfmt = SFMT(seed: g.next())
+    }
     for i in 0..<qpos.count {
-      qpos[i] = initQpos[i] + Double.random(in: -resetNoiseScale...resetNoiseScale)
+      qpos[i] = initQpos[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
     }
     for i in 0..<qvel.count {
-      qvel[i] = initQvel[i] + noise(resetNoiseScale)
+      qvel[i] = initQvel[i] + noise(resetNoiseScale, using: &sfmt)
     }
     // After this, forward data to finish reset.
     model.forward(data: &data)
     let obs = observations()
-    elapsedSteps = 0
-    return (obs, nil)
+    return (obs, [:])
   }
 
   public func render() {

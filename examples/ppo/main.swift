@@ -107,7 +107,7 @@ let max_grad_norm = 0.5
 let eps_clip: Float = 0.2
 let recompute_adv = true
 
-let env = try Ant()
+let env = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
 let (obs, _) = env.reset(seed: 0)
 var episodes = 0
 
