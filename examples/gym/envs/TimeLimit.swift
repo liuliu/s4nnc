@@ -1,5 +1,7 @@
+import MuJoCo
+
 public final class TimeLimit<EnvType: Env> {
-  private let env: EnvType
+  private var env: EnvType
   private let maxEpisodeSteps: Int
   private var elapsedSteps: Int
   public init(env: EnvType, maxEpisodeSteps: Int) {
@@ -32,7 +34,13 @@ extension TimeLimit: Env {
     return env.reset(seed: seed)
   }
 
-  public func render() {
-    env.render()
+  public var rewardThreshold: Float { env.rewardThreshold }
+}
+
+extension TimeLimit: MuJoCoEnv where EnvType: MuJoCoEnv {
+  public var model: MjModel { env.model }
+  public var data: MjData {
+    get { env.data }
+    set { env.data = newValue }
   }
 }

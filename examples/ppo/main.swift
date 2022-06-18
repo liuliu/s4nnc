@@ -108,6 +108,7 @@ let eps_clip: Float = 0.2
 let recompute_adv = true
 
 let env = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
+let viewer = MuJoCoViewer(env: env)
 let (obs, _) = env.reset(seed: 0)
 var episodes = 0
 
@@ -395,17 +396,25 @@ for epoch in 0..<max_epoch {
   }
   let avg_testing_rewards = testing_rewards / Float(testing_num)
   print("Epoch \(epoch), testing reward \(avg_testing_rewards)")
+  if avg_testing_rewards > env.rewardThreshold {
+    break
+  }
 }
 
-/*
+(last_obs, _) = env.reset()
 while episodes < 10 {
-  let act_v = action_space.sample()
-  let (obs, _, done, _) = env.step(act_v).tuple4
-  if Bool(done)! {
-    let obs = env.reset()
+  let lastObs = graph.variable(last_obs.toGPU(0))
+  let variable =
+    (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
+  let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
+  act.clamp(-1...1)
+  let act_v = act.rawValue.toCPU()
+  let (obs, _, done, _) = env.step(action: act_v)
+  last_obs = obs
+  if done {
+    let (obs, _) = env.reset()
+    last_obs = obs
     episodes += 1
   }
-  env.render()
-  Thread.sleep(forTimeInterval: 0.0166667)
+  viewer.render()
 }
-*/

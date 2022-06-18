@@ -4,8 +4,10 @@ import NNC
 import NNCMuJoCoConversion
 import Numerics
 
-public final class Ant {
-  private let model: MjModel
+public final class Ant: MuJoCoEnv {
+  public let model: MjModel
+  public var data: MjData
+
   private let initData: MjData
   private let ctrlCostWeight: Double
   private let healthyReward: Double
@@ -14,7 +16,6 @@ public final class Ant {
   private let resetNoiseScale: Double
 
   private var sfmt = SFMT(seed: 0)
-  private var data: MjData
 
   public init(
     ctrlCostWeight: Double = 0.5, healthyReward: Double = 0.1, terminateWhenUnhealthy: Bool = true,
@@ -147,7 +148,5 @@ extension Ant: Env {
     return (obs, [:])
   }
 
-  public func render() {
-    // Need to think through this.
-  }
+  public var rewardThreshold: Float { 1500 }
 }

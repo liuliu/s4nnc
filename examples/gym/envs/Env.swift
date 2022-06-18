@@ -3,7 +3,7 @@ public protocol Env {
   associatedtype ActType
   func step(action: ActType) -> (ObsType, Float, Bool, [String: Any])
   func reset(seed: Int?) -> (ObsType, [String: Any])
-  func render()
+  var rewardThreshold: Float { get }
 }
 
 extension Env {
