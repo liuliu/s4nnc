@@ -47,12 +47,6 @@ public final class MuJoCoViewer<EnvType: MuJoCoEnv> {
   }
 }
 
-extension MuJoCoViewer {
-  // The necessary context for the detached task.
-  final class ViewerContext {
-  }
-}
-
 extension MuJoCoViewer: Renderable {
   public func render(width: Int, height: Int) {
     if cpugenesis == 0 {

@@ -78,10 +78,10 @@ extension Ant: Env {
   private func observations() -> Tensor<Float32> {
     let qpos = data.qpos
     let qvel = data.qvel
-    var tensor = Tensor<Float32>(.CPU, .C(27))
-    tensor[0..<13] = Tensor(from: qpos[2...])
-    tensor[13..<27] = Tensor(from: qvel[...])
-    return tensor
+    var tensor = Tensor<Float64>(.CPU, .C(27))
+    tensor[0..<13] = qpos[2...]
+    tensor[13..<27] = qvel[...]
+    return Tensor<Float32>(from: tensor)
   }
 
   public func step(action: ActType) -> (ObsType, Float, Bool, [String: Any]) {
