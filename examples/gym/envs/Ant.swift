@@ -15,7 +15,7 @@ public final class Ant: MuJoCoEnv {
   private let healthyZRange: ClosedRange<Double>
   private let resetNoiseScale: Double
 
-  private var sfmt = SFMT(seed: 0)
+  private var sfmt: SFMT
 
   public init(
     ctrlCostWeight: Double = 0.5, healthyReward: Double = 0.1, terminateWhenUnhealthy: Bool = true,
@@ -24,6 +24,8 @@ public final class Ant: MuJoCoEnv {
     model = try MjModel(fromXMLPath: "examples/gym/assets/ant.xml")
     data = model.makeData()
     initData = data.copied(model: model)
+    var g = SystemRandomNumberGenerator()
+    sfmt = SFMT(seed: g.next())
     self.ctrlCostWeight = ctrlCostWeight
     self.healthyReward = healthyReward
     self.terminateWhenUnhealthy = terminateWhenUnhealthy
@@ -132,9 +134,6 @@ extension Ant: Env {
     var qvel = data.qvel
     if let seed = seed {
       sfmt = SFMT(seed: UInt64(bitPattern: Int64(seed)))
-    } else {
-      var g = SystemRandomNumberGenerator()
-      sfmt = SFMT(seed: g.next())
     }
     for i in 0..<qpos.count {
       qpos[i] = initQpos[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
