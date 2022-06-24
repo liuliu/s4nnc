@@ -351,6 +351,176 @@ extension DynamicGraph.Tensor {
         _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
     }
   }
+
+  @usableFromInline
+  subscript(indices: [Int], range: Range<Int>, streamContext streamContext: StreamContext? = nil)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get {
+      precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
+      let dimensions = self.dimensions
+      precondition(indices.count + 1 == dimensions.count)
+      let offset = indices + [range.lowerBound]
+      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
+      let increments = self.increments
+      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      return reshaped(
+        format: format, dimensions: newDimensions, offset: offset, increments: increments)
+    }
+    set(v) {
+      precondition(v.graph === graph)
+      precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
+      let dimensions = self.dimensions
+      precondition(indices.count + 1 == dimensions.count)
+      let offset = indices + [range.lowerBound]
+      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
+      let increments = self.increments
+      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      // Intentionally use the format of the input so we don't do unnecessary format conversion.
+      let output = reshaped(
+        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
+      )
+      let params = CmdParamsFactory.factory.newParams()
+      let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
+      let _graph = graph._graph
+      let _streamContext = (streamContext ?? graph.streamContext)?._stream
+      var _input: ccv_nnc_tensor_variable_t? = v._tensor
+      var _output: ccv_nnc_tensor_variable_t? = output._tensor
+      ccv_nnc_dynamic_graph_exec(
+        _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
+    }
+  }
+
+  @usableFromInline
+  subscript(indices: [Int], range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
+    get {
+      let dimensions = self.dimensions
+      return self[indices, 0..<dimensions[indices.count]]
+    }
+    set(v) {
+      let dimensions = self.dimensions
+      self[indices, 0..<dimensions[indices.count]] = v
+    }
+  }
+
+  @inlinable
+  public subscript(range: Range<Int>) -> DynamicGraph.Tensor<Element> {
+    get { self[[], range] }
+    set { self[[], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, range: Range<Int>) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0], range] }
+    set { self[[i0], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, range: Range<Int>) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0, i1], range] }
+    set { self[[i0, i1], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0, i1, i2], range] }
+    set { self[[i0, i1, i2], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3], range] }
+    set { self[[i0, i1, i2, i3], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>)
+    -> DynamicGraph.Tensor<
+      Element
+    >
+  {
+    get { self[[i0, i1, i2, i3, i4], range] }
+    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5], range] }
+    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
+    get { self }
+    set { self[[], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0], range] }
+    set { self[[i0], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0, i1], range] }
+    set { self[[i0, i1], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2], range] }
+    set { self[[i0, i1, i2], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3], range] }
+    set { self[[i0, i1, i2, i3], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange)
+    -> DynamicGraph.Tensor<
+      Element
+    >
+  {
+    get { self[[i0, i1, i2, i3, i4], range] }
+    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5], range] }
+    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
+    range: UnboundedRange
+  )
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+  }
 }
 
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
@@ -410,6 +580,188 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         _streamContext)
       _outputs.deallocate()
     }
+  }
+
+  @usableFromInline
+  subscript(indices: [Int], range: Range<Int>, streamContext streamContext: StreamContext? = nil)
+    -> DynamicGraph.Group<Element>
+  {
+    get {
+      precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
+      let dimensions = self.dimensions
+      precondition(indices.count + 1 == dimensions.count)
+      let offset = indices + [range.lowerBound]
+      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
+      let increments = self.increments
+      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      return reshaped(
+        format: format, dimensions: newDimensions, offset: offset, increments: increments)
+    }
+    set(v) {
+      precondition(v.count == count)
+      guard count > 0 else { return }
+      let graph = untyped[0].graph
+      for x in v.untyped {
+        precondition(x.graph === graph)
+      }
+      precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
+      let dimensions = self.dimensions
+      precondition(indices.count + 1 == dimensions.count)
+      let offset = indices + [range.lowerBound]
+      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
+      let increments = self.increments
+      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      // Intentionally use the format of the input so we don't do unnecessary format conversion.
+      let outputs = reshaped(
+        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
+      )
+      let params = CmdParamsFactory.factory.newParams()
+      let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
+      let _graph = graph._graph
+      let _streamContext = (streamContext ?? graph.streamContext)?._stream
+      let _inputs: [ccv_nnc_tensor_variable_t?] = v.untyped.map { $0._tensor }
+      let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+        capacity: count)
+      for (i, variable) in outputs.untyped.enumerated() {
+        (_outputs + i).initialize(to: variable._tensor)
+      }
+      let outputSize = Int32(count)
+      ccv_nnc_dynamic_graph_exec(
+        _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
+        _streamContext)
+      _outputs.deallocate()
+    }
+  }
+
+  @usableFromInline
+  subscript(indices: [Int], range: UnboundedRange) -> DynamicGraph.Group<Element> {
+    get {
+      let dimensions = self.dimensions
+      return self[indices, 0..<dimensions[indices.count]]
+    }
+    set(v) {
+      let dimensions = self.dimensions
+      self[indices, 0..<dimensions[indices.count]] = v
+    }
+  }
+
+  @inlinable
+  public subscript(range: Range<Int>) -> DynamicGraph.Group<Element> {
+    get { self[[], range] }
+    set { self[[], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, range: Range<Int>) -> DynamicGraph.Group<Element> {
+    get { self[[i0], range] }
+    set { self[[i0], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, range: Range<Int>) -> DynamicGraph.Group<Element> {
+    get { self[[i0, i1], range] }
+    set { self[[i0, i1], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> DynamicGraph.Group<Element> {
+    get { self[[i0, i1, i2], range] }
+    set { self[[i0, i1, i2], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3], range] }
+    set { self[[i0, i1, i2, i3], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>)
+    -> DynamicGraph.Group<
+      Element
+    >
+  {
+    get { self[[i0, i1, i2, i3, i4], range] }
+    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5], range] }
+    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(range: UnboundedRange) -> DynamicGraph.Group<Element> {
+    get { self }
+    set { self[[], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, range: UnboundedRange) -> DynamicGraph.Group<Element> {
+    get { self[[i0], range] }
+    set { self[[i0], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> DynamicGraph.Group<Element> {
+    get { self[[i0, i1], range] }
+    set { self[[i0, i1], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2], range] }
+    set { self[[i0, i1, i2], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3], range] }
+    set { self[[i0, i1, i2, i3], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange)
+    -> DynamicGraph.Group<
+      Element
+    >
+  {
+    get { self[[i0, i1, i2, i3, i4], range] }
+    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5], range] }
+    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
+    range: UnboundedRange
+  )
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
   }
 }
 

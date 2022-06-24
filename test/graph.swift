@@ -93,6 +93,46 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[2, 1], -3, accuracy: 1e-5)
   }
 
+  func testPartialAssignWithIndices() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a0[0, 0] = 10
+    a0[0, 1] = 2
+    a0[0, 2] = 5
+    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a1[0, 0] = -1
+    a1[0, 1] = -2
+    a1[0, 2] = -3
+    let a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    a2[0, 0..<2] = a0[0, 1..<3]
+    a2[1, 1..<3] = a1[0, 0..<2]
+    XCTAssertEqual(a2.rawValue[0, 0], 2, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[0, 1], 5, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 1], -1, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 2], -2, accuracy: 1e-5)
+  }
+
+  func testPartialAssignWithUnboundedRange() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a0[0, 0] = 10
+    a0[0, 1] = 2
+    a0[0, 2] = 5
+    let a1: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a1[0, 0] = -1
+    a1[0, 1] = -2
+    a1[0, 2] = -3
+    let a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    a2[0, ...] = a0[...]
+    a2[1, ...] = a1[...]
+    XCTAssertEqual(a2.rawValue[0, 0], 10, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[0, 1], 2, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[0, 2], 5, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 0], -1, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 1], -2, accuracy: 1e-5)
+    XCTAssertEqual(a2.rawValue[1, 2], -3, accuracy: 1e-5)
+  }
+
   func testPartialAssignWithGroup() throws {
     let dynamicGraph = DynamicGraph()
     let a00: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 1))
@@ -130,6 +170,80 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a21.rawValue[0, 1], 1, accuracy: 1e-5)
     XCTAssertEqual(a21.rawValue[1, 1], 2, accuracy: 1e-5)
     XCTAssertEqual(a21.rawValue[2, 1], 3, accuracy: 1e-5)
+  }
+
+  func testPartialAssignWithGroupWithIndices() throws {
+    let dynamicGraph = DynamicGraph()
+    let a00: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a00[0, 0] = 10
+    a00[0, 1] = 2
+    a00[0, 2] = 5
+    let a01: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a01[0, 0] = 2
+    a01[0, 1] = 3
+    a01[0, 2] = 0
+    let a0 = Group(a00, a01)
+    let a10: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a10[0, 0] = -1
+    a10[0, 1] = -2
+    a10[0, 2] = -3
+    let a11: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a11[0, 0] = 1
+    a11[0, 1] = 2
+    a11[0, 2] = 3
+    let a1 = Group(a10, a11)
+    let a20: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    let a21: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    var a2 = Group(a20, a21)
+    a2[0, 0..<2] = a0[0, 1..<3]
+    a2[1, 1..<3] = a1[0, 0..<2]
+    XCTAssertEqual(a20.rawValue[0, 0], 2, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[0, 1], 5, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 1], -1, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 2], -2, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 0], 3, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 1], 0, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 1], 1, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 2], 2, accuracy: 1e-5)
+  }
+
+  func testPartialAssignWithGroupWithUnboundedRange() throws {
+    let dynamicGraph = DynamicGraph()
+    let a00: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a00[0, 0] = 10
+    a00[0, 1] = 2
+    a00[0, 2] = 5
+    let a01: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a01[0, 0] = 2
+    a01[0, 1] = 3
+    a01[0, 2] = 0
+    let a0 = Group(a00, a01)
+    let a10: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a10[0, 0] = -1
+    a10[0, 1] = -2
+    a10[0, 2] = -3
+    let a11: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
+    a11[0, 0] = 1
+    a11[0, 1] = 2
+    a11[0, 2] = 3
+    let a1 = Group(a10, a11)
+    let a20: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    let a21: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    var a2 = Group(a20, a21)
+    a2[0, ...] = a0[...]
+    a2[1, ...] = a1[...]
+    XCTAssertEqual(a20.rawValue[0, 0], 10, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[0, 1], 2, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[0, 2], 5, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 0], -1, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 1], -2, accuracy: 1e-5)
+    XCTAssertEqual(a20.rawValue[1, 2], -3, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 0], 2, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 1], 3, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[0, 2], 0, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 0], 1, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 1], 2, accuracy: 1e-5)
+    XCTAssertEqual(a21.rawValue[1, 2], 3, accuracy: 1e-5)
   }
 
   func testMin() throws {
@@ -228,7 +342,11 @@ final class GraphTests: XCTestCase {
     ("testLerp", testLerp),
     ("testClamp", testClamp),
     ("testPartialAssign", testPartialAssign),
+    ("testPartialAssignWithIndices", testPartialAssignWithIndices),
+    ("testPartialAssignWithUnboundedRange", testPartialAssignWithUnboundedRange),
     ("testPartialAssignWithGroup", testPartialAssignWithGroup),
+    ("testPartialAssignWithGroupWithIndices", testPartialAssignWithGroupWithIndices),
+    ("testPartialAssignWithGroupWithUnboundedRange", testPartialAssignWithGroupWithUnboundedRange),
     ("testMin", testMin),
     ("testMax", testMax),
     ("testScale", testScale),
