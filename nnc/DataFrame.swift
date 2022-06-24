@@ -64,13 +64,6 @@ final class _DataFrame {
 /// Dataframe can be used to implement that pipeline.
 public struct DataFrame {
 
-  final class Wrapped<T> {
-    let value: T
-    init(_ value: T) {
-      self.value = value
-    }
-  }
-
   struct ColumnProperty {
     enum PropertyType {
       case object
@@ -256,7 +249,7 @@ enum UntypedSeriesAction {
   case iterator
   // setter
   case scalar(AnyObject)
-  case sequence(DataFrame.Wrapped<[AnyObject]>)
+  case sequence(Wrapped<[AnyObject]>)
   case map(
     DataFrame.ColumnProperty, (AnyObject) -> AnyObject, DataFrame.ColumnProperty.PropertyType)
   case multimap(
@@ -510,7 +503,7 @@ extension DataFrame {
 extension DataFrame.UntypedSeries {
   /// Create a new column from a sequence of objects.
   public static func from<S: Sequence>(_ sequence: S) -> DataFrame.UntypedSeries {
-    return DataFrame.UntypedSeries(.sequence(DataFrame.Wrapped(Array(sequence) as [AnyObject])))
+    return DataFrame.UntypedSeries(.sequence(Wrapped(Array(sequence) as [AnyObject])))
   }
 }
 

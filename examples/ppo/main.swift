@@ -107,9 +107,9 @@ let max_grad_norm = 0.5
 let eps_clip: Float = 0.2
 let recompute_adv = true
 
-let env = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
+var env = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
 let viewer = MuJoCoViewer(env: env)
-let (obs, _) = env.reset(seed: 0)
+var (obs, _) = env.reset(seed: 1)
 var episodes = 0
 
 let (actor, actorLastLayer) = NetA()
@@ -157,7 +157,7 @@ var replays = [Replay]()
 var buffer = [
   (obs: Tensor<Float32>, reward: Float32, mu: Tensor<Float32>, act: Tensor<Float32>, v: Float32)
 ]()
-var last_obs: Tensor<Float32> = obs
+var last_obs: Tensor<Float32> = Tensor(from: obs)
 var env_step = 0
 var rew_var: Double = 1
 var rew_mean: Double = 0
@@ -192,11 +192,11 @@ for epoch in 0..<max_epoch {
           n.randn(std: 1, mean: 0)
           let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
           let act_mu = act.toCPU().rawValue.copied()
-          let (obs, reward, done, _) = env.step(action: act_f)
+          let (obs, reward, done, _) = env.step(action: Tensor(from: act_f))
           buffer.append(
             (obs: variable.rawValue.toCPU(), reward: reward, mu: act_mu, act: act_f, v: 0)
           )
-          last_obs = obs
+          last_obs = Tensor(from: obs)
           if done {
             lastObs = graph.variable(last_obs.toGPU(0))
             let variable =
@@ -228,7 +228,7 @@ for epoch in 0..<max_epoch {
               act: acts,
               vs: vs)
             replays.append(replay)
-            last_obs = obs
+            last_obs = Tensor(from: obs)
             buffer.removeAll()
             break
           }
@@ -384,12 +384,12 @@ for epoch in 0..<max_epoch {
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(-1...1)
       let act_v = act.rawValue.toCPU()
-      let (obs, reward, done, _) = env.step(action: act_v)
-      last_obs = obs
+      let (obs, reward, done, _) = env.step(action: Tensor(from: act_v))
+      last_obs = Tensor(from: obs)
       testing_rewards += reward
       if done {
         let (obs, _) = env.reset()
-        last_obs = obs
+        last_obs = Tensor(from: obs)
         break
       }
     }
@@ -401,7 +401,8 @@ for epoch in 0..<max_epoch {
   }
 }
 
-(last_obs, _) = env.reset()
+(obs, _) = env.reset()
+last_obs = Tensor(from: obs)
 while episodes < 10 {
   let lastObs = graph.variable(last_obs.toGPU(0))
   let variable =
@@ -409,11 +410,11 @@ while episodes < 10 {
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
   act.clamp(-1...1)
   let act_v = act.rawValue.toCPU()
-  let (obs, _, done, _) = env.step(action: act_v)
-  last_obs = obs
+  let (obs, _, done, _) = env.step(action: Tensor(from: act_v))
+  last_obs = Tensor(from: obs)
   if done {
     let (obs, _) = env.reset()
-    last_obs = obs
+    last_obs = Tensor(from: obs)
     episodes += 1
   }
   viewer.render()

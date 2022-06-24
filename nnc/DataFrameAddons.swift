@@ -468,7 +468,7 @@ extension DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
     precondition(otherProperty.type == .tensor)
     return DataFrame.UntypedSeries(
-      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
+      .native(property, DataFrame.addToTruncate, Wrapped(otherProperty)))
   }
 
   public func toTruncate<Element: AnyTensor>(_ other: DataFrame.TypedSeries<Element>)
@@ -480,7 +480,7 @@ extension DataFrame.UntypedSeries {
     precondition(property.type == .tensor)
     precondition(other.property.type == .tensor)
     return DataFrame.UntypedSeries(
-      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
+      .native(property, DataFrame.addToTruncate, Wrapped(other.property)))
   }
 }
 
@@ -492,7 +492,7 @@ extension DataFrame.TypedSeries where Element: AnyTensor {
     precondition(property.type == .tensor)
     precondition(otherProperty.type == .tensor)
     return DataFrame.UntypedSeries(
-      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(otherProperty)))
+      .native(property, DataFrame.addToTruncate, Wrapped(otherProperty)))
   }
   public func toTruncate<OtherElement: AnyTensor>(_ other: DataFrame.TypedSeries<OtherElement>)
     -> DataFrame.UntypedSeries
@@ -500,7 +500,7 @@ extension DataFrame.TypedSeries where Element: AnyTensor {
     precondition(property.type == .tensor)
     precondition(other.property.type == .tensor)
     return DataFrame.UntypedSeries(
-      .native(property, DataFrame.addToTruncate, DataFrame.Wrapped(other.property)))
+      .native(property, DataFrame.addToTruncate, Wrapped(other.property)))
   }
 }
 

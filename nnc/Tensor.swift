@@ -42,6 +42,17 @@ public enum DeviceKind {
   }
 }
 
+extension DeviceKind: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    if case .CPU = lhs, case .CPU = rhs {
+      return true
+    } else if case .GPU(let lv) = lhs, case .GPU(let rv) = rhs {
+      return lv == rv
+    }
+    return false
+  }
+}
+
 /// Tensor arrangements.
 public enum TensorFormat {
   case NHWC
@@ -367,11 +378,16 @@ extension AnyTensorStorage {
 extension AnyTensorStorage {
   @usableFromInline
   subscript<Element: TensorNumeric>(indices: [Int], range: Range<Int>, type: Element.Type)
-    -> [Element]
+    -> AnyTensorStorage
   {
     get {
+      // This is a restricted form a reshape.
+      let cTensorParams = cTensor.pointee.info
+      let device = DeviceKind.from(cTensorParams: cTensorParams)
+      let format = TensorFormat.from(cTensorParams: cTensorParams)
       let increments = self.increments
       assert(increments.count == indices.count + 1)
+      let dimensions = Array(repeating: 1, count: indices.count) + [range.count]
       let count = increments.reduce(1, *)
       let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
@@ -383,16 +399,29 @@ extension AnyTensorStorage {
       }
       offset *= increments[indices.count]
       offset += range.lowerBound
-      return Array(UnsafeBufferPointer(start: pointer + offset, count: range.count))
+      let newt = ccv_nnc_tensor_new(
+        pointer + offset,
+        toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions),
+        0)!
+      return AnyTensorStorage(newt, original: self)
     }
     set(v) {
+      let cTensorParams = cTensor.pointee.info
+      let device = DeviceKind.from(cTensorParams: cTensorParams)
+      // Use the format of the input to make sure we don't do unnecessary format conversions.
+      let vFormat = TensorFormat.from(cTensorParams: v.cTensor.pointee.info)
+      assert(device == DeviceKind.from(cTensorParams: v.cTensor.pointee.info))
       let increments = self.increments
       assert(increments.count == indices.count + 1)
       let count = increments.reduce(1, *)
       let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
       assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
-      assert(range.count == v.count)
+      let inputDim = fromCDimensions(v.cTensor.pointee.info.dim)
+      for d in inputDim {
+        assert(d == 1 || d == range.count)
+      }
+      assert(inputDim.reduce(1, *) == range.count)
       var offset = 0
       for (i, increment) in increments.prefix(indices.count).enumerated() {
         offset *= increment
@@ -400,8 +429,23 @@ extension AnyTensorStorage {
       }
       offset *= increments[indices.count]
       offset += range.lowerBound
-      v.withUnsafeBytes { bytes -> Void in
-        memcpy(pointer + offset, bytes.baseAddress!, bytes.count)
+      if case .CPU = device {  // If it is CPU, do direct copy.
+        memcpy(
+          pointer + offset, v.cTensor.pointee.data.u8, MemoryLayout<Element>.size * range.count)
+        return
+      }
+      // Otherwise, mostly use the source tensor format and do a data transfer.
+      var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = v.cTensor
+      var newt = ccv_nnc_tensor(
+        pointer + offset,
+        toCTensorParams(device, dataType: Element.dataType, format: vFormat, dimensions: inputDim),
+        0)
+      withUnsafeMutablePointer(to: &newt) { newt in
+        var output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = newt
+        ccv_nnc_cmd_exec(
+          ccv_nnc_cmd(
+            CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
+          ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
       }
     }
   }
@@ -616,9 +660,9 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
   }
 
   @usableFromInline
-  subscript(indices: [Int], range: Range<Int>) -> [Element] {
+  subscript(indices: [Int], range: Range<Int>) -> Tensor<Element> {
     get {
-      return _storage[indices, range, Element.self]
+      return Tensor<Element>(_storage[indices, range, Element.self])
     }
     set(v) {
       guard case .CPU = kind else {
@@ -628,70 +672,90 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
         // Make a copy (copy-on-write).
         _storage = _storage.copy()
       }
-      _storage[indices, range, Element.self] = v
+      _storage[indices, range, Element.self] = v._storage
     }
   }
 
   @usableFromInline
-  subscript(indices: [Int], range: UnboundedRange) -> [Element] {
+  subscript(indices: [Int], range: UnboundedRange) -> Tensor<Element> {
     get {
       let dimensions = self.dimensions
-      return _storage[indices, 0..<dimensions[indices.count], Element.self]
+      return Tensor<Element>(_storage[indices, 0..<dimensions[indices.count], Element.self])
     }
     set(v) {
-      guard case .CPU = kind else {
-        fatalError("cannot modify non-CPU tensor")
-      }
       if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
         _storage = _storage.copy()
       }
       let dimensions = self.dimensions
-      _storage[indices, 0..<dimensions[indices.count], Element.self] = v
+      _storage[indices, 0..<dimensions[indices.count], Element.self] = v._storage
     }
+  }
+}
+
+extension Tensor: ExpressibleByArrayLiteral {
+  public init(arrayLiteral elements: Element...) {
+    let wrapped = Wrapped(elements)
+    let newt = wrapped.value.withUnsafeBytes {
+      ccv_nnc_tensor_new(
+        $0.baseAddress,
+        toCTensorParams(
+          .CPU, dataType: Element.dataType, format: .NCHW, dimensions: [elements.count]), 0)!
+    }
+    self.init(AnyTensorStorage(newt, original: wrapped))
+  }
+}
+
+extension Array where Element: TensorNumeric {
+  public init(_ tensor: Tensor<Element>) {
+    let count = tensor.increments.reduce(1, *)
+    let pointer = tensor.cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
+    self.init(UnsafeBufferPointer(start: pointer, count: count))
   }
 }
 
 extension Tensor {
   @inlinable
-  public subscript(range: Range<Int>) -> [Element] {
+  public subscript(range: Range<Int>) -> Tensor<Element> {
     get { self[[], range] }
     set { self[[], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, range: Range<Int>) -> [Element] {
+  public subscript(i0: Int, range: Range<Int>) -> Tensor<Element> {
     get { self[[i0], range] }
     set { self[[i0], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, range: Range<Int>) -> [Element] {
+  public subscript(i0: Int, i1: Int, range: Range<Int>) -> Tensor<Element> {
     get { self[[i0, i1], range] }
     set { self[[i0, i1], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> [Element] {
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> Tensor<Element> {
     get { self[[i0, i1, i2], range] }
     set { self[[i0, i1, i2], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>) -> [Element] {
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>) -> Tensor<Element> {
     get { self[[i0, i1, i2, i3], range] }
     set { self[[i0, i1, i2, i3], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>) -> [Element] {
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>) -> Tensor<
+    Element
+  > {
     get { self[[i0, i1, i2, i3, i4], range] }
     set { self[[i0, i1, i2, i3, i4], range] = newValue }
   }
 
   @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>)
-    -> [Element]
+    -> Tensor<Element>
   {
     get { self[[i0, i1, i2, i3, i4, i5], range] }
     set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
@@ -699,7 +763,7 @@ extension Tensor {
 
   @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
-    -> [Element]
+    -> Tensor<Element>
   {
     get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
     set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
@@ -708,37 +772,39 @@ extension Tensor {
 
 extension Tensor {
   @inlinable
-  public subscript(range: UnboundedRange) -> [Element] {
-    get { self[[], range] }
+  public subscript(range: UnboundedRange) -> Tensor<Element> {
+    get { self }
     set { self[[], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, range: UnboundedRange) -> [Element] {
+  public subscript(i0: Int, range: UnboundedRange) -> Tensor<Element> {
     get { self[[i0], range] }
     set { self[[i0], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> [Element] {
+  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> Tensor<Element> {
     get { self[[i0, i1], range] }
     set { self[[i0, i1], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> [Element] {
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> Tensor<Element> {
     get { self[[i0, i1, i2], range] }
     set { self[[i0, i1, i2], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange) -> [Element] {
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange) -> Tensor<Element> {
     get { self[[i0, i1, i2, i3], range] }
     set { self[[i0, i1, i2, i3], range] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange) -> [Element]
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange) -> Tensor<
+    Element
+  >
   {
     get { self[[i0, i1, i2, i3, i4], range] }
     set { self[[i0, i1, i2, i3, i4], range] = newValue }
@@ -746,7 +812,7 @@ extension Tensor {
 
   @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
-    -> [Element]
+    -> Tensor<Element>
   {
     get { self[[i0, i1, i2, i3, i4, i5], range] }
     set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
@@ -756,7 +822,7 @@ extension Tensor {
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
     range: UnboundedRange
   )
-    -> [Element]
+    -> Tensor<Element>
   {
     get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
     set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
@@ -1064,7 +1130,7 @@ extension Tensor: CustomStringConvertible {
   }
 }
 
-@usableFromInline
+@inlinable
 func toCDimensions(_ dimensions: [Int]?) -> (
   Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32
 ) {
@@ -1136,7 +1202,7 @@ func toCDimensions(_ dimensions: [Int]?) -> (
   }
 }
 
-@usableFromInline
+@inlinable
 func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
   guard let dimensions = dimensions else {
     return [0, 0, 0, 0, 0, 0, 0, 0]
@@ -1206,7 +1272,7 @@ func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
   }
 }
 
-@usableFromInline
+@inlinable
 func fromCDimensions(
   _ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
 ) -> [Int] {
@@ -1254,7 +1320,7 @@ func fromCDimensions(
   }
 }
 
-@usableFromInline
+@inlinable
 func fromCTensorIncrements(_ cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>) -> [Int] {
   let type = Int(cTensor.pointee.type)
   guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
@@ -1266,7 +1332,7 @@ func fromCTensorIncrements(_ cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>) ->
   return fromCDimensions(inc)
 }
 
-@usableFromInline
+@inlinable
 func toCTensorParams(
   _ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]
 ) -> ccv_nnc_tensor_param_t {

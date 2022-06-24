@@ -1,4 +1,3 @@
-import C_sfmt
 import MuJoCo
 import NNC
 import NNCMuJoCoConversion
@@ -34,17 +33,6 @@ public final class Ant: MuJoCoEnv {
   }
 }
 
-struct SFMT: RandomNumberGenerator {
-  private var state: sfmt_t
-  init(seed: UInt64) {
-    state = sfmt_t()
-    sfmt_init_gen_rand(&state, UInt32(truncatingIfNeeded: seed))
-  }
-  mutating func next() -> UInt64 {
-    return sfmt_genrand_uint64(&state)
-  }
-}
-
 func noise<T: RandomNumberGenerator>(_ std: Double, using: inout T) -> Double {
   let u1 = Double.random(in: 0...1, using: &using)
   let u2 = Double.random(in: 0...1, using: &using)
@@ -53,8 +41,9 @@ func noise<T: RandomNumberGenerator>(_ std: Double, using: inout T) -> Double {
 }
 
 extension Ant: Env {
-  public typealias ActType = Tensor<Float32>
-  public typealias ObsType = Tensor<Float32>
+  public typealias ActType = Tensor<Float64>
+  public typealias ObsType = Tensor<Float64>
+  public typealias RewardType = Float
 
   private var isHealthy: Bool {
     let qpos = data.qpos
@@ -77,20 +66,20 @@ extension Ant: Env {
     return !isHealthy ? terminateWhenUnhealthy : false
   }
 
-  private func observations() -> Tensor<Float32> {
+  private func observations() -> Tensor<Float64> {
     let qpos = data.qpos
     let qvel = data.qvel
     var tensor = Tensor<Float64>(.CPU, .C(27))
     tensor[0..<13] = qpos[2...]
     tensor[13..<27] = qvel[...]
-    return Tensor<Float32>(from: tensor)
+    return tensor
   }
 
   public func step(action: ActType) -> (ObsType, Float, Bool, [String: Any]) {
     let id = model.name2id(type: .body, name: "torso")
     precondition(id >= 0)
     let xyPositionBefore = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
-    data.ctrl[...] = Tensor(from: action)
+    data.ctrl[...] = action
     model.step(data: &data)
     // As of MuJoCo 2.0, force-related quantities like cacc are not computed
     // unless there's a force sensor in the model.
@@ -147,5 +136,5 @@ extension Ant: Env {
     return (obs, [:])
   }
 
-  public var rewardThreshold: Float { 1500 }
+  public var rewardThreshold: Float { 6_000 }
 }

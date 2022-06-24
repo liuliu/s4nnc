@@ -1,0 +1,93 @@
+import Dispatch
+import NNC
+
+public final class VecEnv<EnvType: Env, Element: TensorNumeric> {
+  private var envs = [EnvType]()
+  private var done = [Bool]()
+  private var obs = [EnvType.ObsType]()
+  private var rewards = [EnvType.RewardType]()
+  public init(count: Int, _ closure: (_: Int) throws -> EnvType) rethrows {
+    precondition(count > 0)
+    envs = []
+    done = []
+    for i in 0..<count {
+      envs.append(try closure(i))
+      done.append(false)
+    }
+  }
+}
+
+extension VecEnv: Env where EnvType.ActType == Tensor<Element>, EnvType.ObsType == Tensor<Element> {
+  public typealias ActType = EnvType.ActType
+  public typealias ObsType = EnvType.ObsType
+  public typealias RewardType = [EnvType.RewardType]
+  public func step(action: ActType) -> (ObsType, RewardType, Bool, [String: Any]) {
+    if obs.count == 0 || rewards.count == 0 {  // If we never done obs, we need to build up the array, do it serially. The reason because I cannot construct the array with optional types easily.
+      obs = []
+      rewards = []
+      for i in 0..<envs.count {
+        let (obs, reward, done, _) = envs[i].step(action: action[i, ...])
+        self.obs.append(obs)
+        self.rewards.append(reward)
+        self.done[i] = done
+      }
+    } else {  // Once we built up, we can do it concurrently.
+      DispatchQueue.concurrentPerform(iterations: envs.count) { [self] i in
+        let (obs, reward, done, _) = envs[i].step(action: action[i, ...])
+        self.obs[i] = obs
+        self.rewards[i] = reward
+        self.done[i] = done
+      }
+    }
+    var obs = Tensor<Element>(
+      self.obs[0].kind, format: self.obs[0].format,
+      dimensions: [envs.count, self.obs[0].dimensions[0]])
+    var done = true
+    for i in 0..<envs.count {
+      obs[i, ...] = self.obs[i]
+      if !self.done[i] {
+        done = false
+      }
+    }
+    return (obs, rewards, done, [:])
+  }
+
+  public func reset(seed: Int?) -> (ObsType, [String: Any]) {
+    if let seed = seed {
+      var sfmt = SFMT(seed: UInt64(bitPattern: Int64(seed)))
+      if obs.count == 0 {
+        for i in 0..<envs.count {
+          let (obs, _) = envs[i].reset(seed: Int(bitPattern: sfmt.next()))
+          self.obs.append(obs)
+        }
+      } else {
+        let seeds = (0..<envs.count).map { _ in Int(bitPattern: sfmt.next()) }
+        DispatchQueue.concurrentPerform(iterations: envs.count) { [self] i in
+          let (obs, _) = envs[i].reset(seed: seeds[i])
+          self.obs[i] = obs
+        }
+      }
+    } else {
+      if obs.count == 0 {
+        for i in 0..<envs.count {
+          let (obs, _) = envs[i].reset(seed: nil)
+          self.obs.append(obs)
+        }
+      } else {
+        DispatchQueue.concurrentPerform(iterations: envs.count) { [self] i in
+          let (obs, _) = envs[i].reset(seed: nil)
+          self.obs[i] = obs
+        }
+      }
+    }
+    var obs = Tensor<Element>(
+      self.obs[0].kind, format: self.obs[0].format,
+      dimensions: [envs.count, self.obs[0].dimensions[0]])
+    for i in 0..<envs.count {
+      obs[i, ...] = self.obs[i]
+    }
+    return (obs, [:])
+  }
+
+  public var rewardThreshold: Float { envs[0].rewardThreshold }
+}
