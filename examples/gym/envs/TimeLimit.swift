@@ -11,12 +11,13 @@ public final class TimeLimit<EnvType: Env> {
   }
 }
 
-extension TimeLimit: Env {
+extension TimeLimit: Env where EnvType.DoneType == Bool {
   public typealias ActType = EnvType.ActType
   public typealias ObsType = EnvType.ObsType
   public typealias RewardType = EnvType.RewardType
+  public typealias DoneType = EnvType.DoneType
 
-  public func step(action: ActType) -> (ObsType, RewardType, Bool, [String: Any]) {
+  public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
     let result = env.step(action: action)
     var (_, _, done, info) = result
     elapsedSteps += 1

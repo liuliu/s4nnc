@@ -44,6 +44,7 @@ extension Ant: Env {
   public typealias ActType = Tensor<Float64>
   public typealias ObsType = Tensor<Float64>
   public typealias RewardType = Float
+  public typealias DoneType = Bool
 
   private var isHealthy: Bool {
     let qpos = data.qpos
@@ -75,7 +76,7 @@ extension Ant: Env {
     return tensor
   }
 
-  public func step(action: ActType) -> (ObsType, Float, Bool, [String: Any]) {
+  public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
     let id = model.name2id(type: .body, name: "torso")
     precondition(id >= 0)
     let xyPositionBefore = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])

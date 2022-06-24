@@ -2,7 +2,8 @@ public protocol Env {
   associatedtype ObsType
   associatedtype ActType
   associatedtype RewardType
-  mutating func step(action: ActType) -> (ObsType, RewardType, Bool, [String: Any])
+  associatedtype DoneType
+  mutating func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any])
   mutating func reset(seed: Int?) -> (ObsType, [String: Any])
   var rewardThreshold: Float { get }
 }

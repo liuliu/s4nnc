@@ -1,7 +1,8 @@
 import Dispatch
 import NNC
 
-public final class VecEnv<EnvType: Env, Element: TensorNumeric> {
+public final class VecEnv<EnvType: Env, Element: TensorNumeric>
+where EnvType.ActType == Tensor<Element>, EnvType.ObsType == Tensor<Element> {
   private var envs = [EnvType]()
   private var done = [Bool]()
   private var obs = [EnvType.ObsType]()
@@ -17,15 +18,17 @@ public final class VecEnv<EnvType: Env, Element: TensorNumeric> {
   }
 }
 
-extension VecEnv: Env where EnvType.ActType == Tensor<Element>, EnvType.ObsType == Tensor<Element> {
+extension VecEnv: Env where EnvType.DoneType == Bool {
   public typealias ActType = EnvType.ActType
   public typealias ObsType = EnvType.ObsType
   public typealias RewardType = [EnvType.RewardType]
-  public func step(action: ActType) -> (ObsType, RewardType, Bool, [String: Any]) {
+  public typealias DoneType = [Bool]
+  public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
     if obs.count == 0 || rewards.count == 0 {  // If we never done obs, we need to build up the array, do it serially. The reason because I cannot construct the array with optional types easily.
       obs = []
       rewards = []
       for i in 0..<envs.count {
+        assert(!self.done[i])
         let (obs, reward, done, _) = envs[i].step(action: action[i, ...])
         self.obs.append(obs)
         self.rewards.append(reward)
@@ -42,12 +45,8 @@ extension VecEnv: Env where EnvType.ActType == Tensor<Element>, EnvType.ObsType 
     var obs = Tensor<Element>(
       self.obs[0].kind, format: self.obs[0].format,
       dimensions: [envs.count, self.obs[0].dimensions[0]])
-    var done = true
     for i in 0..<envs.count {
       obs[i, ...] = self.obs[i]
-      if !self.done[i] {
-        done = false
-      }
     }
     return (obs, rewards, done, [:])
   }
@@ -85,6 +84,7 @@ extension VecEnv: Env where EnvType.ActType == Tensor<Element>, EnvType.ObsType 
       dimensions: [envs.count, self.obs[0].dimensions[0]])
     for i in 0..<envs.count {
       obs[i, ...] = self.obs[i]
+      done[i] = false
     }
     return (obs, [:])
   }
