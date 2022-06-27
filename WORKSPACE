@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "ccv",
-    commit = "ffb65ed61d749dbbd084fcf77559650ca0f6a53a",
+    commit = "ee83498b2d47cc5b6939251a0e7d41b35f0cdf68",
     remote = "https://github.com/liuliu/ccv.git",
-    shallow_since = "1656189129 -0400",
+    shallow_since = "1656290869 -0400",
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")
@@ -122,9 +122,9 @@ new_git_repository(
 new_git_repository(
     name = "SwiftAlgorithms",
     build_file = "swift-algorithms.BUILD",
-    commit = "cda6fddada47e3146fdfc06504e1d8b2d5ff20dd",
+    commit = "195e0316d7ba71e134d0f6c677f64b4db6160c46",
     remote = "https://github.com/apple/swift-algorithms.git",
-    shallow_since = "1611850089 -0600",
+    shallow_since = "1645643239 -0600",
 )
 
 # buildifier is written in Go and hence needs rules_go to be built.

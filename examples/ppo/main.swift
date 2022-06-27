@@ -69,6 +69,7 @@ func NetC() -> Model {
 }
 
 let graph = DynamicGraph()
+var sfmt = SFMT(seed: 10)
 
 // Note that for PPO, we record the whole episode of replay.
 struct Replay {
@@ -247,7 +248,7 @@ for epoch in 0..<max_epoch {
     var update_count = 0
     let rawScale = scale.toCPU().rawValue.copied()
     for _ in 0..<update_per_step {
-      let replayBatch = replays.randomSample(count: batch_size)
+      let replayBatch = replays.randomSample(count: batch_size, using: &sfmt)  // System random generator is very slow, use custom one.
       var data = [Data]()
       // Sample from these batches into smaller batch sizes and do the update.
       for var replay in replayBatch {
@@ -305,7 +306,7 @@ for epoch in 0..<max_epoch {
         rew_total = total_count
       }
       for _ in 0..<(data.count / batch_size) {
-        let batch = data.randomSample(count: batch_size)
+        let batch = data.randomSample(count: batch_size, using: &sfmt)  // System random generator is very slow, use custom one.
         var obs = Tensor<Float32>(.CPU, .NC(batch_size, input_dim))
         var act = Tensor<Float32>(.CPU, .NC(batch_size, output_dim))
         var advantages = Tensor<Float32>(.CPU, .NC(batch_size, 1))
