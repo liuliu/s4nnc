@@ -1093,6 +1093,26 @@ extension DynamicGraph.Group {
 }
 
 extension DynamicGraph.Tensor {
+  /// Detach current tensor from the graph. Afterwards, it is always "isConstant" and cannot requiresGrad.
+  public func detach() {
+    let _graph = graph._graph
+    ccv_nnc_tensor_variable_detach(_graph, _tensor)
+    requiresGrad = false
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Detach tensors in this group from the graph. Afterwards, it is always "isConstant" and cannot requiresGrad.
+  public mutating func detach() {
+    for variable in underlyingArray {
+      let _graph = variable.graph._graph
+      ccv_nnc_tensor_variable_detach(_graph, variable._tensor)
+    }
+    requiresGrad = false
+  }
+}
+
+extension DynamicGraph.Tensor {
   func clamped(
     min: Float?, max: Float?, streamContext: StreamContext?
   ) -> DynamicGraph.Tensor<Element> {
