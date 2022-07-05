@@ -89,24 +89,19 @@ struct Data {
   var distOld: Tensor<Float32>
 }
 
-let buffer_size = 4_096
 let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
-let gamma = 0.99
 let step_per_epoch = 30_000
-let collect_per_step = 20_000
+let collect_per_step = 10_000
 let update_per_step = 10
 let batch_size = 64
-let rew_norm = true
 let vf_coef: Float = 0.25
 let ent_coef: Float = 0.001
 let training_num = 64
 let testing_num = 10
-let gae_lambda = 0.95
-let max_grad_norm = 0.5
+let max_grad_norm: Float = 0.5
 let eps_clip: Float = 0.2
-let recompute_adv = true
 
 var envs = [TimeLimit<Ant>]()
 var obs = [Tensor<Float64>]()
@@ -388,7 +383,7 @@ for epoch in 0..<max_epoch {
         vf_grad.full(vf_coef / Float(batch_size))
         vf_loss.grad = vf_grad
         vf_loss.backward(to: variable)
-        critic.parameters.clipGradNorm(maxNorm: 0.5)
+        critic.parameters.clipGradNorm(maxNorm: max_grad_norm)
         criticOptim.step()
         update_count += 1
       }
