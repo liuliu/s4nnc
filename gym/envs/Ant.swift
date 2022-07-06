@@ -20,7 +20,7 @@ public final class Ant: MuJoCoEnv {
     ctrlCostWeight: Double = 0.5, healthyReward: Double = 0.1, terminateWhenUnhealthy: Bool = true,
     healthyZRange: ClosedRange<Double> = 0.2...1.0, resetNoiseScale: Double = 0.1
   ) throws {
-    model = try MjModel(fromXMLPath: "examples/gym/assets/ant.xml")
+    model = try MjModel(fromXMLPath: "gym/assets/ant.xml")
     data = model.makeData()
     initData = data.copied(model: model)
     var g = SystemRandomNumberGenerator()

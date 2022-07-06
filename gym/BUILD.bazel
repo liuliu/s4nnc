@@ -1,0 +1,16 @@
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+
+swift_library(
+    name = "gym",
+    srcs = glob(["**/*.swift"]),
+    data = ["assets/ant.xml"],
+    module_name = "Gym",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//nnc",
+        "//nnc:nnc_mujoco",
+        "@SwiftNumerics//:Numerics",
+        "@ccv//lib:SFMT",
+        "@swift-mujoco//:swift-mujoco",
+    ],
+)
