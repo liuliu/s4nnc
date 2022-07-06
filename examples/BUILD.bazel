@@ -1,19 +1,11 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary", "swift_library")
 
-cc_library(
-    name = "_OSShim",
-    srcs = ["gym/os.c"],
-    hdrs = ["gym/os.h"],
-    tags = ["swift_module=_OSShim"],
-)
-
 swift_library(
     name = "gym",
     srcs = glob(["gym/**/*.swift"]),
     data = ["gym/assets/ant.xml"],
     module_name = "Gym",
     deps = [
-        ":_OSShim",
         "//nnc",
         "//nnc:nnc_mujoco",
         "@SwiftNumerics//:Numerics",
