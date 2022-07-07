@@ -143,7 +143,7 @@ final class GraphTests: XCTestCase {
     a01[0, 0] = 2
     a01[1, 0] = 3
     a01[2, 0] = 0
-    let a0 = Group(a00, a01)
+    let a0 = DynamicGraph.Group(a00, a01)
     let a10: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 1))
     a10[0, 0] = -1
     a10[1, 0] = -2
@@ -152,10 +152,10 @@ final class GraphTests: XCTestCase {
     a11[0, 0] = 1
     a11[1, 0] = 2
     a11[2, 0] = 3
-    let a1 = Group(a10, a11)
+    let a1 = DynamicGraph.Group(a10, a11)
     let a20: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 2))
     let a21: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 2))
-    var a2 = Group(a20, a21)
+    var a2 = DynamicGraph.Group(a20, a21)
     a2[0..<3, 0..<1] = a0[0..<3, 0..<1]
     a2[0..<3, 1..<2] = a1[0..<3, 0..<1]
     XCTAssertEqual(a20.rawValue[0, 0], 10, accuracy: 1e-5)
@@ -182,7 +182,7 @@ final class GraphTests: XCTestCase {
     a01[0, 0] = 2
     a01[0, 1] = 3
     a01[0, 2] = 0
-    let a0 = Group(a00, a01)
+    let a0 = DynamicGraph.Group(a00, a01)
     let a10: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
     a10[0, 0] = -1
     a10[0, 1] = -2
@@ -191,10 +191,10 @@ final class GraphTests: XCTestCase {
     a11[0, 0] = 1
     a11[0, 1] = 2
     a11[0, 2] = 3
-    let a1 = Group(a10, a11)
+    let a1 = DynamicGraph.Group(a10, a11)
     let a20: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
     let a21: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
-    var a2 = Group(a20, a21)
+    var a2 = DynamicGraph.Group(a20, a21)
     a2[0, 0..<2] = a0[0, 1..<3]
     a2[1, 1..<3] = a1[0, 0..<2]
     XCTAssertEqual(a20.rawValue[0, 0], 2, accuracy: 1e-5)
@@ -217,7 +217,7 @@ final class GraphTests: XCTestCase {
     a01[0, 0] = 2
     a01[0, 1] = 3
     a01[0, 2] = 0
-    let a0 = Group(a00, a01)
+    let a0 = DynamicGraph.Group(a00, a01)
     let a10: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(1, 3))
     a10[0, 0] = -1
     a10[0, 1] = -2
@@ -226,10 +226,10 @@ final class GraphTests: XCTestCase {
     a11[0, 0] = 1
     a11[0, 1] = 2
     a11[0, 2] = 3
-    let a1 = Group(a10, a11)
+    let a1 = DynamicGraph.Group(a10, a11)
     let a20: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
     let a21: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
-    var a2 = Group(a20, a21)
+    var a2 = DynamicGraph.Group(a20, a21)
     a2[0, ...] = a0[...]
     a2[1, ...] = a1[...]
     XCTAssertEqual(a20.rawValue[0, 0], 10, accuracy: 1e-5)

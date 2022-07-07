@@ -112,13 +112,11 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
   }
 }
 
-public typealias Group = DynamicGraph.Group
-
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    return Group(
+    return DynamicGraph.Group(
       underlyingArray.map {
         $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
       })

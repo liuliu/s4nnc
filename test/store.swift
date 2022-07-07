@@ -51,7 +51,7 @@ final class StoreTests: XCTestCase {
     let graph = DynamicGraph()
     let variable1 = graph.variable()
     let variable2 = graph.variable()
-    let group = Group(variable1, variable2)
+    let group = DynamicGraph.Group(variable1, variable2)
     graph.openStore("test/some_variables.db") { store in
       store.read("c", variable: group)
     }

@@ -192,9 +192,9 @@ for i in 0..<deviceCount {
 
 let graph = DynamicGraph()
 
-let vocabVec: Group<DynamicGraph.Tensor<Float32>> = Group(
+let vocabVec: DynamicGraph.Group<DynamicGraph.Tensor<Float32>> = DynamicGraph.Group(
   (0..<deviceCount).map { graph.variable(.GPU($0), .NC(vocabSize, embeddingSize)) })
-let seqVec: Group<DynamicGraph.Tensor<Float32>> = Group(
+let seqVec: DynamicGraph.Group<DynamicGraph.Tensor<Float32>> = DynamicGraph.Group(
   (0..<deviceCount).map { graph.variable(.GPU($0), .NC(maxLength, embeddingSize)) })
 vocabVec.rand(-1...1)
 seqVec.rand(-1...1)
@@ -222,7 +222,8 @@ for epoch in 0..<10 {
     let oneHotGPU = (0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
     let squaredMaskGPU = (0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
     let batchLength = tensorGPU[0].dimensions[1]
-    let output = graph.withStream(computeStream) { () -> Group<DynamicGraph.AnyTensor> in
+    let output = graph.withStream(computeStream) {
+      () -> DynamicGraph.Group<DynamicGraph.AnyTensor> in
       let wordIndices = graph.variable(tensorGPU.reshaped(.C(batchSize * batchLength)))
       let wordVec = Functional.indexSelect(input: vocabVec, index: wordIndices)
       var seqIndicesCPU = Tensor<Int32>(.CPU, .C(batchSize * batchLength))

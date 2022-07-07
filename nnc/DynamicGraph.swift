@@ -403,11 +403,13 @@ extension DynamicGraph {
    * - Parameter tensors: The array of existing tensors.
    * - Returns: Newly created grouped variable.
    */
-  public func variable<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>]) -> Group<
-    Tensor<Element>
-  > {
+  public func variable<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>])
+    -> DynamicGraph.Group<
+      Tensor<Element>
+    >
+  {
     precondition(tensors.count > 0)
-    return Group(tensors.map { self.variable($0) })
+    return DynamicGraph.Group(tensors.map { self.variable($0) })
   }
 
   /**
@@ -416,11 +418,13 @@ extension DynamicGraph {
    * - Parameter tensors: The array of existing tensors.
    * - Returns: Newly created grouped constant.
    */
-  public func constant<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>]) -> Group<
-    Tensor<Element>
-  > {
+  public func constant<Element: TensorNumeric>(_ tensors: [NNC.Tensor<Element>])
+    -> DynamicGraph.Group<
+      Tensor<Element>
+    >
+  {
     precondition(tensors.count > 0)
-    return Group(tensors.map { self.constant($0) })
+    return DynamicGraph.Group(tensors.map { self.constant($0) })
   }
 
   public func variable<Element: TensorNumeric>(
