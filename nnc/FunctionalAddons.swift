@@ -1463,3 +1463,21 @@ extension DynamicGraph.Group {
     _outputs.deallocate()
   }
 }
+
+extension DynamicGraph.AnyTensor {
+  /// Explicitly cast the underlying storage to a specific type. It is a helper function than
+  /// doing DynamicGraph.Tensor<SomeType>(something). Less code change required if we change this
+  /// from tensor to group.
+  public func `as`<Element: TensorNumeric>(of: Element.Type) -> DynamicGraph.Tensor<Element> {
+    return DynamicGraph.Tensor(self)
+  }
+}
+
+extension DynamicGraph.Group where Element == DynamicGraph.AnyTensor {
+  /// Explicitly cast the underlying storage to a specific type. It is a helper function than
+  /// doing DynamicGraph.Group<DynamicGraph.Tensor<SomeType>>(something). Less code change required
+  /// if we change this from group to tensor.
+  public func `as`<T: TensorNumeric>(of: T.Type) -> DynamicGraph.Group<DynamicGraph.Tensor<T>> {
+    return DynamicGraph.Group(self)
+  }
+}
