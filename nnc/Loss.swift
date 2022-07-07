@@ -120,12 +120,29 @@ public struct SmoothL1Loss: Loss {
 
 /// MSE loss. Currently it does reduce mean.
 public struct MSELoss: Loss {
-  public init() {
+  public enum ReduceOp {
+    case mean
+    case sum
+
+    var rawValue: Int32 {
+      switch self {
+      case .mean:
+        return Int32(CCV_NNC_MSE_REDUCE_MEAN)
+      case .sum:
+        return Int32(CCV_NNC_MSE_REDUCE_SUM)
+      }
+    }
+  }
+  public var reduceOp: ReduceOp
+  public init(_ reduceOp: ReduceOp = .mean) {
+    self.reduceOp = reduceOp
   }
   public func callAsFunction<T: DynamicGraph.AnyTensorGroup, U: DynamicGraph.AnyTensorGroup>(
     _ input: T, target: U, streamContext: StreamContext?
   ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
-    let params = CmdParamsFactory.factory.newParams()
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.mse.reduce_op = reduceOp.rawValue
     let cmd = ccv_nnc_cmd(CCV_NNC_MSE_FORWARD, nil, params, 0)
     return Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, target, outputSize: 1,
