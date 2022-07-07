@@ -4,6 +4,8 @@ public protocol DynamicGraph_AnyParameters {
 
 /// Protocol for other places to recognize AnyTensor and AnyGroup with static dispatch.
 public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
+  var graph: DynamicGraph { get }
+  var untyped: [DynamicGraph.AnyTensor] { get }
   var dimensions: [Int] { get }
   var format: TensorFormat { get }
   var increments: [Int] { get }
@@ -13,55 +15,6 @@ public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
 
 /// Protocol for group of tensors.
 public protocol DynamicGraph_AnyGroup: DynamicGraph_Any {
-  var untyped: [DynamicGraph.AnyTensor] { get }
-}
-
-extension DynamicGraph_AnyGroup {
-  public var dimensions: [Int] {
-    let dimensions = untyped[0].dimensions
-    for tensor in untyped {
-      assert(dimensions == tensor.dimensions)
-    }
-    return dimensions
-  }
-  public var format: TensorFormat {
-    let format = untyped[0].format
-    for tensor in untyped {
-      assert(format == tensor.format)
-    }
-    return format
-  }
-  public var increments: [Int] {
-    let increments = untyped[0].increments
-    for tensor in untyped {
-      assert(increments == tensor.increments)
-    }
-    return increments
-  }
-  public var isConstant: Bool {
-    let isConstant = untyped[0].isConstant
-    for tensor in untyped {
-      assert(isConstant == tensor.isConstant)
-    }
-    return isConstant
-  }
-  public var requiresGrad: Bool {
-    get {
-      let requiresGrad = untyped[0].requiresGrad
-      for tensor in untyped {
-        assert(requiresGrad == tensor.requiresGrad)
-      }
-      return requiresGrad
-    }
-    set(v) {
-      for tensor in untyped {
-        tensor.requiresGrad = v
-      }
-    }
-  }
-}
-
-extension DynamicGraph.AnyTensor: DynamicGraph_Any {
 }
 
 extension Model.Parameters: DynamicGraph_AnyParameters {
@@ -72,10 +25,7 @@ extension DynamicGraph {
   public typealias AnyGroup = DynamicGraph_AnyGroup
 
   /// Type-aware group of tensors.
-  public struct Group<Element: DynamicGraph.AnyTensor>: RandomAccessCollection, DynamicGraph
-      .AnyGroup
-  {
-    public var untyped: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
+  public struct Group<Element: DynamicGraph.AnyTensor>: RandomAccessCollection {
     var underlyingArray: [Element]
 
     public typealias Element = Element
@@ -113,6 +63,53 @@ extension DynamicGraph {
     }
   }
 
+}
+
+extension DynamicGraph.Group: DynamicGraph.AnyGroup {
+  public var untyped: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
+  public var graph: DynamicGraph { underlyingArray[0].graph }
+  public var dimensions: [Int] {
+    let dimensions = underlyingArray[0].dimensions
+    for tensor in underlyingArray {
+      assert(dimensions == tensor.dimensions)
+    }
+    return dimensions
+  }
+  public var format: TensorFormat {
+    let format = underlyingArray[0].format
+    for tensor in underlyingArray {
+      assert(format == tensor.format)
+    }
+    return format
+  }
+  public var increments: [Int] {
+    let increments = underlyingArray[0].increments
+    for tensor in underlyingArray {
+      assert(increments == tensor.increments)
+    }
+    return increments
+  }
+  public var isConstant: Bool {
+    let isConstant = underlyingArray[0].isConstant
+    for tensor in underlyingArray {
+      assert(isConstant == tensor.isConstant)
+    }
+    return isConstant
+  }
+  public var requiresGrad: Bool {
+    get {
+      let requiresGrad = underlyingArray[0].requiresGrad
+      for tensor in underlyingArray {
+        assert(requiresGrad == tensor.requiresGrad)
+      }
+      return requiresGrad
+    }
+    set(v) {
+      for tensor in underlyingArray {
+        tensor.requiresGrad = v
+      }
+    }
+  }
 }
 
 public typealias Group = DynamicGraph.Group

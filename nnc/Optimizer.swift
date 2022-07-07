@@ -27,42 +27,8 @@ extension Optimizer {
 }
 
 fileprivate func _step(
-  graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph.AnyTensor],
-  savedAux: [DynamicGraph.AnyTensor], streamContext: StreamContext?
-) {
-  for parameter in parameters {
-    assert(parameter.graph === graph)
-  }
-  for aux in savedAux {
-    assert(aux.graph === graph)
-  }
-  let _gradients: [ccv_nnc_tensor_variable_t?] = parameters.map { $0.grad?._tensor }
-  let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
-    capacity: parameters.count)
-  for (i, variable) in parameters.enumerated() {
-    (_parameters + i).initialize(to: variable._tensor)
-  }
-  let _savedAux = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
-    capacity: savedAux.count)
-  for (i, variable) in savedAux.enumerated() {
-    (_savedAux + i).initialize(to: variable._tensor)
-  }
-  let parameterSize = Int32(parameters.count)
-  let _graph = graph._graph
-  let _streamContext = (streamContext ?? graph.streamContext)?._stream
-  ccv_nnc_dynamic_graph_apply_gradients(
-    _graph, minimizer, _gradients, parameterSize, _parameters, parameterSize, _savedAux, 0,
-    _streamContext)
-  _parameters.deallocate()
-  _savedAux.deallocate()
-  for parameter in parameters {
-    parameter.grad = nil
-  }
-}
-
-fileprivate func _step(
-  graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph.AnyGroup],
-  savedAux: [DynamicGraph.AnyGroup], streamContext: StreamContext?
+  graph: DynamicGraph, minimizer: ccv_nnc_cmd_t, parameters: [DynamicGraph_Any],
+  savedAux: [DynamicGraph_Any], streamContext: StreamContext?
 ) {
   precondition(parameters.count > 0)
   let parallel = parameters[0].untyped.count
@@ -162,46 +128,31 @@ func optimizerStep(
     ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, nil, 0, nil, 0, nil, 0, _streamContext)
     return
   }
-  switch tensorParameters[0] {
-  case is DynamicGraph.AnyTensor:
-    _step(
-      graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyTensor],
-      savedAux: savedAux as! [DynamicGraph.AnyTensor], streamContext: streamContext)
-  case is DynamicGraph.AnyGroup:
-    _step(
-      graph: graph, minimizer: minimizer, parameters: tensorParameters as! [DynamicGraph.AnyGroup],
-      savedAux: savedAux as! [DynamicGraph.AnyGroup], streamContext: streamContext)
-  default:
-    fatalError("Cannot support the given type")
-  }
+  _step(
+    graph: graph, minimizer: minimizer, parameters: tensorParameters,
+    savedAux: savedAux, streamContext: streamContext)
 }
 
 extension Optimizer {
   func savedAux(minimizer: ccv_nnc_cmd_t) -> [DynamicGraph_Any] {
     let parameters = self.parameters.compactMap { $0 as? DynamicGraph_Any }
     guard parameters.count > 0 else { return [] }
-    switch parameters[0] {
-    case is DynamicGraph.AnyTensor:
-      let tensorParameters = parameters as! [DynamicGraph.AnyTensor]
-      let graph = tensorParameters[0].graph
-      for parameter in tensorParameters {
+    let parallel = parameters[0].untyped.count
+    precondition(parallel > 0)
+    let graph = parameters[0].graph
+    for group in parameters {
+      for parameter in group.untyped {
         assert(parameter.graph === graph)
       }
-      // Update private saved_aux.
+    }
+    // Create saved_aux with respect to parameters type.
+    switch parameters[0] {
+    case is DynamicGraph.AnyTensor:
       let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
-      return (0..<(tensorParameters.count * size)).map { _ in graph.variable() }
+      return (0..<(parameters.count * size)).map { _ in graph.variable() }
     case is DynamicGraph.AnyGroup:
-      let groupParameters = parameters as! [DynamicGraph.AnyGroup]
-      let parallel = groupParameters[0].untyped.count
-      precondition(parallel > 0)
-      let graph = groupParameters[0].untyped[0].graph
-      for group in groupParameters {
-        for parameter in group.untyped {
-          assert(parameter.graph === graph)
-        }
-      }
       let size = Int(ccv_nnc_minimizer_saved_aux_size(minimizer))
-      return (0..<(groupParameters.count * size)).map { _ in
+      return (0..<(parameters.count * size)).map { _ in
         DynamicGraph.Group((0..<parallel).map { _ in graph.variable() })
       }
     default:

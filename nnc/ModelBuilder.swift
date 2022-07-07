@@ -73,30 +73,18 @@ public class AnyModelBuilder {
     assert(inputs.count > 0)
     let params = CmdParamsFactory.factory.newParams()
     let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
-    switch inputs[0] {
-    case is DynamicGraph.AnyTensor:
-      let tensorInputs = inputs as! [DynamicGraph.AnyTensor]
-      let inputParams: [ccv_nnc_tensor_param_t] = tensorInputs.map {
-        ccv_nnc_tensor_variable_params($0.graph._graph, $0._tensor)
-      }
-      ccv_cnnp_model_compile(model!._model, inputParams, Int32(inputParams.count), noop, noop)
-    case is DynamicGraph.AnyGroup:
-      let groupInputs = inputs as! [DynamicGraph.AnyGroup]
-      let parallel = groupInputs[0].untyped.count
-      if let dataParallel = model!.dataParallel {
-        // You cannot run a model previously parallel and then not.
-        assert(dataParallel == parallel)
-      } else {
-        ccv_cnnp_model_set_data_parallel(model!._model, Int32(parallel))
-      }
-      let inputParams: [ccv_nnc_tensor_param_t] = groupInputs.map {
-        let tensor = $0.untyped[0]
-        return ccv_nnc_tensor_variable_params(tensor.graph._graph, tensor._tensor)
-      }
-      ccv_cnnp_model_compile(model!._model, inputParams, Int32(inputParams.count), noop, noop)
-    default:
-      fatalError("Cannot recognize the input")
+    let parallel = inputs[0].untyped.count
+    if let dataParallel = model!.dataParallel {
+      // You cannot run a model previously parallel and then not.
+      assert(dataParallel == parallel)
+    } else if parallel > 1 {
+      ccv_cnnp_model_set_data_parallel(model!._model, Int32(parallel))
     }
+    let inputParams: [ccv_nnc_tensor_param_t] = inputs.map {
+      let tensor = $0.untyped[0]
+      return ccv_nnc_tensor_variable_params(tensor.graph._graph, tensor._tensor)
+    }
+    ccv_cnnp_model_compile(model!._model, inputParams, Int32(inputParams.count), noop, noop)
     // If we have store / key, try to load parameters now after it is compiled.
     if let store = _store, let key = _key {
       ccv_cnnp_model_read(store.sqlite, key, model!._model)
