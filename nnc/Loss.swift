@@ -117,3 +117,18 @@ public struct SmoothL1Loss: Loss {
       streamContext: streamContext)
   }
 }
+
+/// MSE loss. Currently it does reduce mean.
+public struct MSELoss: Loss {
+  public init() {
+  }
+  public func callAsFunction<T: DynamicGraph.AnyTensorGroup, U: DynamicGraph.AnyTensorGroup>(
+    _ input: T, target: U, streamContext: StreamContext?
+  ) -> [T.AnyTensor] where T.AnyTensor == U.AnyTensor {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_MSE_FORWARD, nil, params, 0)
+    return Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, target, outputSize: 1,
+      streamContext: streamContext)
+  }
+}

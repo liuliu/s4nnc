@@ -374,7 +374,7 @@ for epoch in 0..<max_epoch {
         actorOptim.step()
         let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0])
         let returnsv = graph.constant(returns.toGPU(0))
-        let vf_loss = (v - returnsv) .* (v - returnsv)
+        let vf_loss = DynamicGraph.Tensor<Float32>(MSELoss()(v, target: returnsv)[0])
         let cpu_vf_loss = vf_loss.toCPU()
         for i in 0..<batch_size {
           criticLoss += cpu_vf_loss[i, 0]
