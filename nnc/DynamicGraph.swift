@@ -460,6 +460,43 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  public func variable<T: DynamicGraph.TensorGroup>(like: T) -> T {
+    let graph = like.graph
+    switch like {
+    case is DynamicGraph.AnyTensor:
+      return graph.variable(
+        like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+        as! T
+    case is DynamicGraph.AnyGroup:
+      return DynamicGraph.Group(
+        (0..<like.untyped.count).map { _ in
+          graph.variable(
+            like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+        }) as! T
+    default:
+      fatalError("Cannot support the given type")
+    }
+  }
+  public func constant<T: DynamicGraph.TensorGroup>(like: T) -> T {
+    let graph = like.graph
+    switch like {
+    case is DynamicGraph.AnyTensor:
+      return graph.constant(
+        like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+        as! T
+    case is DynamicGraph.AnyGroup:
+      return DynamicGraph.Group(
+        (0..<like.untyped.count).map { _ in
+          graph.constant(
+            like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+        }) as! T
+    default:
+      fatalError("Cannot support the given type")
+    }
+  }
+}
+
+extension DynamicGraph {
   /**
    * Turn off gradient tracking within the given closure. This may be useful during testing, we can
    * make more aggressive optimizations if the gradient tracking is off.

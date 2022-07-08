@@ -5,44 +5,6 @@ import NNC
 import NNCPythonConversion
 import Numerics
 
-struct RunningMeanStd {
-  var mean: DynamicGraph.Tensor<Float>
-  var variance: DynamicGraph.Tensor<Float>
-  var count: Int
-  init(mean: DynamicGraph.Tensor<Float>, variance: DynamicGraph.Tensor<Float>) {
-    self.mean = mean
-    self.variance = variance
-    count = 0
-  }
-  mutating func update(_ data: [DynamicGraph.Tensor<Float>]) {
-    let graph = mean.graph
-    precondition(data.count >= 1)
-    graph.withNoGrad {
-      let batchMean: DynamicGraph.Tensor<Float>
-      let batchVar: DynamicGraph.Tensor<Float>
-      if data.count > 1 {
-        batchMean = 1 / Float(data.count) * Functional.sum(data)
-        batchVar =
-          1 / Float(data.count) * Functional.sum(data.map { ($0 - batchMean) .* ($0 - batchMean) })
-      } else {
-        batchMean = data[0]
-        batchVar = graph.variable(
-          batchMean.kind, format: batchMean.format, dimensions: batchMean.dimensions)
-        batchVar.full(0)
-      }
-      let delta = batchMean - mean
-      let totalCount = count + data.count
-      mean = mean + Float(data.count) / Float(totalCount) * delta
-      let mA = Float(count) * variance
-      let mB = Float(data.count) * batchVar
-      let m2 = Functional.sum(
-        mA, mB, Float(count) * Float(data.count) / Float(totalCount) * (delta .* delta))
-      variance = 1.0 / Float(totalCount) * m2
-      count = totalCount
-    }
-  }
-}
-
 let input_dim = 27
 let output_dim = 8
 

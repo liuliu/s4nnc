@@ -925,9 +925,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Tensor {
   /// Fill the given tensor with a value.
-  public func full(
-    _ value: Float = 0, streamContext: StreamContext? = nil
-  ) {
+  public func full(_ value: Float, streamContext: StreamContext?) {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (value, 0, 0)
@@ -942,9 +940,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Fill the given tensor with a value.
-  public func full(
-    _ value: Float = 0, streamContext: StreamContext? = nil
-  ) {
+  public func full(_ value: Float, streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)

@@ -304,6 +304,13 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
 public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   associatedtype ElementNumeric: TensorNumeric
   init(_: AnyTensor)
+  func full(_ value: Float, streamContext: StreamContext?)
+}
+
+extension DynamicGraph_TensorGroup {
+  public func full(_ value: Float = 0, streamContext: StreamContext? = nil) {
+    full(value, streamContext: streamContext)
+  }
 }
 
 extension DynamicGraph {

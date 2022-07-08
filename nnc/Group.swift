@@ -6,6 +6,7 @@ public protocol DynamicGraph_AnyParameters {
 public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var graph: DynamicGraph { get }
   var untyped: [DynamicGraph.AnyTensor] { get }
+  var kind: DeviceKind { get }
   var dimensions: [Int] { get }
   var format: TensorFormat { get }
   var increments: [Int] { get }
@@ -68,6 +69,13 @@ extension DynamicGraph {
 extension DynamicGraph.Group: DynamicGraph.AnyGroup {
   public var untyped: [DynamicGraph.AnyTensor] { underlyingArray as [DynamicGraph.AnyTensor] }
   public var graph: DynamicGraph { underlyingArray[0].graph }
+  public var kind: DeviceKind {
+    let kind = underlyingArray[0].kind
+    for tensor in underlyingArray {
+      assert(kind == tensor.kind)
+    }
+    return kind
+  }
   public var dimensions: [Int] {
     let dimensions = underlyingArray[0].dimensions
     for tensor in underlyingArray {
