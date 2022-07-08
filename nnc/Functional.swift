@@ -300,32 +300,6 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
 
 }
 
-/// Represent a type-checked parameters that encapsulate both tensor and group of tensors.
-public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
-  associatedtype ElementNumeric: TensorNumeric
-  init(_: AnyTensor)
-  func full(_ value: Float, streamContext: StreamContext?)
-}
-
-extension DynamicGraph_TensorGroup {
-  public func full(_ value: Float = 0, streamContext: StreamContext? = nil) {
-    full(value, streamContext: streamContext)
-  }
-}
-
-extension DynamicGraph {
-  public typealias TensorGroup = DynamicGraph_TensorGroup
-}
-
-extension DynamicGraph.Tensor: DynamicGraph.TensorGroup {
-  public typealias ElementNumeric = Element
-}
-
-extension DynamicGraph.Group: DynamicGraph.TensorGroup
-where Element: DynamicGraph.TensorGroup, Element: DynamicGraph.AnyTensor {
-  public typealias ElementNumeric = Element.ElementNumeric
-}
-
 public enum Functional {
   internal static func exec<T: DynamicGraph.AnyTensorGroup>(
     _: T.Type, cmd: ccv_nnc_cmd_t, hint: ccv_nnc_hint_t, inputs: [DynamicGraph_Any?],

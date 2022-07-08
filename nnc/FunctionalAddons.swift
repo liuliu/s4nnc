@@ -306,7 +306,7 @@ extension Functional {
 }
 
 extension DynamicGraph.Tensor {
-  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext? = nil)
+  public subscript(ranges: [Range<Int>], streamContext streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     get {
@@ -352,8 +352,16 @@ extension DynamicGraph.Tensor {
     }
   }
 
+  @inlinable
+  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[ranges, streamContext: streamContext] }
+    set(v) { self[ranges, streamContext: streamContext] = v }
+  }
+
   @usableFromInline
-  subscript(indices: [Int], range: Range<Int>, streamContext streamContext: StreamContext? = nil)
+  subscript(indices: [Int], range: Range<Int>, streamContext streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     get {
@@ -392,139 +400,171 @@ extension DynamicGraph.Tensor {
   }
 
   @usableFromInline
-  subscript(indices: [Int], range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
+  subscript(indices: [Int], range: UnboundedRange, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
     get {
       let dimensions = self.dimensions
-      return self[indices, 0..<dimensions[indices.count]]
+      return self[indices, 0..<dimensions[indices.count], streamContext: streamContext]
     }
     set(v) {
       let dimensions = self.dimensions
-      self[indices, 0..<dimensions[indices.count]] = v
+      self[indices, 0..<dimensions[indices.count], streamContext: streamContext] = v
     }
   }
 
   @inlinable
-  public subscript(range: Range<Int>) -> DynamicGraph.Tensor<Element> {
-    get { self[[], range] }
-    set { self[[], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, range: Range<Int>) -> DynamicGraph.Tensor<Element> {
-    get { self[[i0], range] }
-    set { self[[i0], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, range: Range<Int>) -> DynamicGraph.Tensor<Element> {
-    get { self[[i0, i1], range] }
-    set { self[[i0, i1], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> DynamicGraph.Tensor<Element> {
-    get { self[[i0, i1, i2], range] }
-    set { self[[i0, i1, i2], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>)
+  public subscript(range: Range<Int>, streamContext streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
-    get { self[[i0, i1, i2, i3], range] }
-    set { self[[i0, i1, i2, i3], range] = newValue }
+    get { self[[], range, streamContext: streamContext] }
+    set { self[[], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>)
+  public subscript(i0: Int, range: Range<Int>, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0], range, streamContext: streamContext] }
+    set { self[[i0], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, range: Range<Int>, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1], range, streamContext: streamContext] }
+    set { self[[i0, i1], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  ) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0, i1, i2], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Tensor<
       Element
     >
   {
-    get { self[[i0, i1, i2, i3, i4], range] }
-    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>)
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Tensor<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5], range] }
-    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Tensor<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
-    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
+  public subscript(range: UnboundedRange, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
     get { self }
-    set { self[[], range] = newValue }
+    set { self[[], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
-    get { self[[i0], range] }
-    set { self[[i0], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> DynamicGraph.Tensor<Element> {
-    get { self[[i0, i1], range] }
-    set { self[[i0, i1], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> DynamicGraph.Tensor<Element>
-  {
-    get { self[[i0, i1, i2], range] }
-    set { self[[i0, i1, i2], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange)
+  public subscript(i0: Int, range: UnboundedRange, streamContext streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
-    get { self[[i0, i1, i2, i3], range] }
-    set { self[[i0, i1, i2, i3], range] = newValue }
+    get { self[[i0], range, streamContext: streamContext] }
+    set { self[[i0], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange)
+  public subscript(i0: Int, i1: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  ) -> DynamicGraph.Tensor<Element> {
+    get { self[[i0, i1], range, streamContext: streamContext] }
+    set { self[[i0, i1], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  ) -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  )
+    -> DynamicGraph.Tensor<Element>
+  {
+    get { self[[i0, i1, i2, i3], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Tensor<
       Element
     >
   {
-    get { self[[i0, i1, i2, i3, i4], range] }
-    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Tensor<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5], range] }
-    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
-    range: UnboundedRange
+    range: UnboundedRange, streamContext streamContext: StreamContext?
   )
     -> DynamicGraph.Tensor<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
-    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] = newValue }
   }
 }
 
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
-  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext? = nil)
+  public subscript(ranges: [Range<Int>], streamContext streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     get {
@@ -582,8 +622,16 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
     }
   }
 
+  @inlinable
+  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[ranges, streamContext: streamContext] }
+    set(v) { self[ranges, streamContext: streamContext] = v }
+  }
+
   @usableFromInline
-  subscript(indices: [Int], range: Range<Int>, streamContext streamContext: StreamContext? = nil)
+  subscript(indices: [Int], range: Range<Int>, streamContext streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     get {
@@ -634,140 +682,172 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   }
 
   @usableFromInline
-  subscript(indices: [Int], range: UnboundedRange) -> DynamicGraph.Group<Element> {
+  subscript(indices: [Int], range: UnboundedRange, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
     get {
       let dimensions = self.dimensions
-      return self[indices, 0..<dimensions[indices.count]]
+      return self[indices, 0..<dimensions[indices.count], streamContext: streamContext]
     }
     set(v) {
       let dimensions = self.dimensions
-      self[indices, 0..<dimensions[indices.count]] = v
+      self[indices, 0..<dimensions[indices.count], streamContext: streamContext] = v
     }
   }
 
   @inlinable
-  public subscript(range: Range<Int>) -> DynamicGraph.Group<Element> {
-    get { self[[], range] }
-    set { self[[], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, range: Range<Int>) -> DynamicGraph.Group<Element> {
-    get { self[[i0], range] }
-    set { self[[i0], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, range: Range<Int>) -> DynamicGraph.Group<Element> {
-    get { self[[i0, i1], range] }
-    set { self[[i0, i1], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>) -> DynamicGraph.Group<Element> {
-    get { self[[i0, i1, i2], range] }
-    set { self[[i0, i1, i2], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>)
+  public subscript(range: Range<Int>, streamContext streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
-    get { self[[i0, i1, i2, i3], range] }
-    set { self[[i0, i1, i2, i3], range] = newValue }
+    get { self[[], range, streamContext: streamContext] }
+    set { self[[], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>)
+  public subscript(i0: Int, range: Range<Int>, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0], range, streamContext: streamContext] }
+    set { self[[i0], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, range: Range<Int>, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1], range, streamContext: streamContext] }
+    set { self[[i0, i1], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  ) -> DynamicGraph.Group<Element> {
+    get { self[[i0, i1, i2], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Group<
       Element
     >
   {
-    get { self[[i0, i1, i2, i3, i4], range] }
-    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>)
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Group<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5], range] }
-    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>)
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Group<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
-    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(range: UnboundedRange) -> DynamicGraph.Group<Element> {
+  public subscript(range: UnboundedRange, streamContext streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
     get { self }
-    set { self[[], range] = newValue }
+    set { self[[], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, range: UnboundedRange) -> DynamicGraph.Group<Element> {
-    get { self[[i0], range] }
-    set { self[[i0], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, range: UnboundedRange) -> DynamicGraph.Group<Element> {
-    get { self[[i0, i1], range] }
-    set { self[[i0, i1], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange) -> DynamicGraph.Group<Element>
-  {
-    get { self[[i0, i1, i2], range] }
-    set { self[[i0, i1, i2], range] = newValue }
-  }
-
-  @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange)
+  public subscript(i0: Int, range: UnboundedRange, streamContext streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
-    get { self[[i0, i1, i2, i3], range] }
-    set { self[[i0, i1, i2, i3], range] = newValue }
+    get { self[[i0], range, streamContext: streamContext] }
+    set { self[[i0], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange)
+  public subscript(i0: Int, i1: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  ) -> DynamicGraph.Group<Element> {
+    get { self[[i0, i1], range, streamContext: streamContext] }
+    set { self[[i0, i1], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  ) -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  )
+    -> DynamicGraph.Group<Element>
+  {
+    get { self[[i0, i1, i2, i3], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3], range, streamContext: streamContext] = newValue }
+  }
+
+  @inlinable
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Group<
       Element
     >
   {
-    get { self[[i0, i1, i2, i3, i4], range] }
-    set { self[[i0, i1, i2, i3, i4], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange)
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange,
+    streamContext streamContext: StreamContext?
+  )
     -> DynamicGraph.Group<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5], range] }
-    set { self[[i0, i1, i2, i3, i4, i5], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5], range, streamContext: streamContext] = newValue }
   }
 
   @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
-    range: UnboundedRange
+    range: UnboundedRange, streamContext streamContext: StreamContext?
   )
     -> DynamicGraph.Group<Element>
   {
-    get { self[[i0, i1, i2, i3, i4, i5, i6], range] }
-    set { self[[i0, i1, i2, i3, i4, i5, i6], range] = newValue }
+    get { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] }
+    set { self[[i0, i1, i2, i3, i4, i5, i6], range, streamContext: streamContext] = newValue }
   }
 }
 
 extension DynamicGraph.Tensor {
   /// Transpose from axisA to axisB.
-  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
+  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
@@ -782,7 +862,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Transpose from axisA to axisB.
-  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil)
+  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
@@ -798,7 +878,7 @@ extension DynamicGraph.Group {
 extension DynamicGraph.Tensor {
   /// Fill the given tensor with uniform random values.
   public func rand(
-    _ range: ClosedRange<Float> = 0...1, streamContext: StreamContext? = nil
+    _ range: ClosedRange<Float>, streamContext: StreamContext?
   ) {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -815,7 +895,7 @@ extension DynamicGraph.Tensor {
 extension DynamicGraph.Group {
   /// Fill the given tensor with uniform random values.
   public func rand(
-    _ range: ClosedRange<Float> = 0...1, streamContext: StreamContext? = nil
+    _ range: ClosedRange<Float>, streamContext: StreamContext?
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
@@ -843,7 +923,7 @@ extension DynamicGraph.Group {
 extension DynamicGraph.Tensor {
   /// Fill the given tensor with normal-distributed random values.
   public func randn(
-    std: Float = 1, mean: Float = 0, streamContext: StreamContext? = nil
+    std: Float, mean: Float, streamContext: StreamContext?
   ) {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -860,7 +940,7 @@ extension DynamicGraph.Tensor {
 extension DynamicGraph.Group {
   /// Fill the given tensor with normal-distributed random values.
   public func randn(
-    std: Float = 1, mean: Float = 0, streamContext: StreamContext? = nil
+    std: Float, mean: Float, streamContext: StreamContext?
   ) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
@@ -887,7 +967,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Copy the given tensor to GPU.
-  public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil)
+  public func toGPU(_ ordinal: Int, streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
@@ -906,7 +986,7 @@ extension DynamicGraph.Tensor {
   }
 
   /// Copy the given tensor to CPU.
-  public func toCPU(streamContext: StreamContext? = nil) -> DynamicGraph.Tensor<Element> {
+  public func toCPU(streamContext: StreamContext?) -> DynamicGraph.Tensor<Element> {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
@@ -964,7 +1044,7 @@ extension DynamicGraph.Group {
 extension DynamicGraph.Tensor {
   /// Interpolate from this tensor to the other tensor.
   public func lerp(
-    _ weight: Float, to: DynamicGraph.Tensor<Element>, streamContext: StreamContext? = nil
+    _ weight: Float, to: DynamicGraph.Tensor<Element>, streamContext: StreamContext?
   ) {
     precondition(weight >= 0 && weight <= 1)
     var params = CmdParamsFactory.factory.newParams()
@@ -983,7 +1063,7 @@ extension DynamicGraph.Tensor {
 extension DynamicGraph.Group {
   /// Interpolate from this tensor to the other tensor.
   public func lerp(
-    _ weight: Float, to: DynamicGraph.Group<Element>, streamContext: StreamContext? = nil
+    _ weight: Float, to: DynamicGraph.Group<Element>, streamContext: StreamContext?
   ) {
     precondition(weight >= 0 && weight <= 1)
     guard underlyingArray.count > 0 else { return }
@@ -1030,17 +1110,17 @@ extension DynamicGraph.Tensor {
   }
 
   /// Clamp the given tensor between two values.
-  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) {
+  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext?) {
     clamp(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with a lower bound.
-  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) {
+  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext?) {
     clamp(min: range.lowerBound, max: nil, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with an upper bound.
-  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
+  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext?) {
     clamp(min: nil, max: range.upperBound, streamContext: streamContext)
   }
 }
@@ -1073,17 +1153,17 @@ extension DynamicGraph.Group {
   }
 
   /// Clamp the given tensor between two values.
-  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) {
+  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext?) {
     clamp(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with a lower bound.
-  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) {
+  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext?) {
     clamp(min: range.lowerBound, max: nil, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with an upper bound.
-  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
+  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext?) {
     clamp(min: nil, max: range.upperBound, streamContext: streamContext)
   }
 }
@@ -1124,21 +1204,21 @@ extension DynamicGraph.Tensor {
   }
 
   /// Clamp the given tensor between two values.
-  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     return clamped(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with a lower bound.
-  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     return clamped(min: range.lowerBound, max: nil, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with an upper bound.
-  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     return clamped(min: nil, max: range.upperBound, streamContext: streamContext)
@@ -1147,7 +1227,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   func clamped(
-    min: Float? = nil, max: Float? = nil, streamContext: StreamContext? = nil
+    min: Float?, max: Float?, streamContext: StreamContext?
   ) -> DynamicGraph.Group<Element> {
     precondition(min != nil || max != nil)
     var params = CmdParamsFactory.factory.newParams()
@@ -1161,21 +1241,21 @@ extension DynamicGraph.Group {
   }
 
   /// Clamp the given tensor between two values.
-  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     return clamped(min: range.lowerBound, max: range.upperBound, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with a lower bound.
-  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     return clamped(min: range.lowerBound, max: nil, streamContext: streamContext)
   }
 
   /// Clamp the given tensor with an upper bound.
-  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     return clamped(min: nil, max: range.upperBound, streamContext: streamContext)
@@ -1183,7 +1263,8 @@ extension DynamicGraph.Group {
 }
 
 extension DynamicGraph.Tensor {
-  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext? = nil)
+  /// Reduce along a given dimension.
+  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
@@ -1206,7 +1287,8 @@ extension DynamicGraph.Tensor {
 }
 
 extension DynamicGraph.Group {
-  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext? = nil)
+  /// Reduce along a given dimension.
+  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
     var params = CmdParamsFactory.factory.newParams()
@@ -1230,7 +1312,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Scale the given tensor with a constant inplace.
-  public func scale(by a: Float, streamContext: StreamContext? = nil) {
+  public func scale(by a: Float, streamContext: StreamContext?) {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (a, 0, 0)
@@ -1247,7 +1329,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Scale the given tensor with a constant inplace.
-  public func scale(by a: Float, streamContext: StreamContext? = nil) {
+  public func scale(by a: Float, streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -1272,7 +1354,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply softmax activation to the given tensor inplace.
-  public func softmax(streamContext: StreamContext? = nil) {
+  public func softmax(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -1287,7 +1369,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply softmax activation to the given tensor inplace.
-  public func softmax(streamContext: StreamContext? = nil) {
+  public func softmax(streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_FORWARD, nil, params, 0)
@@ -1310,7 +1392,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply ReLU activation to the given tensor inplace.
-  public func ReLU(streamContext: StreamContext? = nil) {
+  public func ReLU(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_RELU_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -1325,7 +1407,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply ReLU activation to the given tensor inplace.
-  public func ReLU(streamContext: StreamContext? = nil) {
+  public func ReLU(streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_RELU_FORWARD, nil, params, 0)
@@ -1348,7 +1430,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply sigmoid activation to the given tensor inplace.
-  public func sigmoid(streamContext: StreamContext? = nil) {
+  public func sigmoid(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SIGMOID_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -1363,7 +1445,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply sigmoid activation to the given tensor inplace.
-  public func sigmoid(streamContext: StreamContext? = nil) {
+  public func sigmoid(streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SIGMOID_FORWARD, nil, params, 0)
@@ -1386,7 +1468,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply tanh activation to the given tensor inplace.
-  public func tanh(streamContext: StreamContext? = nil) {
+  public func tanh(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -1401,7 +1483,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply tanh activation to the given tensor inplace.
-  public func tanh(streamContext: StreamContext? = nil) {
+  public func tanh(streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
@@ -1424,7 +1506,7 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply swish activation to the given tensor inplace.
-  public func swish(streamContext: StreamContext? = nil) {
+  public func swish(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)
     let _graph = graph._graph
@@ -1439,7 +1521,7 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply swish activation to the given tensor inplace.
-  public func swish(streamContext: StreamContext? = nil) {
+  public func swish(streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)

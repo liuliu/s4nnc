@@ -174,7 +174,7 @@ for epoch in 0..<max_epoch {
       policy_noise_v.clamp(-noise_clip...noise_clip)
       act_next_v = act_next_v + policy_noise_v
       act_next_v.clamp(actionLow...actionHigh)
-      let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 4))
+      var obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
       let target1_q = DynamicGraph.Tensor<Float32>(critic1Old(inputs: obs_act_next_v)[0])
@@ -183,7 +183,7 @@ for epoch in 0..<max_epoch {
       let r_q = graph.constant(r.toGPU(0)) .+ graph.constant(d.toGPU(0)) .* target_q
       let obs_v = graph.variable(obs.toGPU(0))
       let act_v = graph.constant(act.toGPU(0))
-      let obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 4))
+      var obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 4))
       obs_act_v[0..<batch_size, 0..<3] = obs_v
       obs_act_v[0..<batch_size, 3..<4] = act_v
       if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
@@ -216,7 +216,7 @@ for epoch in 0..<max_epoch {
       if step_count % update_actor_freq == 0 {
         let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
         new_act_v.clamp(actionLow...actionHigh)
-        let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(
+        var new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(
           .GPU(0), .NC(batch_size, 4))
         new_obs_act_v[0..<batch_size, 0..<3] = obs_v
         new_obs_act_v[0..<batch_size, 3..<4] = new_act_v

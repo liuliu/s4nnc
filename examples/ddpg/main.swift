@@ -162,14 +162,14 @@ for epoch in 0..<max_epoch {
       }
       let act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
       act_next_v.clamp(actionLow...actionHigh)
-      let obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 4))
+      var obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.CPU, .NC(batch_size, 4))
       obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
       obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
       let target_q = DynamicGraph.Tensor<Float32>(criticOld(inputs: obs_act_next_v)[0])
       let r_q = graph.constant(r) .+ graph.constant(d) .* target_q
       let obs_v = graph.variable(obs)
       let act_v = graph.constant(act)
-      let obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
+      var obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
       obs_act_v[0..<batch_size, 0..<3] = obs_v
       obs_act_v[0..<batch_size, 3..<4] = act_v
       if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
@@ -185,7 +185,7 @@ for epoch in 0..<max_epoch {
       criticOptim.step()
       let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
       new_act_v.clamp(actionLow...actionHigh)
-      let new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
+      var new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.CPU, .NC(batch_size, 4))
       new_obs_act_v[0..<batch_size, 0..<3] = obs_v
       new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
       let actor_loss = DynamicGraph.Tensor<Float32>(critic(inputs: new_obs_act_v)[0])

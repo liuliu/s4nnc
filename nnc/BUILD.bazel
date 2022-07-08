@@ -24,6 +24,7 @@ swift_library(
         "Store.swift",
         "StreamContext.swift",
         "Tensor.swift",
+        "TensorGroup.swift",
         "Wrapped.swift",
     ],
     module_name = "NNC",
