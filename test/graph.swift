@@ -82,7 +82,7 @@ final class GraphTests: XCTestCase {
     a1[0, 0] = -1
     a1[1, 0] = -2
     a1[2, 0] = -3
-    let a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 2))
+    var a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(3, 2))
     a2[0..<3, 0..<1] = a0[0..<3, 0..<1]
     a2[0..<3, 1..<2] = a1[0..<3, 0..<1]
     XCTAssertEqual(a2.rawValue[0, 0], 10, accuracy: 1e-5)
@@ -103,7 +103,7 @@ final class GraphTests: XCTestCase {
     a1[0, 0] = -1
     a1[0, 1] = -2
     a1[0, 2] = -3
-    let a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    var a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
     a2[0, 0..<2] = a0[0, 1..<3]
     a2[1, 1..<3] = a1[0, 0..<2]
     XCTAssertEqual(a2.rawValue[0, 0], 2, accuracy: 1e-5)
@@ -122,7 +122,7 @@ final class GraphTests: XCTestCase {
     a1[0, 0] = -1
     a1[0, 1] = -2
     a1[0, 2] = -3
-    let a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
+    var a2: DynamicGraph.Tensor<Float32> = dynamicGraph.variable(.CPU, .NC(2, 3))
     a2[0, ...] = a0[...]
     a2[1, ...] = a1[...]
     XCTAssertEqual(a2.rawValue[0, 0], 10, accuracy: 1e-5)
