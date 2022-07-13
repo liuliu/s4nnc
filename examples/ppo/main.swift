@@ -66,13 +66,12 @@ let max_grad_norm: Float = 0.5
 let eps_clip: Float = 0.2
 
 var envs = [TimeLimit<Ant>]()
-var obs = [Tensor<Float64>]()
 for i in 0..<training_num {
   let env = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
-  let result = env.reset(seed: i)
+  let _ = env.reset(seed: i)
   envs.append(env)
-  obs.append(result.0)
 }
+var testEnv = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
 let viewer = MuJoCoViewer(env: envs[0])
 var episodes = 0
 
@@ -118,111 +117,56 @@ var obsRms = RunningMeanStd(
     return variance
   })())
 var replays = [Replay]()
-var buffer = Array(
-  repeating: [
-    (obs: Tensor<Float32>, reward: Float32, mu: Tensor<Float32>, act: Tensor<Float32>)
-  ](), count: training_num)
-var last_obs: [Tensor<Float32>] = obs.map { Tensor(from: $0) }
 var env_step = 0
 var rew_var: Double = 1
 var rew_mean: Double = 0
 var rew_total = 0
 var initActorLastLayer = false
+var training_collector = Collector<
+  Tensor<Float>, Tensor<Float>, (Tensor<Float>, Tensor<Float>), TimeLimit<Ant>
+>(envs: envs) {
+  let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
+  let variable = obsRms.norm(obs)
+  obsRms.update([obs])
+  let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
+  if !initActorLastLayer {
+    // Try to init actor's last layer with reduced weights.
+    let bias = graph.variable(.CPU, .C(output_dim), of: Float32.self)
+    bias.full(0)
+    actorLastLayer.parameters(for: .bias).copy(from: bias)
+    let weight = graph.variable(
+      actorLastLayer.parameters(for: .weight).copied(Float32.self))
+    let updatedWeight = 0.01 * weight
+    actorLastLayer.parameters(for: .weight).copy(from: updatedWeight)
+    initActorLastLayer = true
+  }
+  let n = graph.variable(Tensor<Float32>(.GPU(0), .C(output_dim)))
+  n.randn(std: 1, mean: 0)
+  let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
+  let act_mu = act.toCPU().rawValue.copied()
+  return (act_f, (act_mu, variable.rawValue.toCPU()))
+}
 for epoch in 0..<max_epoch {
   var step_in_epoch = 0
   while step_in_epoch < step_per_epoch {
-    var episodes = 0
-    var env_step_count = 0
-    var training_rewards: Float = 0
-    while env_step_count < collect_per_step {
-      for i in 0..<training_num {
-        var lastObs = graph.variable(last_obs[i].toGPU(0))
-        let variable =
-          (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
-        obsRms.update([lastObs])
-        let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-        if !initActorLastLayer {
-          // Try to init actor's last layer with reduced weights.
-          let bias = graph.variable(.CPU, .C(output_dim), of: Float32.self)
-          bias.full(0)
-          actorLastLayer.parameters(for: .bias).copy(from: bias)
-          let weight = graph.variable(
-            actorLastLayer.parameters(for: .weight).copied(Float32.self))
-          let updatedWeight = 0.01 * weight
-          actorLastLayer.parameters(for: .weight).copy(from: updatedWeight)
-          initActorLastLayer = true
-        }
-        let n = graph.variable(Tensor<Float32>(.GPU(0), .C(output_dim)))
-        n.randn(std: 1, mean: 0)
-        let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
-        let act_mu = act.toCPU().rawValue.copied()
-        let (obs, reward, done, _) = envs[i].step(action: Tensor(from: act_f))
-        buffer[i].append(
-          (obs: variable.rawValue.toCPU(), reward: reward, mu: act_mu, act: act_f)
-        )
-        last_obs[i] = Tensor(from: obs)
-        if done {
-          lastObs = graph.variable(last_obs[i].toGPU(0))
-          let variable =
-            (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
-          obsRms.update([lastObs])
-          let (obs, _) = envs[i].reset()
-          episodes += 1
-          var obss = [Tensor<Float32>]()
-          var rewards = [Float32]()
-          var mus = [Tensor<Float32>]()
-          var acts = [Tensor<Float32>]()
-          // Organizing data into ReplayBuffer.
-          for play in buffer[i] {
-            training_rewards += play.reward
-            rewards.append(play.reward)
-            obss.append(play.obs)
-            mus.append(play.mu)
-            acts.append(play.act)
-          }
-          let vs: [Float32] = Array(repeating: 0, count: buffer[i].count + 1)
-          let replay = Replay(
-            obs: obss,
-            lastObs: variable.rawValue.toCPU(),
-            rewards: rewards,
-            mu: mus,
-            act: acts,
-            vs: vs)
-          replays.append(replay)
-          last_obs[i] = Tensor(from: obs)
-          buffer[i].removeAll()
-        }
-      }
-      env_step_count += training_num
-    }
-    // If there are any partial replays left in the buffer, put these into the replay array and remove from buffer.
-    for i in 0..<training_num where buffer[i].count > 0 {
-      let lastObs = graph.variable(last_obs[i].toGPU(0))
-      let variable =
-        (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
-      obsRms.update([lastObs])
-      var obss = [Tensor<Float32>]()
-      var rewards = [Float32]()
-      var mus = [Tensor<Float32>]()
-      var acts = [Tensor<Float32>]()
-      // Organizing data into ReplayBuffer.
-      for play in buffer[i] {
-        training_rewards += play.reward
-        rewards.append(play.reward)
-        obss.append(play.obs)
-        mus.append(play.mu)
-        acts.append(play.act)
-      }
-      let vs: [Float32] = Array(repeating: 0, count: buffer[i].count + 1)
+    let stats = training_collector.collect(nStep: collect_per_step)
+    // let episodes = stats.episodeCount
+    let env_step_count = stats.stepCount
+    let data = training_collector.data
+    training_collector.resetData()
+    for buffer in data {
+      let obs = graph.variable(Tensor<Float>(from: buffer.lastObservation).toGPU(0))
+      let variable = obsRms.norm(obs)
+      obsRms.update([obs])
       let replay = Replay(
-        obs: obss,
+        obs: buffer.others.map { $0.1 },
         lastObs: variable.rawValue.toCPU(),
-        rewards: rewards,
-        mu: mus,
-        act: acts,
-        vs: vs)
+        rewards: buffer.rewards,
+        mu: buffer.others.map { $0.0 },
+        act: buffer.actions,
+        vs: Array(repeating: 0, count: buffer.actions.count + 1)
+      )
       replays.append(replay)
-      buffer[i].removeAll()
     }
     env_step += env_step_count
     let lr =
@@ -358,52 +302,50 @@ for epoch in 0..<max_epoch {
     )
     replays.removeAll()
     print(
-      "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(Float(training_rewards) / Float(episodes))"
+      "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss)"  // , reward \(Float(training_rewards) / Float(episodes))"
     )
   }
   // Running test and print how many steps we can perform in an episode before it fails.
-  let result = envs[0].reset()
-  last_obs[0] = Tensor(from: result.0)
+  let (obs, _) = testEnv.reset()
+  var last_obs = Tensor<Float>(from: obs)
   var testing_rewards: Float = 0
   for _ in 0..<testing_num {
     while true {
-      let lastObs = graph.variable(last_obs[0].toGPU(0))
-      let variable =
-        (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
+      let lastObs = graph.variable(last_obs.toGPU(0))
+      let variable = obsRms.norm(lastObs)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(-1...1)
       let act_v = act.rawValue.toCPU()
-      let (obs, reward, done, _) = envs[0].step(action: Tensor(from: act_v))
-      last_obs[0] = Tensor(from: obs)
+      let (obs, reward, done, _) = testEnv.step(action: Tensor(from: act_v))
+      last_obs = Tensor(from: obs)
       testing_rewards += reward
       if done {
-        let (obs, _) = envs[0].reset()
-        last_obs[0] = Tensor(from: obs)
+        let (obs, _) = testEnv.reset()
+        last_obs = Tensor(from: obs)
         break
       }
     }
   }
   let avg_testing_rewards = testing_rewards / Float(testing_num)
   print("Epoch \(epoch), testing reward \(avg_testing_rewards)")
-  if avg_testing_rewards > envs[0].rewardThreshold {
+  if avg_testing_rewards > testEnv.rewardThreshold {
     break
   }
 }
 
-let result = envs[0].reset()
-last_obs[0] = Tensor(from: result.0)
+let (obs, _) = testEnv.reset()
+var last_obs = Tensor<Float>(from: obs)
 while episodes < 10 {
-  let lastObs = graph.variable(last_obs[0].toGPU(0))
-  let variable =
-    (lastObs - obsRms.mean) ./ Functional.squareRoot(obsRms.variance).clamped(1e-5...)
+  let lastObs = graph.variable(last_obs.toGPU(0))
+  let variable = obsRms.norm(lastObs)
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
   act.clamp(-1...1)
   let act_v = act.rawValue.toCPU()
-  let (obs, _, done, _) = envs[0].step(action: Tensor(from: act_v))
-  last_obs[0] = Tensor(from: obs)
+  let (obs, _, done, _) = testEnv.step(action: Tensor(from: act_v))
+  last_obs = Tensor(from: obs)
   if done {
-    let (obs, _) = envs[0].reset()
-    last_obs[0] = Tensor(from: obs)
+    let (obs, _) = testEnv.reset()
+    last_obs = Tensor(from: obs)
     episodes += 1
   }
   viewer.render()

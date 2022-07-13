@@ -35,4 +35,7 @@ public struct RunningMeanStd<TensorElement: DynamicGraph.TensorGroup> {
       count = totalCount
     }
   }
+  public func norm(_ input: TensorElement) -> TensorElement {
+    return (input - mean) ./ Functional.squareRoot(variance).clamped(1e-5...)
+  }
 }

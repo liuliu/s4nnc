@@ -455,6 +455,7 @@ extension AnyTensorStorage {
 public protocol AnyTensor {
   var storage: AnyTensorStorage { get }
   var cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t> { get }
+  init(from: AnyTensor)
 }
 
 extension AnyTensor {
