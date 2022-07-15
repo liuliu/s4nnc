@@ -18,13 +18,40 @@ where EnvType.ObsType: AnyTensor, EnvType.ActType: AnyTensor {
   }
 }
 
+public struct NumericalStatistics {
+  public var mean: Float
+  public var std: Float
+  public init(mean: Float = 0, std: Float = 0) {
+    self.mean = mean
+    self.std = std
+  }
+  public init(_ array: [Float]) {
+    if array.count > 0 {
+      let mean = (array.reduce(0) { $0 + $1 }) / Float(array.count)
+      self.mean = mean
+      self.std = ((array.reduce(0) { $0 + ($1 - mean) * ($1 - mean) }) / Float(array.count))
+        .squareRoot()
+    } else {
+      mean = 0
+      std = 0
+    }
+  }
+}
+
 extension Collector {
   public struct Statistics {
     public var episodeCount: Int
     public var stepCount: Int
-    public init(episodeCount: Int, stepCount: Int) {
+    public var episodeReward: NumericalStatistics
+    public var episodeLength: NumericalStatistics
+    public init(
+      episodeCount: Int, stepCount: Int, episodeReward: NumericalStatistics,
+      episodeLength: NumericalStatistics
+    ) {
       self.episodeCount = episodeCount
       self.stepCount = stepCount
+      self.episodeReward = episodeReward
+      self.episodeLength = episodeLength
     }
   }
 
@@ -70,6 +97,8 @@ extension Collector where EnvType.DoneType == Bool, EnvType.RewardType == Float 
   public mutating func collect(nStep: Int) -> Statistics {
     var episodeCount = 0
     var stepCount = 0
+    var episodeRewards = [Float]()
+    var episodeLengths = [Float]()
     while stepCount < nStep {
       for i in 0..<envs.count {
         let obs = batch[i].lastObservation
@@ -80,6 +109,8 @@ extension Collector where EnvType.DoneType == Bool, EnvType.RewardType == Float 
         batch[i].rewards.append(reward)
         batch[i].lastObservation = ObsType(from: newObs)
         if done {
+          episodeRewards.append(batch[i].rewards.reduce(0) { $0 + $1 })
+          episodeLengths.append(Float(batch[i].rewards.count))
           let (newObs, _) = envs[i].reset()
           finalizedBatch.append(batch[i])
           batch[i].reset()
@@ -89,6 +120,9 @@ extension Collector where EnvType.DoneType == Bool, EnvType.RewardType == Float 
       }
       stepCount += envs.count
     }
-    return Statistics(episodeCount: episodeCount, stepCount: stepCount)
+    return Statistics(
+      episodeCount: episodeCount, stepCount: stepCount,
+      episodeReward: NumericalStatistics(episodeRewards),
+      episodeLength: NumericalStatistics(episodeLengths))
   }
 }

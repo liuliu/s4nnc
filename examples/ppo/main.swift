@@ -150,7 +150,6 @@ for epoch in 0..<max_epoch {
   var step_in_epoch = 0
   while step_in_epoch < step_per_epoch {
     let stats = training_collector.collect(nStep: collect_per_step)
-    // let episodes = stats.episodeCount
     let env_step_count = stats.stepCount
     let data = training_collector.data
     training_collector.resetData()
@@ -302,14 +301,15 @@ for epoch in 0..<max_epoch {
     )
     replays.removeAll()
     print(
-      "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss)"  // , reward \(Float(training_rewards) / Float(episodes))"
+      "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std))"
     )
   }
   // Running test and print how many steps we can perform in an episode before it fails.
   let (obs, _) = testEnv.reset()
   var last_obs = Tensor<Float>(from: obs)
-  var testing_rewards: Float = 0
+  var testing_rewards = [Float]()
   for _ in 0..<testing_num {
+    var rewards: Float = 0
     while true {
       let lastObs = graph.variable(last_obs.toGPU(0))
       let variable = obsRms.norm(lastObs)
@@ -318,17 +318,18 @@ for epoch in 0..<max_epoch {
       let act_v = act.rawValue.toCPU()
       let (obs, reward, done, _) = testEnv.step(action: Tensor(from: act_v))
       last_obs = Tensor(from: obs)
-      testing_rewards += reward
+      rewards += reward
       if done {
+        testing_rewards.append(rewards)
         let (obs, _) = testEnv.reset()
         last_obs = Tensor(from: obs)
         break
       }
     }
   }
-  let avg_testing_rewards = testing_rewards / Float(testing_num)
-  print("Epoch \(epoch), testing reward \(avg_testing_rewards)")
-  if avg_testing_rewards > testEnv.rewardThreshold {
+  let avg_testing_rewards = NumericalStatistics(testing_rewards)
+  print("Epoch \(epoch), testing reward \(avg_testing_rewards.mean) (±\(avg_testing_rewards.std))")
+  if avg_testing_rewards.mean > testEnv.rewardThreshold {
     break
   }
 }
