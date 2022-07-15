@@ -122,9 +122,9 @@ var rew_var: Double = 1
 var rew_mean: Double = 0
 var rew_total = 0
 var initActorLastLayer = false
-var training_collector = Collector<
-  Tensor<Float>, Tensor<Float>, (Tensor<Float>, Tensor<Float>), TimeLimit<Ant>
->(envs: envs) {
+var training_collector = Collector<Float, (Tensor<Float>, Tensor<Float>), TimeLimit<Ant>, Double>(
+  envs: envs
+) {
   let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
   let variable = obsRms.norm(obs)
   obsRms.update([obs])

@@ -1,7 +1,9 @@
 import NNC
 
-public struct Collector<ObsType: AnyTensor, ActType: AnyTensor, OtherType, EnvType: Env>
-where EnvType.ObsType: AnyTensor, EnvType.ActType: AnyTensor {
+public struct Collector<Element: TensorNumeric, OtherType, EnvType: Env, EnvElement: TensorNumeric>
+where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElement> {
+  public typealias ObsType = Tensor<Element>
+  public typealias ActType = Tensor<Element>
   var envs: [EnvType]
   var batch: [Collector.Data]
   var finalizedBatch: [Collector.Data]
