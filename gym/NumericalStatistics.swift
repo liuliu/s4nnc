@@ -1,3 +1,5 @@
+/// A simple helper to compute numerical statistic properties (mean and standard deviations) from
+/// a given collection.
 public struct NumericalStatistics {
   public var mean: Float
   public var std: Float

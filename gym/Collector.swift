@@ -1,12 +1,18 @@
 import NNC
 
+/// The helper to collect data from the given Envs.
+///
+/// The policy is intentional to be flexible as a simple closure. We collect both the action and other
+/// data the closure provides. There may be some type conversions for what the Env expects and what
+/// the policy provides, thus, need to specify both. To make this easier to use, the placeholder
+/// type would be useful: `Collector<Float, (), _, _>(envs: envs) { ... }`
 public struct Collector<Element: TensorNumeric, OtherType, EnvType: Env, EnvElement: TensorNumeric>
 where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElement> {
   public typealias ObsType = Tensor<Element>
   public typealias ActType = Tensor<Element>
   var envs: [EnvType]
-  var batch: [Collector.Data]
-  var finalizedBatch: [Collector.Data]
+  var batch: [CollectedData<Element, OtherType>]
+  var finalizedBatch: [CollectedData<Element, OtherType>]
   let policy: (_: ObsType) -> (ActType, OtherType)
   public init(envs: [EnvType], policy: @escaping (_: ObsType) -> (ActType, OtherType)) {
     self.envs = envs
@@ -14,9 +20,29 @@ where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElemen
     batch = []
     for i in 0..<envs.count {
       let (obs, _) = self.envs[i].reset(seed: i)
-      batch.append(Data(lastObservation: ObsType(from: obs)))
+      batch.append(CollectedData(lastObservation: ObsType(from: obs)))
     }
     finalizedBatch = []
+  }
+}
+
+public struct CollectedData<Element: TensorNumeric, OtherType> {
+  public typealias ObsType = Tensor<Element>
+  public typealias ActType = Tensor<Element>
+  public var lastObservation: ObsType
+  public var actions: [ActType]
+  public var rewards: [Float]
+  public var others: [OtherType]
+  public init(lastObservation: ObsType) {
+    self.lastObservation = lastObservation
+    actions = []
+    rewards = []
+    others = []
+  }
+  mutating func reset() {
+    actions.removeAll()
+    rewards.removeAll()
+    others.removeAll()
   }
 }
 
@@ -37,24 +63,6 @@ extension Collector {
     }
   }
 
-  public struct Data {
-    public var lastObservation: ObsType
-    public var actions: [ActType]
-    public var rewards: [Float]
-    public var others: [OtherType]
-    public init(lastObservation: ObsType) {
-      self.lastObservation = lastObservation
-      actions = []
-      rewards = []
-      others = []
-    }
-    mutating func reset() {
-      actions.removeAll()
-      rewards.removeAll()
-      others.removeAll()
-    }
-  }
-
   public mutating func resetData() {
     for i in 0..<batch.count {
       batch[i].reset()
@@ -70,7 +78,7 @@ extension Collector {
     }
   }
 
-  public var data: [Collector.Data] {
+  public var data: [CollectedData<Element, OtherType>] {
     finalizedBatch + batch.filter { $0.actions.count > 0 }
   }
 }
