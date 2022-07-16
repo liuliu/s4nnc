@@ -33,16 +33,6 @@ func NetC() -> Model {
 let graph = DynamicGraph()
 var sfmt = SFMT(seed: 10)
 
-// Note that for PPO, we record the whole episode of replay.
-struct Replay {
-  var obs: [Tensor<Float32>]  // The state before action.
-  var lastObs: Tensor<Float32>  // The state before action.
-  var rewards: [Float32]  // Rewards for each step.
-  var mu: [Tensor<Float32>]  // The mean for the act in continuous space.
-  var act: [Tensor<Float32>]  // The act taken in this step.
-  var vs: [Float32]  // The estimated values from obs.
-}
-
 struct Data {
   var obs: Tensor<Float32>
   var act: Tensor<Float32>
@@ -85,26 +75,6 @@ actorOptim.parameters = [actor.parameters, scale]
 var criticOptim = AdamOptimizer(graph, rate: critic_lr)
 criticOptim.parameters = [critic.parameters]
 
-func compute_episodic_return(
-  replay: Replay, rew_std: Float, gamma: Float = 0.99, gae_gamma: Float = 0.95
-) -> (
-  advantages: [Float32], returns: [Float32]
-) {
-  let vs = replay.vs
-  let delta: [Float32] = replay.rewards.enumerated().map { (i: Int, rew: Float) -> Float in
-    rew + (vs[i + 1] * gamma - vs[i]) * rew_std
-  }
-  var gae: Float = 0
-  let advantages: [Float32] = delta.reversed().map({ (delta: Float) -> Float in
-    gae = delta + gamma * gae_gamma * gae
-    return gae
-  }).reversed()
-  let unnormalized_returns = advantages.enumerated().map { i, adv in
-    vs[i] * rew_std + adv
-  }
-  return (advantages, unnormalized_returns)
-}
-
 var obsRms = RunningMeanStd(
   mean: ({ () -> DynamicGraph.Tensor<Float> in
     let mean = graph.constant(.GPU(0), .C(input_dim), of: Float32.self)
@@ -116,13 +86,9 @@ var obsRms = RunningMeanStd(
     variance.full(1)
     return variance
   })())
-var replays = [Replay]()
 var env_step = 0
-var rew_var: Double = 1
-var rew_mean: Double = 0
-var rew_total = 0
 var initActorLastLayer = false
-var training_collector = Collector<Float, (Tensor<Float>, Tensor<Float>), TimeLimit<Ant>, Double>(
+var training_collector = Collector<Float, PPO.ContinuousActionSpace, TimeLimit<Ant>, Double>(
   envs: envs
 ) {
   let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
@@ -144,28 +110,26 @@ var training_collector = Collector<Float, (Tensor<Float>, Tensor<Float>), TimeLi
   n.randn(std: 1, mean: 0)
   let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
   let act_mu = act.toCPU().rawValue.copied()
-  return (act_f, (act_mu, variable.rawValue.toCPU()))
+  return (
+    act_f, PPO.ContinuousActionSpace(centroid: act_mu, observation: variable.rawValue.toCPU())
+  )
+}
+var ppo = PPO(graph: graph) {
+  let variable = graph.variable($0.toGPU(0))
+  return DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0]).rawValue.toCPU()
 }
 for epoch in 0..<max_epoch {
   var step_in_epoch = 0
   while step_in_epoch < step_per_epoch {
     let stats = training_collector.collect(nStep: collect_per_step)
     let env_step_count = stats.stepCount
-    let data = training_collector.data
+    var collectedData = training_collector.data
     training_collector.resetData()
-    for buffer in data {
+    for (i, buffer) in collectedData.enumerated() {
       let obs = graph.variable(Tensor<Float>(from: buffer.lastObservation).toGPU(0))
       let variable = obsRms.norm(obs)
       obsRms.update([obs])
-      let replay = Replay(
-        obs: buffer.others.map { $0.1 },
-        lastObs: variable.rawValue.toCPU(),
-        rewards: buffer.rewards,
-        mu: buffer.others.map { $0.0 },
-        act: buffer.actions,
-        vs: Array(repeating: 0, count: buffer.actions.count + 1)
-      )
-      replays.append(replay)
+      collectedData[i].lastObservation = variable.rawValue.toCPU()
     }
     env_step += env_step_count
     let lr =
@@ -177,64 +141,23 @@ for epoch in 0..<max_epoch {
     var criticLoss: Float = 0
     var actorLoss: Float = 0
     var update_count = 0
-    let rawScale = scale.toCPU().rawValue.copied()
+    let oldDsitributions = ppo.distributions(scale: scale.toCPU().rawValue, from: collectedData)
     for _ in 0..<update_per_step {
-      let replayBatch = replays.randomSample(count: batch_size, using: &sfmt)  // System random generator is very slow, use custom one.
+      let (returns, advantages) = ppo.computeReturns(from: collectedData)
       var data = [Data]()
-      // Sample from these batches into smaller batch sizes and do the update.
-      for var replay in replayBatch {
-        var rew_std: Float = 1
-        var inv_std: Float = 1
-        if rew_total > 0 {
-          rew_std = Float(rew_var.squareRoot()) + 1e-5
-          inv_std = 1.0 / rew_std
-        }
-        // Recompute value with critics.
-        for (j, obs) in replay.obs.enumerated() {
-          let variable = graph.variable(obs.toGPU(0))
-          let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0]).toCPU()
-          replay.vs[j] = v[0]
-        }
-        let variable = graph.variable(replay.lastObs.toGPU(0))
-        let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0]).toCPU()
-        replay.vs[replay.obs.count] = v[0]
-        let (advantages, unnormalized_returns) = compute_episodic_return(
-          replay: replay, rew_std: rew_std)
-        let obs = replay.obs
-        let mu = replay.mu
-        let act = replay.act
-        let scale = graph.constant(rawScale)
-        let expScale = Functional.exp(scale)
-        let var2 = 1 / (2 * (expScale .* expScale))
-        for (i, adv) in advantages.enumerated() {
-          let muv = graph.constant(mu[i])
-          let actv = graph.constant(act[i])
-          let distOld = ((muv - actv) .* (muv - actv) .* var2 + scale).rawValue.copied()
+      let batch = (0..<collectedData.count).randomSample(count: batch_size, using: &sfmt)
+      for i in batch {
+        let bufferReturns = returns[i]
+        let bufferAdvantages = advantages[i]
+        let bufferOldDistributions = oldDsitributions[i]
+        let bufferActions = collectedData[i].actions
+        for j in 0..<bufferActions.count {
           data.append(
             Data(
-              obs: obs[i], act: act[i], adv: adv, ret: inv_std * unnormalized_returns[i],
-              distOld: distOld))
+              obs: collectedData[i].others[j].observation, act: bufferActions[j],
+              adv: bufferAdvantages[j],
+              ret: bufferReturns[j], distOld: bufferOldDistributions[j]))
         }
-        var batch_var: Double = 0
-        var batch_mean: Double = 0
-        for rew in unnormalized_returns {
-          batch_mean += Double(rew)
-        }
-        batch_mean = batch_mean / Double(unnormalized_returns.count)
-        for rew in unnormalized_returns {
-          batch_var += (Double(rew) - batch_mean) * (Double(rew) - batch_mean)
-        }
-        batch_var = batch_var / Double(unnormalized_returns.count)
-        let delta = batch_mean - rew_mean
-        let total_count = unnormalized_returns.count + rew_total
-        rew_mean = rew_mean + delta * Double(unnormalized_returns.count) / Double(total_count)
-        let m_a = rew_var * Double(rew_total)
-        let m_b = batch_var * Double(unnormalized_returns.count)
-        let m_2 =
-          m_a + m_b + delta * delta * Double(rew_total) * Double(unnormalized_returns.count)
-          / Double(total_count)
-        rew_var = m_2 / Double(total_count)
-        rew_total = total_count
       }
       for _ in 0..<(data.count / batch_size) {
         let batch = data.randomSample(count: batch_size, using: &sfmt)  // System random generator is very slow, use custom one.
@@ -297,9 +220,8 @@ for epoch in 0..<max_epoch {
     actorLoss = -actorLoss / Float(batch_size * update_count)
     let scaleCPU = scale.toCPU()
     print(
-      "rew std \(rew_var.squareRoot()), log scale [\(scaleCPU[0]), \(scaleCPU[1]), \(scaleCPU[2]), \(scaleCPU[3]), \(scaleCPU[4]), \(scaleCPU[5])]"
+      "rew std \(ppo.statistics.rewardsNormalization.std), log scale [\(scaleCPU[0]), \(scaleCPU[1]), \(scaleCPU[2]), \(scaleCPU[3]), \(scaleCPU[4]), \(scaleCPU[5])]"
     )
-    replays.removeAll()
     print(
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std))"
     )

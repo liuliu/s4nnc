@@ -52,7 +52,7 @@ extension Collector {
     public var stepCount: Int
     public var episodeReward: NumericalStatistics
     public var episodeLength: NumericalStatistics
-    public init(
+    init(
       episodeCount: Int, stepCount: Int, episodeReward: NumericalStatistics,
       episodeLength: NumericalStatistics
     ) {
