@@ -50,7 +50,8 @@ extension Tensor where Element: NumpyScalarCompatible {
       fatalError("numpy.ndarray data pointer was nil")
     }
     self.init(
-      .CPU, format: .NCHW, dimensions: shape, unsafeMutablePointer: pointer, keepAlive: numpyArray)
+      .CPU, format: .NCHW, dimensions: shape, unsafeMutablePointer: pointer,
+      bindLifetimeWith: numpyArray)
   }
 }
 
