@@ -9,6 +9,7 @@ swift_library(
     deps = [
         "//nnc",
         "//nnc:nnc_mujoco",
+        "@SwiftAlgorithms//:Algorithms",
         "@SwiftNumerics//:Numerics",
         "@ccv//lib:SFMT",
         "@swift-mujoco//:swift-mujoco",

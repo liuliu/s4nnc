@@ -33,14 +33,6 @@ func NetC() -> Model {
 let graph = DynamicGraph()
 var sfmt = SFMT(seed: 10)
 
-struct Data {
-  var obs: Tensor<Float32>
-  var act: Tensor<Float32>
-  var adv: Float
-  var ret: Float
-  var distOld: Tensor<Float32>
-}
-
 let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
@@ -141,39 +133,22 @@ for epoch in 0..<max_epoch {
     var criticLoss: Float = 0
     var actorLoss: Float = 0
     var update_count = 0
-    let oldDsitributions = ppo.distributions(scale: scale.toCPU().rawValue, from: collectedData)
+    let oldDistributions = ppo.distributions(scale: scale.toCPU().rawValue, from: collectedData)
     for _ in 0..<update_per_step {
       let (returns, advantages) = ppo.computeReturns(from: collectedData)
-      var data = [Data]()
-      let batch = (0..<collectedData.count).randomSample(count: batch_size, using: &sfmt)
-      for i in batch {
-        let bufferReturns = returns[i]
-        let bufferAdvantages = advantages[i]
-        let bufferOldDistributions = oldDsitributions[i]
-        let bufferActions = collectedData[i].actions
-        for j in 0..<bufferActions.count {
-          data.append(
-            Data(
-              obs: collectedData[i].others[j].observation, act: bufferActions[j],
-              adv: bufferAdvantages[j],
-              ret: bufferReturns[j], distOld: bufferOldDistributions[j]))
-        }
-      }
-      for _ in 0..<(data.count / batch_size) {
-        let batch = data.randomSample(count: batch_size, using: &sfmt)  // System random generator is very slow, use custom one.
-        var obs = Tensor<Float32>(.CPU, .NC(batch_size, input_dim))
-        var act = Tensor<Float32>(.CPU, .NC(batch_size, output_dim))
-        var advantages = Tensor<Float32>(.CPU, .NC(batch_size, 1))
-        var returns = Tensor<Float32>(.CPU, .NC(batch_size, 1))
-        var distOld = Tensor<Float32>(.CPU, .NC(batch_size, output_dim))
-        for i in 0..<batch_size {
-          let data = batch[i % batch.count]
-          obs[i, ...] = data.obs[...]
-          act[i, ...] = data.act[...]
-          advantages[i, 0] = data.adv
-          returns[i, 0] = data.ret
-          distOld[i, ...] = data.distOld[...]
-        }
+      var dataframe = PPO.samples(
+        from: collectedData, episodeCount: batch_size, using: &sfmt, returns: returns,
+        advantages: advantages, oldDistributions: oldDistributions)
+      dataframe.shuffle()
+      let batched = dataframe[
+        "observations", "actions", "returns", "advantages", "oldDistributions"
+      ].combine(size: batch_size)
+      for batch in batched["observations", "actions", "returns", "advantages", "oldDistributions"] {
+        let obs = batch[0] as! Tensor<Float32>
+        let act = batch[1] as! Tensor<Float32>
+        let returns = batch[2] as! Tensor<Float32>
+        let advantages = batch[3] as! Tensor<Float32>
+        let distOld = batch[4] as! Tensor<Float32>
         let variable = graph.variable(obs.toGPU(0))
         let mu = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
         let actv = graph.constant(act.toGPU(0))

@@ -1,3 +1,4 @@
+import Algorithms
 import NNC
 
 public struct PPO {
@@ -126,6 +127,44 @@ extension PPO {
       rewTotal = totalCount
     }
     return (returns: resultReturns, advantages: resultAdvatanges)
+  }
+
+  private struct Sample {
+    var observation: Tensor<Float32>
+    var action: Tensor<Float32>
+    var advantage: Tensor<Float32>
+    var `return`: Tensor<Float32>
+    var oldDistribution: Tensor<Float32>
+  }
+
+  public static func samples<T: RandomNumberGenerator>(
+    from collectedData: [CollectedData<Float, ContinuousActionSpace>], episodeCount: Int,
+    using generator: inout T, returns: [[Float]], advantages: [[Float]],
+    oldDistributions: [[Tensor<Float>]]
+  ) -> DataFrame {
+    var samples = [Sample]()
+    let batch = (0..<collectedData.count).randomSample(count: episodeCount, using: &generator)
+    for i in batch {
+      let bufferReturns = returns[i]
+      let bufferAdvantages = advantages[i]
+      let bufferOldDistributions = oldDistributions[i]
+      let bufferActions = collectedData[i].actions
+      for j in 0..<bufferActions.count {
+        samples.append(
+          Sample(
+            observation: collectedData[i].others[j].observation, action: bufferActions[j],
+            advantage: Tensor([bufferAdvantages[j]], .CPU, .C(1)),
+            return: Tensor([bufferReturns[j]], .CPU, .C(1)),
+            oldDistribution: bufferOldDistributions[j]))
+      }
+    }
+    var df = DataFrame(from: samples, name: "data")
+    df["observations"] = df["data", Sample.self].map(\.observation)
+    df["actions"] = df["data", Sample.self].map(\.action)
+    df["advantages"] = df["data", Sample.self].map(\.advantage)
+    df["returns"] = df["data", Sample.self].map(\.return)
+    df["oldDistributions"] = df["data", Sample.self].map(\.oldDistribution)
+    return df
   }
 
 }
