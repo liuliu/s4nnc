@@ -55,7 +55,7 @@ for i in 0..<training_num {
 }
 DynamicGraph.setSeed(0)
 var testEnv = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
-testEnv.reset(seed: 180)
+let _ = testEnv.reset(seed: 180)
 let viewer = MuJoCoViewer(env: envs[0])
 var episodes = 0
 
@@ -155,16 +155,9 @@ for epoch in 0..<max_epoch {
         let mu = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
         let actv = graph.constant(act.toGPU(0))
         let distOldv = graph.constant(distOld.toGPU(0))
-        let expScale = Functional.exp(scale)
-        let var2 = 1 / (2 * (expScale .* expScale))
-        let dist = ((mu - actv) .* (mu - actv) .* var2 + scale)
-        let ratio = Functional.exp(distOldv - dist)
         let advantagesv = graph.constant(advantages.toGPU(0))
-        let surr1 = advantagesv .* ratio
-        let surr2 = advantagesv .* ratio.clamped((1.0 - eps_clip)...(1.0 + eps_clip))
-        let clip_loss =
-          ent_coef * scale.reduced(.sum, axis: [0])
-          + Functional.min(surr1, surr2).reduced(.sum, axis: [1])
+        let clip_loss = PPO.ClipLoss(epsilon: eps_clip, entropyCoefficient: ent_coef)(
+          mu, oldAction: actv, oldDistribution: distOldv, advantages: advantagesv, scale: scale)
         let cpu_clip_loss = clip_loss.toCPU()
         var totalLoss: Float = 0
         for i in 0..<batch_size {

@@ -167,4 +167,27 @@ extension PPO {
     return df
   }
 
+  public struct ClipLoss {
+    public var epsilon: Float
+    public var entropyCoefficient: Float
+    public init(epsilon: Float, entropyCoefficient: Float) {
+      self.epsilon = epsilon
+      self.entropyCoefficient = entropyCoefficient
+    }
+    public func callAsFunction<T: DynamicGraph.TensorGroup>(
+      _ mu: T, oldAction: T, oldDistribution: T, advantages: T, scale: T
+    ) -> T {
+      let expScale = Functional.exp(scale)
+      let var2 = 1 / (2 * (expScale .* expScale))
+      let dist = ((mu - oldAction) .* (mu - oldAction) .* var2 + scale)
+      let ratio = Functional.exp(oldDistribution - dist)
+      let surr1 = advantages .* ratio
+      let surr2 = advantages .* ratio.clamped((1.0 - epsilon)...(1.0 + epsilon))
+      let clipLoss =
+        entropyCoefficient * scale.reduced(.sum, axis: [0])
+        + Functional.min(surr1, surr2).reduced(.sum, axis: [1])
+      return clipLoss
+    }
+  }
+
 }
