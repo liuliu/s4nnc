@@ -14,7 +14,7 @@ extension Tensor {
     // MjArray is one dimension. Treat this as a C dimension.
     self.init(
       .CPU, format: .NCHW, dimensions: [mjArray.count], unsafeMutablePointer: mjArray + 0,
-      bindLifetimeWith: mjArray)
+      bindLifetimeOf: mjArray)
   }
 }
 

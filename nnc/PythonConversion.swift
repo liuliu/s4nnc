@@ -51,7 +51,7 @@ extension Tensor where Element: NumpyScalarCompatible {
     }
     self.init(
       .CPU, format: .NCHW, dimensions: shape, unsafeMutablePointer: pointer,
-      bindLifetimeWith: numpyArray)
+      bindLifetimeOf: numpyArray)
   }
 }
 

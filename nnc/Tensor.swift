@@ -617,13 +617,13 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
 
   public init(
     _ kind: DeviceKind, format: TensorFormat, dimensions: [Int],
-    unsafeMutablePointer: UnsafeMutablePointer<Element>, bindLifetimeWith: Any
+    unsafeMutablePointer: UnsafeMutablePointer<Element>, bindLifetimeOf: Any
   ) {
     let cTensor = ccv_nnc_tensor_new(
       unsafeMutablePointer,
       toCTensorParams(kind, dataType: Element.dataType, format: format, dimensions: dimensions),
       0)!
-    self.init(AnyTensorStorage(cTensor, original: bindLifetimeWith))
+    self.init(AnyTensorStorage(cTensor, original: bindLifetimeOf))
   }
 
   @inlinable
