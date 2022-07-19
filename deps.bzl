@@ -29,3 +29,21 @@ def s4nnc_deps():
         shallow_since = "1642703957 -0500",
         build_file = "@s4nnc//:external/PythonKit.BUILD",
     )
+
+    _maybe(
+        new_git_repository,
+        name = "SwiftNumerics",
+        remote = "https://github.com/apple/swift-numerics.git",
+        commit = "4a2cbc186b1f8cbbc1ace12cef43d65784b2559e",
+        shallow_since = "1605460976 -0500",
+        build_file = "@s4nnc//:external/swift-numerics.BUILD",
+    )
+
+    _maybe(
+        new_git_repository,
+        name = "SwiftAlgorithms",
+        remote = "https://github.com/apple/swift-algorithms.git",
+        commit = "195e0316d7ba71e134d0f6c677f64b4db6160c46",
+        shallow_since = "1645643239 -0600",
+        build_file = "@s4nnc//:external/swift-algorithms.BUILD",
+    )
