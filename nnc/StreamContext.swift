@@ -41,6 +41,13 @@ public final class StreamContext {
       }, Unmanaged.passRetained(closure as AnyObject).toOpaque())
   }
 
+  /**
+   * Set seed for this particular stream context. If not set, it inherits from the global context.
+   */
+  public func setSeed(_ seed: UInt32) {
+    ccv_nnc_stream_context_set_seed(_stream, seed)
+  }
+
   deinit {
     ccv_nnc_stream_context_free(_stream)
   }

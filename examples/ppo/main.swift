@@ -53,7 +53,9 @@ for i in 0..<training_num {
   let _ = env.reset(seed: i)
   envs.append(env)
 }
+DynamicGraph.setSeed(0)
 var testEnv = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
+testEnv.reset(seed: 180)
 let viewer = MuJoCoViewer(env: envs[0])
 var episodes = 0
 

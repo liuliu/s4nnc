@@ -249,6 +249,13 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /// Set the seed for global context.
+  public static func setSeed(_ seed: UInt32) {
+    ccv_nnc_stream_context_set_seed(nil, seed)
+  }
+}
+
+extension DynamicGraph {
   /// Statistics about the graph.
   public struct Statistics {
     /// How many variables (including constants) in this graph.
