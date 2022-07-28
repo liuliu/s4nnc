@@ -28,7 +28,7 @@ ccv_setting(
     have_fftw3 = True,
     have_gsl = True,
     have_libjpeg = True,
-    have_liblinear = True,
+    have_liblinear = False,
     have_libpng = True,
     have_nccl = True,
     have_pthread = True,
