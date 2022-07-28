@@ -1,3 +1,4 @@
+import Foundation
 import MuJoCo
 import NNC
 import NNCMuJoCoConversion
@@ -20,7 +21,11 @@ public final class Ant: MuJoCoEnv {
     ctrlCostWeight: Double = 0.5, healthyReward: Double = 0.1, terminateWhenUnhealthy: Bool = true,
     healthyZRange: ClosedRange<Double> = 0.2...1.0, resetNoiseScale: Double = 0.1
   ) throws {
-    model = try MjModel(fromXMLPath: "gym/assets/ant.xml")
+    if let runfilesDir = ProcessInfo.processInfo.environment["RUNFILES_DIR"] {
+      model = try MjModel(fromXMLPath: runfilesDir + "/s4nnc/gym/assets/ant.xml")
+    } else {
+      model = try MjModel(fromXMLPath: "gym/assets/ant.xml")
+    }
     data = model.makeData()
     initData = data.copied(model: model)
     var g = SystemRandomNumberGenerator()
