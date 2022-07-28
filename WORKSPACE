@@ -54,14 +54,21 @@ swift_rules_extra_dependencies()
 
 git_repository(
     name = "swift-mujoco",
-    commit = "fe615f68a01331b0a2d6334047b2fe707bed2b5f",
+    commit = "3c0a4496bd3b984fb5ddceebc8f8def7c698bd2f",
     remote = "https://github.com/liuliu/swift-mujoco.git",
-    shallow_since = "1657138723 -0400"
+    shallow_since = "1658628786 -0400"
 )
 
 load("@swift-mujoco//:deps.bzl", "swift_mujoco_deps")
 
 swift_mujoco_deps()
+
+git_repository(
+    name = "swift-jupyter",
+    commit = "22bdd9758c9070a1de38c8538b34b4cc9ec559c0",
+    remote = "https://github.com/liuliu/swift-jupyter.git",
+    shallow_since = "1659044971 -0400",
+)
 
 new_git_repository(
     name = "PythonKit",
@@ -69,6 +76,22 @@ new_git_repository(
     commit = "99a298f0413b0ac278ac58b7ac9045da920c347d",
     remote = "https://github.com/liuliu/PythonKit.git",
     shallow_since = "1642703957 -0500",
+)
+
+new_git_repository(
+    name = "swift-atomics",
+    build_file = "swift-atomics.BUILD",
+    commit = "088df27f0683f2b458021ebf04873174b91ae597",
+    remote = "https://github.com/apple/swift-atomics.git",
+    shallow_since = "1649274362 -0700",
+)
+
+new_git_repository(
+    name = "SwiftNIO",
+    build_file = "swift-nio.BUILD",
+    commit = "48916a49afedec69275b70893c773261fdd2cfde",
+    remote = "https://github.com/apple/swift-nio.git",
+    shallow_since = "1657195654 +0100",
 )
 
 new_git_repository(
