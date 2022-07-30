@@ -67,6 +67,7 @@ swift_binary(
         "//gym",
         "//nnc",
         "//nnc:nnc_python",
+        "//tensorboard",
         "@PythonKit",
         "@SwiftAlgorithms//:Algorithms",
         "@SwiftNumerics//:Numerics",

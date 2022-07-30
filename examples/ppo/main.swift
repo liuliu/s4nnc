@@ -4,6 +4,7 @@ import Gym
 import NNC
 import NNCPythonConversion
 import Numerics
+import TensorBoard
 
 let input_dim = 27
 let output_dim = 8
@@ -32,6 +33,7 @@ func NetC() -> Model {
 
 let graph = DynamicGraph()
 var sfmt = SFMT(seed: 10)
+let summary = SummaryWriter(logDirectory: "/tmp/ppo")
 
 let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
@@ -195,6 +197,9 @@ for epoch in 0..<max_epoch {
     print(
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std))"
     )
+    summary.addScalar("critic_loss", criticLoss, step: epoch)
+    summary.addScalar("actor_loss", actorLoss, step: epoch)
+    summary.addScalar("avg_reward", stats.episodeReward.mean, step: epoch)
   }
   // Running test and print how many steps we can perform in an episode before it fails.
   let (obs, _) = testEnv.reset()

@@ -1,0 +1,12 @@
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+
+swift_library(
+    name = "tensorboard",
+    srcs = glob(["**/*.swift"]),
+    module_name = "TensorBoard",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@SwiftProtobuf",
+        "@SwiftSystem//:SystemPackage",
+    ],
+)
