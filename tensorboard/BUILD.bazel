@@ -9,5 +9,6 @@ swift_library(
         "//nnc",
         "@SwiftProtobuf",
         "@SwiftSystem//:SystemPackage",
+        "@ccv//lib:ccv",
     ],
 )

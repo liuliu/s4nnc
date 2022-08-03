@@ -1,3 +1,4 @@
+import C_ccv
 import C_nnc
 import Foundation
 import NNC
@@ -75,5 +76,117 @@ extension SummaryWriter {
     } catch {
       fatalError("Could not add \(event) to log: \(error)")
     }
+  }
+
+  /// Add tensor for tensorboard histograms dashboard.
+  public func addHistogram(
+    _ tag: String, _ value: DynamicGraph.Tensor<Float>, step: Int,
+    wallTime: Double = Date().timeIntervalSince1970, displayName: String? = nil,
+    description: String? = nil
+  ) {
+    addHistogram(
+      tag, value.rawValue, step: step, wallTime: wallTime, displayName: displayName,
+      description: description)
+  }
+}
+
+extension SummaryWriter {
+  /// Add tensor for tensorboard images dashboard.
+  public func addImage(
+    _ tag: String, _ value: Tensor<Float>, step: Int,
+    wallTime: Double = Date().timeIntervalSince1970, displayName: String? = nil,
+    description: String? = nil
+  ) {
+    var summaryMetadata = Tensorboard_SummaryMetadata()
+    summaryMetadata.displayName = displayName ?? tag
+    summaryMetadata.summaryDescription = description ?? ""
+
+    var image = Tensorboard_Summary.Image()
+    let vTensor = value.kind == .CPU ? value : value.toCPU()  // Move to CPU if needed.
+    let dimensions = vTensor.dimensions
+    let width: Int
+    let height: Int
+    let channel: Int
+    switch dimensions.count {
+    case 1:
+      width = dimensions[0]
+      height = 1
+      channel = 1
+    case 2:
+      height = dimensions[0]
+      width = dimensions[1]
+      channel = 1
+    case 3...:
+      switch vTensor.format {
+      case .NHWC:
+        height = dimensions[dimensions.count - 3]
+        width = dimensions[dimensions.count - 2]
+        channel = dimensions[dimensions.count - 1]
+        break
+      case .NCHW:
+        channel = dimensions[dimensions.count - 3]
+        height = dimensions[dimensions.count - 2]
+        width = dimensions[dimensions.count - 1]
+        break
+      default:
+        fatalError("Unsupported tensor \(vTensor)")
+      }
+    default:
+      fatalError("Unsupported dimension of tensor \(vTensor)")
+    }
+    precondition(channel <= 4)
+    image.width = Int32(width)
+    image.height = Int32(height)
+    var fTensor: Tensor<Float> = Tensor(.CPU, format: .NHWC, dimensions: [height, width, channel])
+    if vTensor.format == .NCHW {  // Need to convert to .NHWC format.
+      fTensor[...] = vTensor.reshaped(.CHW(channel, height, width))
+    } else {
+      fTensor[...] = vTensor.reshaped(.HWC(height, width, channel))
+    }
+    var output: UnsafeMutableRawPointer? = nil
+    withExtendedLifetime(fTensor) {
+      let input: UnsafeMutablePointer<ccv_dense_matrix_t> = UnsafeMutableRawPointer(fTensor.cTensor)
+        .assumingMemoryBound(to: ccv_dense_matrix_t.self)
+      ccv_scale(input, &output, Int32(CCV_8U), 255)  // Scale to 255 range.
+    }
+    image.colorspace = Int32(channel)
+    if let output = output {
+      let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: width * height * channel)
+      var count = width * height * channel
+      ccv_write(
+        output.assumingMemoryBound(to: ccv_dense_matrix_t.self), buffer, &count,
+        Int32(CCV_IO_PNG_STREAM), nil)
+      ccv_matrix_free(output)
+      image.encodedImageString = Data(bytesNoCopy: buffer, count: count, deallocator: .free)
+    }
+
+    var summaryValue = Tensorboard_Summary.Value()
+    summaryValue.tag = tag
+    summaryValue.image = image
+    summaryValue.metadata = summaryMetadata
+
+    var summary = Tensorboard_Summary()
+    summary.value = [summaryValue]
+
+    var event = Tensorboard_Event()
+    event.summary = summary
+    event.wallTime = wallTime
+    event.step = Int64(step)
+    do {
+      try eventLogger.add(event)
+    } catch {
+      fatalError("Could not add \(event) to log: \(error)")
+    }
+  }
+
+  /// Add tensor for tensorboard images dashboard.
+  public func addImage(
+    _ tag: String, _ value: DynamicGraph.Tensor<Float>, step: Int,
+    wallTime: Double = Date().timeIntervalSince1970, displayName: String? = nil,
+    description: String? = nil
+  ) {
+    addImage(
+      tag, value.rawValue, step: step, wallTime: wallTime, displayName: displayName,
+      description: description)
   }
 }
