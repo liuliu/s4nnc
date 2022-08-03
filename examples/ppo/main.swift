@@ -204,6 +204,7 @@ for epoch in 0..<max_epoch {
   // Running test and print how many steps we can perform in an episode before it fails.
   let (obs, _) = testEnv.reset()
   var last_obs = Tensor<Float>(from: obs)
+  summary.addHistogram("init_obs", last_obs, step: epoch)
   var testing_rewards = [Float]()
   for _ in 0..<testing_num {
     var rewards: Float = 0

@@ -4,17 +4,19 @@ import Foundation
 /// summaries include scalars for logging statistics, graphs for visualizing model etc.
 public struct SummaryWriter {
   /// Logger for writing the summaries as protobuf events to the file.
-  private let eventLogger: EventLogger
+  let eventLogger: EventLogger
 
   /// Creates an instance with log located at `logDirectory`.
   public init(logDirectory: String) {
     eventLogger = try! EventLogger(logDirectory: logDirectory)
   }
 
-  public func close() {
-    eventLogger.close()
+  public func close() throws {
+    try eventLogger.close()
   }
+}
 
+extension SummaryWriter {
   /// Add training and validation statistics for tensorboard scalars dashboard.
   public func addScalar(
     _ tag: String, _ value: Float, step: Int,

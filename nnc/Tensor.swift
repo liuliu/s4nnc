@@ -1,11 +1,11 @@
 import C_nnc
 
-final class CmdParamsFactory {
-  static let factory = CmdParamsFactory()
+public final class CmdParamsFactory {
+  public static let factory = CmdParamsFactory()
   init() {
     ccv_nnc_init()
   }
-  func newParams() -> ccv_nnc_cmd_param_t {
+  public func newParams() -> ccv_nnc_cmd_param_t {
     return ccv_nnc_cmd_param_t()
   }
   func sink() {

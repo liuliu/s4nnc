@@ -7,13 +7,14 @@ GIT_ROOT=$(git rev-parse --show-toplevel)
 cd $GIT_ROOT
 
 # Generate symbol graph
-bazel build gym:gym nnc:nnc nnc:nnc_python nnc:nnc_mujoco --features=swift.emit_symbol_graph
+bazel build tensorboard:tensorboard gym:gym nnc:nnc nnc:nnc_python nnc:nnc_mujoco --features=swift.emit_symbol_graph
 # Copy it into a valid bundle
 mkdir -p s4nnc.docc
 cp bazel-bin/nnc/nnc.symbolgraph/*.json s4nnc.docc/
 cp bazel-bin/nnc/nnc_python.symbolgraph/*.json s4nnc.docc/
 cp bazel-bin/nnc/nnc_mujoco.symbolgraph/*.json s4nnc.docc/
 cp bazel-bin/gym/gym.symbolgraph/*.json s4nnc.docc/
+cp bazel-bin/tensorboard/tensorboard.symbolgraph/*.json s4nnc.docc/
 # Remove all docs
 rm -rf docs
 # Convert into static hosting document

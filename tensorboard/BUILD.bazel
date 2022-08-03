@@ -6,6 +6,7 @@ swift_library(
     module_name = "TensorBoard",
     visibility = ["//visibility:public"],
     deps = [
+        "//nnc",
         "@SwiftProtobuf",
         "@SwiftSystem//:SystemPackage",
     ],
