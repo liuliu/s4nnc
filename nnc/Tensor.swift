@@ -17,8 +17,7 @@ public enum DeviceKind {
   case CPU
   case GPU(Int)
 
-  @usableFromInline
-  static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DeviceKind {
+  public static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DeviceKind {
     let type = Int(cTensorParams.type)
     if (type & CCV_TENSOR_CPU_MEMORY) == CCV_TENSOR_CPU_MEMORY {
       return .CPU
@@ -59,8 +58,7 @@ public enum TensorFormat {
   case NCHW
   case CHWN
 
-  @usableFromInline
-  static func from(cTensorParams: ccv_nnc_tensor_param_t) -> TensorFormat {
+  public static func from(cTensorParams: ccv_nnc_tensor_param_t) -> TensorFormat {
     switch Int(cTensorParams.format) {
     case CCV_TENSOR_FORMAT_NCHW:
       return .NCHW
@@ -167,8 +165,7 @@ public enum DataType {
   case Float16
   case UInt8
 
-  @usableFromInline
-  static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DataType {
+  public static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DataType {
     switch Int(cTensorParams.datatype) {
     case CCV_64F:
       return .Float64
@@ -1274,7 +1271,7 @@ func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
 }
 
 @inlinable
-func fromCDimensions(
+public func fromCDimensions(
   _ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
 ) -> [Int] {
   if dim.0 == 0 {
