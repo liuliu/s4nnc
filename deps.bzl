@@ -17,8 +17,8 @@ def s4nnc_deps():
         git_repository,
         name = "ccv",
         remote = "https://github.com/liuliu/ccv.git",
-        commit = "3a8e7d88b00dbff227c17e53922e1cd17af8009d",
-        shallow_since = "1659474548 -0400",
+        commit = "54a8e5e6d91aadc41db21b1bb04fcb190df6e8ef",
+        shallow_since = "1659580411 -0400",
     )
 
     _maybe(
@@ -54,7 +54,7 @@ def s4nnc_extra_deps():
     _maybe(
         new_git_repository,
         name = "SwiftSystem",
-        build_file = "swift-system.BUILD",
+        build_file = "@s4nnc//:external/swift-system.BUILD",
         commit = "836bc4557b74fe6d2660218d56e3ce96aff76574",
         remote = "https://github.com/apple/swift-system.git",
         shallow_since = "1638472952 -0800",
@@ -63,7 +63,7 @@ def s4nnc_extra_deps():
     _maybe(
         new_git_repository,
         name = "SwiftProtobuf",
-        build_file = "swift-protobuf.BUILD",
+        build_file = "@s4nnc//:external/swift-protobuf.BUILD",
         commit = "7cbb5279dd7e997c8f0f5537e46d4513be894ff1",
         remote = "https://github.com/apple/swift-protobuf.git",
         shallow_since = "1658527939 -0700",
@@ -80,7 +80,7 @@ def s4nnc_extra_deps():
     _maybe(
         new_git_repository,
         name = "swift-atomics",
-        build_file = "swift-atomics.BUILD",
+        build_file = "@s4nnc//:external/swift-atomics.BUILD",
         commit = "088df27f0683f2b458021ebf04873174b91ae597",
         remote = "https://github.com/apple/swift-atomics.git",
         shallow_since = "1649274362 -0700",
@@ -89,7 +89,7 @@ def s4nnc_extra_deps():
     _maybe(
         new_git_repository,
         name = "SwiftNIO",
-        build_file = "swift-nio.BUILD",
+        build_file = "@s4nnc//:external/swift-nio.BUILD",
         commit = "48916a49afedec69275b70893c773261fdd2cfde",
         remote = "https://github.com/apple/swift-nio.git",
         shallow_since = "1657195654 +0100",

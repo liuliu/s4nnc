@@ -64,7 +64,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     for (i, variable) in outputs.enumerated() {
       (_outputs + i).initialize(to: variable._tensor)
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, hint, 0, _inputs, Int32(_inputs.count), _outputs, outputSize, 0, _streamContext)
@@ -90,7 +90,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     for (i, variable) in outputs.enumerated() {
       (_outputs + i).initialize(to: variable.untyped[0]._tensor)
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, hint, 0, _inputs, Int32(_inputs.count), _outputs, Int32(outputs.count), 0,
@@ -131,7 +131,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
       assert(variable.graph === graph)
       (_outputs + i).initialize(to: variable._tensor)
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_evaluate(
       _graph, model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs, outputSize, nil,
@@ -192,7 +192,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
         (_outputs + j * Int(outputSize) + i).initialize(to: tensor._tensor)
       }
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, hint, 0, _inputs, Int32(inputSize * parallel), _outputs,
@@ -230,7 +230,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
         (_outputs + j * outputSize + i).initialize(to: tensor._tensor)
       }
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, hint, 0, _inputs, Int32(inputSize * parallel), _outputs,
@@ -285,7 +285,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
         (_outputs + j * Int(outputSize) + i).initialize(to: tensor._tensor)
       }
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_evaluate(
       _graph, model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs,
@@ -357,10 +357,10 @@ extension Model {
   fileprivate func callAsFunction<T: DynamicGraph.AnyTensorGroup>(
     _: T.Type, _ inputs: [DynamicGraph_Any], streamContext: StreamContext? = nil
   ) -> [T.AnyTensor] {
-    let outputSize = ccv_cnnp_model_output_size(_model)
+    let outputSize = ccv_cnnp_model_output_size(cModel)
     graph = inputs.first?.graph
     return T.evaluate(
-      model: _model, isTest: isTest, dataParallel: &dataParallel, inputs: inputs,
+      model: cModel, isTest: isTest, dataParallel: &dataParallel, inputs: inputs,
       outputSize: outputSize, streamContext: streamContext)
   }
   public func callAsFunction<T: DynamicGraph.AnyTensorGroup>(
@@ -387,7 +387,7 @@ extension AnyModelBuilder {
     let outputSize = self.outputSize
     model!.graph = inputs.first?.graph
     let outputs = U.evaluate(
-      model: model!._model, isTest: isTest, dataParallel: &model!.dataParallel, inputs: inputs,
+      model: model!.cModel, isTest: isTest, dataParallel: &model!.dataParallel, inputs: inputs,
       outputSize: Int32(outputSize), streamContext: streamContext)
     self.inputs = nil
     return outputs

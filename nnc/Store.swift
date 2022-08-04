@@ -49,7 +49,7 @@ extension DynamicGraph {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
         assert(tensor.graph === graph)
-        let _graph = graph._graph
+        let _graph = graph.cGraph
         let _tensor = tensor._tensor
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)
         if raw != nil {
@@ -91,7 +91,7 @@ extension DynamicGraph {
      *   - model: The model to be initialized with parameters from a given key.
      */
     public func read(_ key: String, model: Model) {
-      ccv_cnnp_model_read(store.sqlite, key, model._model)
+      ccv_cnnp_model_read(store.sqlite, key, model.cModel)
     }
     /**
      * Read parameters into a given model builder.
@@ -125,7 +125,7 @@ extension DynamicGraph {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
         assert(tensor.graph === graph)
-        let _graph = graph._graph
+        let _graph = graph.cGraph
         let _tensor = tensor._tensor
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
         ccv_nnc_tensor_write(raw, store.sqlite, key)
@@ -145,7 +145,7 @@ extension DynamicGraph {
      *   - model: The model where its parameters to be persisted.
      */
     public func write(_ key: String, model: Model) {
-      ccv_cnnp_model_write(model._model, store.sqlite, key)
+      ccv_cnnp_model_write(model.cModel, store.sqlite, key)
     }
     /**
      * Write a model builder to the store.

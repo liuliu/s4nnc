@@ -20,7 +20,7 @@ extension Model.Parameters {
     while let owner = toModel.owner {
       toModel = owner
     }
-    ccv_cnnp_model_set_parameters(toModel._model, _io, fromModel._model, parameters._io)
+    ccv_cnnp_model_set_parameters(toModel.cModel, _io, fromModel.cModel, parameters._io)
   }
 
   /**
@@ -35,7 +35,7 @@ extension Model.Parameters {
     while let owner = toModel.owner {
       toModel = owner
     }
-    ccv_cnnp_model_set_parameter(toModel._model, _io, tensor.cTensor)
+    ccv_cnnp_model_set_parameter(toModel.cModel, _io, tensor.cTensor)
   }
 
   /**
@@ -59,7 +59,7 @@ extension Model.Parameters {
     while let owner = toModel.owner {
       toModel = owner
     }
-    ccv_cnnp_model_parameter_copy(toModel._model, _io, tensor.cTensor)
+    ccv_cnnp_model_parameter_copy(toModel.cModel, _io, tensor.cTensor)
   }
 
   /**
@@ -75,9 +75,9 @@ extension Model.Parameters {
     while let owner = toModel.owner {
       toModel = owner
     }
-    let params = ccv_cnnp_model_parameter_tensor_params(toModel._model, _io)
+    let params = ccv_cnnp_model_parameter_tensor_params(toModel.cModel, _io)
     let output = ccv_nnc_tensor_new(nil, params, 0)
-    ccv_cnnp_model_parameter_copy(toModel._model, _io, output)
+    ccv_cnnp_model_parameter_copy(toModel.cModel, _io, output)
     return AnyTensorStorage(output!).toTensor(Tensor<Element>.self)
   }
 
@@ -125,8 +125,8 @@ extension Model.Parameters {
     let graph = toModel.graph
     let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_zip_map(
-      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, 0, nil, 0, _streamContext,
-      fromModel._model, parameters._io
+      toModel.cModel, _io, cmd, ccv_nnc_no_hint, 0, nil, 0, nil, 0, _streamContext,
+      fromModel.cModel, parameters._io
     )
   }
 }
@@ -150,7 +150,7 @@ extension Model.Parameters {
     let graph = toModel.graph
     let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_map(
-      toModel._model, _io, cmd, ccv_nnc_no_hint, 0, nil, 0, nil, 0, _streamContext)
+      toModel.cModel, _io, cmd, ccv_nnc_no_hint, 0, nil, 0, nil, 0, _streamContext)
   }
 
   /**
@@ -194,6 +194,6 @@ extension Model.Parameters {
     let graph = toModel.graph
     let _streamContext = (streamContext ?? graph?.streamContext)?._stream
     ccv_cnnp_model_parameters_clip_grad_norm(
-      toModel._model, _io, normType.rawValue, maxNorm, _streamContext)
+      toModel.cModel, _io, normType.rawValue, maxNorm, _streamContext)
   }
 }

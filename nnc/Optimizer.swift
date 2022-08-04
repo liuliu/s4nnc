@@ -61,7 +61,7 @@ fileprivate func _step(
       (_savedAux + j * savedAuxSize + i).initialize(to: variable._tensor)
     }
   }
-  let _graph = graph._graph
+  let _graph = graph.cGraph
   let _streamContext = (streamContext ?? graph.streamContext)?._stream
   ccv_nnc_dynamic_graph_apply_gradients(
     _graph, minimizer, _gradients, Int32(parameterSize * parallel), _parameters,
@@ -99,13 +99,13 @@ func optimizerStep(
   for parameter in primaryModelParameters {
     let model = parameter.model!
     models.remove(HashableModel(model: model))
-    ccv_cnnp_model_set_minimizer(model._model, minimizer, 1, nil, 0)
+    ccv_cnnp_model_set_minimizer(model.cModel, minimizer, 1, nil, 0)
   }
   // Reset other models to use noop.
   let params = CmdParamsFactory.factory.newParams()
   let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
   for key in models {
-    ccv_cnnp_model_set_minimizer(key.model._model, noop, 1, nil, 0)
+    ccv_cnnp_model_set_minimizer(key.model.cModel, noop, 1, nil, 0)
   }
   // Set minimizers on other models.
   var modelParametersMap = [HashableModel: [Model.Parameters]]()
@@ -118,12 +118,12 @@ func optimizerStep(
   for (key, parameters) in modelParametersMap {
     let _parameters: [ccv_cnnp_model_io_t?] = parameters.map { $0._io }
     ccv_cnnp_model_set_minimizer(
-      key.model._model, minimizer, 0, _parameters, Int32(_parameters.count))
+      key.model.cModel, minimizer, 0, _parameters, Int32(_parameters.count))
   }
   let tensorParameters = parameters.compactMap { $0 as? DynamicGraph_Any }
   assert(modelParameters.count + tensorParameters.count == parameters.count)
   guard tensorParameters.count > 0 else {
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_apply_gradients(_graph, minimizer, nil, 0, nil, 0, nil, 0, _streamContext)
     return
@@ -194,14 +194,14 @@ extension Collection where Element: Optimizer {
       for parameter in modelParameters {
         let model = parameter.model!
         models.remove(HashableModel(model: model))
-        ccv_cnnp_model_set_minimizer(model._model, minimizer, 1, nil, 0)
+        ccv_cnnp_model_set_minimizer(model.cModel, minimizer, 1, nil, 0)
       }
     }
     // Reset other models to use noop.
     let params = CmdParamsFactory.factory.newParams()
     let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
     for key in models {
-      ccv_cnnp_model_set_minimizer(key.model._model, noop, 1, nil, 0)
+      ccv_cnnp_model_set_minimizer(key.model.cModel, noop, 1, nil, 0)
     }
     for (minimizer, modelParameters) in secondaries {
       var modelParametersMap = [HashableModel: [Model.Parameters]]()
@@ -213,7 +213,7 @@ extension Collection where Element: Optimizer {
       for (key, parameters) in modelParametersMap {
         let _parameters: [ccv_cnnp_model_io_t?] = parameters.map { $0._io }
         ccv_cnnp_model_set_minimizer(
-          key.model._model, minimizer, 0, _parameters, Int32(_parameters.count))
+          key.model.cModel, minimizer, 0, _parameters, Int32(_parameters.count))
       }
     }
     // All done! Now run through optimizer!

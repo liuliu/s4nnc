@@ -21,7 +21,7 @@ public final class DynamicGraph {
     }
 
     deinit {
-      ccv_nnc_tensor_variable_free(graph._graph, _tensor)
+      ccv_nnc_tensor_variable_free(graph.cGraph, _tensor)
     }
 
     var requiresGrad: Bool
@@ -77,25 +77,25 @@ public final class DynamicGraph {
     }
 
     public var dimensions: [Int] {
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
       return fromCDimensions(info.dim)
     }
 
     public var kind: DeviceKind {
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
       return DeviceKind.from(cTensorParams: info)
     }
 
     public var format: TensorFormat {
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
       return TensorFormat.from(cTensorParams: info)
     }
 
     public var increments: [Int] {
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let _streamContext = graph.streamContext?._stream
       let cTensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
       return fromCTensorIncrements(cTensor)
@@ -106,7 +106,7 @@ public final class DynamicGraph {
      * for a constant tensor.
      */
     public var isConstant: Bool {
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       return ccv_nnc_tensor_variable_is_constant(_graph, _tensor) == 1
     }
   }
@@ -125,7 +125,7 @@ public final class DynamicGraph {
       if let rawValue = _rawValue {
         return NNC.Tensor<Element>(rawValue)
       }
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let _streamContext = graph.streamContext?._stream
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
       let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
@@ -139,7 +139,7 @@ public final class DynamicGraph {
         if let rawValue = _rawValue {
           return rawValue[indices, Element.self]
         }
-        let _graph = graph._graph
+        let _graph = graph.cGraph
         let _streamContext = graph.streamContext?._stream
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
         let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
@@ -150,7 +150,7 @@ public final class DynamicGraph {
         if let rawValue = _rawValue {
           rawValue[indices, Element.self] = v
         }
-        let _graph = graph._graph
+        let _graph = graph.cGraph
         let _streamContext = graph.streamContext?._stream
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
         let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
@@ -160,7 +160,7 @@ public final class DynamicGraph {
     }
   }
 
-  let _graph: OpaquePointer
+  public let cGraph: OpaquePointer
   var streamContext: StreamContext? = nil
 
   struct WeakAnyTensor {
@@ -170,11 +170,11 @@ public final class DynamicGraph {
 
   public init() {
     CmdParamsFactory.factory.sink()
-    _graph = ccv_nnc_dynamic_graph_new()
+    cGraph = ccv_nnc_dynamic_graph_new()
   }
 
   deinit {
-    ccv_nnc_dynamic_graph_free(_graph)
+    ccv_nnc_dynamic_graph_free(cGraph)
   }
 }
 
@@ -194,7 +194,7 @@ extension DynamicGraph {
     let destinations: [ccv_nnc_tensor_variable_t?] = tensors.map { $0._tensor }
     bitmask.withUnsafeMutableBufferPointer { buffer in
       ccv_nnc_dynamic_graph_has_effect_to_tensor_variables(
-        _graph, sources, Int32(sources.count), destinations, Int32(destinations.count),
+        cGraph, sources, Int32(sources.count), destinations, Int32(destinations.count),
         buffer.baseAddress)
     }
     var gradients = [AnyTensor]()
@@ -268,9 +268,9 @@ extension DynamicGraph {
    * are still tracked. If you have memory leaks, this is useful to track down that.
    */
   public var statistics: Statistics {
-    let variables = ccv_nnc_dynamic_graph_bookkeeping_count(_graph, Int32(CCV_NNC_SYMBOL_TENSOR))
+    let variables = ccv_nnc_dynamic_graph_bookkeeping_count(cGraph, Int32(CCV_NNC_SYMBOL_TENSOR))
     let computations = ccv_nnc_dynamic_graph_bookkeeping_count(
-      _graph, Int32(CCV_NNC_SYMBOL_GRAPH_EXEC))
+      cGraph, Int32(CCV_NNC_SYMBOL_GRAPH_EXEC))
     return Statistics(variables: Int(variables), computations: Int(computations))
   }
 }
@@ -291,7 +291,7 @@ extension DynamicGraph.AnyTensor {
   public func reshaped(
     format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
   ) -> Self {
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     let device = DeviceKind.from(cTensorParams: cTensorParams)
     let dataType = DataType.from(cTensorParams: cTensorParams)
@@ -329,7 +329,7 @@ extension DynamicGraph.AnyTensor {
 
 extension DynamicGraph.AnyTensor: CustomStringConvertible {
   public var description: String {
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     if cTensorParams.datatype == 0 {
       return "DynamicGraph.AutoTensor"
@@ -351,7 +351,7 @@ extension DynamicGraph {
    * be used as output.
    */
   public func variable() -> AnyTensor {
-    let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
+    let _tensor = ccv_nnc_tensor_variable_new_impl(cGraph, ccv_nnc_tensor_auto)!
     let tensor = AnyTensor(graph: self, tensor: _tensor)
     return tensor
   }
@@ -361,7 +361,7 @@ extension DynamicGraph {
    * be used as output.
    */
   public func constant() -> AnyTensor {
-    let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
+    let _tensor = ccv_nnc_tensor_constant_new_impl(cGraph, ccv_nnc_tensor_auto)!
     return AnyTensor(graph: self, tensor: _tensor)
   }
 
@@ -372,11 +372,11 @@ extension DynamicGraph {
    * - Returns: Created new tensor variable.
    */
   public func variable<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
-    let _tensor = ccv_nnc_tensor_variable_new_impl(_graph, ccv_nnc_tensor_auto)!
-    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.cTensor)
+    let _tensor = ccv_nnc_tensor_variable_new_impl(cGraph, ccv_nnc_tensor_auto)!
+    ccv_nnc_tensor_variable_set(cGraph, _tensor, tensor.cTensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_destructor_hook(
-      _graph, _tensor,
+      cGraph, _tensor,
       { _, _, ctx in
         // No longer need to retain the tensor.
         Unmanaged<NNC.AnyTensorStorage>.fromOpaque(ctx!).release()
@@ -392,11 +392,11 @@ extension DynamicGraph {
    * - Returns: Created new tensor constant.
    */
   public func constant<Element: TensorNumeric>(_ tensor: NNC.Tensor<Element>) -> Tensor<Element> {
-    let _tensor = ccv_nnc_tensor_constant_new_impl(_graph, ccv_nnc_tensor_auto)!
-    ccv_nnc_tensor_variable_set(_graph, _tensor, tensor.cTensor)
+    let _tensor = ccv_nnc_tensor_constant_new_impl(cGraph, ccv_nnc_tensor_auto)!
+    ccv_nnc_tensor_variable_set(cGraph, _tensor, tensor.cTensor)
     // Retain the tensor until we freed the variable.
     ccv_nnc_tensor_variable_destructor_hook(
-      _graph, _tensor,
+      cGraph, _tensor,
       { _, _, ctx in
         // No longer need to retain the tensor.
         Unmanaged<NNC.AnyTensorStorage>.fromOpaque(ctx!).release()
@@ -438,7 +438,7 @@ extension DynamicGraph {
     _ device: DeviceKind, format: TensorFormat, dimensions: [Int], of: Element.Type = Element.self
   ) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(
-      _graph,
+      cGraph,
       toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
@@ -447,7 +447,7 @@ extension DynamicGraph {
     _ device: DeviceKind, format: TensorFormat, dimensions: [Int], of: Element.Type = Element.self
   ) -> Tensor<Element> {
     let tensor = ccv_nnc_tensor_constant_new_impl(
-      _graph,
+      cGraph,
       toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
     return Tensor<Element>(graph: self, tensor: tensor)
   }
@@ -509,9 +509,9 @@ extension DynamicGraph {
    * make more aggressive optimizations if the gradient tracking is off.
    */
   public func withNoGrad<Result>(_ closure: () throws -> Result) rethrows -> Result {
-    ccv_nnc_dynamic_graph_set_no_grad(_graph, 1)
+    ccv_nnc_dynamic_graph_set_no_grad(cGraph, 1)
     let result = try closure()
-    ccv_nnc_dynamic_graph_set_no_grad(_graph, 0)
+    ccv_nnc_dynamic_graph_set_no_grad(cGraph, 0)
     return result
   }
 }

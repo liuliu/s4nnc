@@ -343,7 +343,7 @@ extension DynamicGraph.Tensor {
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let _streamContext = (streamContext ?? graph.streamContext)?._stream
       var _input: ccv_nnc_tensor_variable_t? = v._tensor
       var _output: ccv_nnc_tensor_variable_t? = output._tensor
@@ -390,7 +390,7 @@ extension DynamicGraph.Tensor {
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let _streamContext = (streamContext ?? graph.streamContext)?._stream
       var _input: ccv_nnc_tensor_variable_t? = v._tensor
       var _output: ccv_nnc_tensor_variable_t? = output._tensor
@@ -606,7 +606,7 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let _streamContext = (streamContext ?? graph.streamContext)?._stream
       let _inputs: [ccv_nnc_tensor_variable_t?] = v.untyped.map { $0._tensor }
       let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
@@ -665,7 +665,7 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
-      let _graph = graph._graph
+      let _graph = graph.cGraph
       let _streamContext = (streamContext ?? graph.streamContext)?._stream
       let _inputs: [ccv_nnc_tensor_variable_t?] = v.untyped.map { $0._tensor }
       let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
@@ -884,7 +884,7 @@ extension DynamicGraph.Tensor {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (range.lowerBound, range.upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = _tensor
     ccv_nnc_dynamic_graph_exec(
@@ -903,7 +903,7 @@ extension DynamicGraph.Group {
     params.blas.a = (range.lowerBound, range.upperBound, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_UNIFORM_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = underlyingArray[0]._tensor
     ccv_nnc_dynamic_graph_exec(
@@ -929,7 +929,7 @@ extension DynamicGraph.Tensor {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (std, mean, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_NORMAL_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = _tensor
     ccv_nnc_dynamic_graph_exec(
@@ -948,7 +948,7 @@ extension DynamicGraph.Group {
     params.blas.a = (std, mean, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_RANDOM_NORMAL_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = underlyingArray[0]._tensor
     ccv_nnc_dynamic_graph_exec(
@@ -978,7 +978,7 @@ extension DynamicGraph.Tensor {
     let output: DynamicGraph.Tensor<Element> = graph.variable(
       .GPU(ordinal), format: rawInput.format, dimensions: rawInput.dimensions)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
@@ -995,7 +995,7 @@ extension DynamicGraph.Tensor {
     let output: DynamicGraph.Tensor<Element> = graph.variable(
       .CPU, format: rawInput.format, dimensions: rawInput.dimensions)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
@@ -1010,7 +1010,7 @@ extension DynamicGraph.Tensor {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (value, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SET_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _output: ccv_nnc_tensor_variable_t? = _tensor
     ccv_nnc_dynamic_graph_exec(
@@ -1027,7 +1027,7 @@ extension DynamicGraph.Group {
     params.blas.a = (value, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SET_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let outputSize = Int32(underlyingArray.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
@@ -1051,7 +1051,7 @@ extension DynamicGraph.Tensor {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = [_tensor, to._tensor]
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1073,7 +1073,7 @@ extension DynamicGraph.Group {
     params.blas.a = (1 - weight, weight, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_ADD_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = zip(underlyingArray, to.underlyingArray).flatMap {
       [$0.0._tensor, $0.1._tensor]
@@ -1101,7 +1101,7 @@ extension DynamicGraph.Tensor {
     params.clamp.min = min ?? Float.nan
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1137,7 +1137,7 @@ extension DynamicGraph.Group {
     params.clamp.max = max ?? Float.nan
     let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)
@@ -1171,7 +1171,7 @@ extension DynamicGraph.Group {
 extension DynamicGraph.Tensor {
   /// Detach current tensor from the graph. Afterwards, it is always "isConstant" and cannot requiresGrad.
   public func detach() {
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     ccv_nnc_tensor_variable_detach(_graph, _tensor)
     requiresGrad = false
   }
@@ -1181,7 +1181,7 @@ extension DynamicGraph.Group {
   /// Detach tensors in this group from the graph. Afterwards, it is always "isConstant" and cannot requiresGrad.
   public mutating func detach() {
     for variable in underlyingArray {
-      let _graph = variable.graph._graph
+      let _graph = variable.graph.cGraph
       ccv_nnc_tensor_variable_detach(_graph, variable._tensor)
     }
     requiresGrad = false
@@ -1317,7 +1317,7 @@ extension DynamicGraph.Tensor {
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (a, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALAR_MUL_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1336,7 +1336,7 @@ extension DynamicGraph.Group {
     params.blas.a = (a, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALAR_MUL_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)
@@ -1357,7 +1357,7 @@ extension DynamicGraph.Tensor {
   public func softmax(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1374,7 +1374,7 @@ extension DynamicGraph.Group {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SOFTMAX_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)
@@ -1395,7 +1395,7 @@ extension DynamicGraph.Tensor {
   public func ReLU(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_RELU_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1412,7 +1412,7 @@ extension DynamicGraph.Group {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_RELU_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)
@@ -1433,7 +1433,7 @@ extension DynamicGraph.Tensor {
   public func sigmoid(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SIGMOID_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1450,7 +1450,7 @@ extension DynamicGraph.Group {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SIGMOID_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)
@@ -1471,7 +1471,7 @@ extension DynamicGraph.Tensor {
   public func tanh(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1488,7 +1488,7 @@ extension DynamicGraph.Group {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)
@@ -1509,7 +1509,7 @@ extension DynamicGraph.Tensor {
   public func swish(streamContext: StreamContext?) {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     var _input: ccv_nnc_tensor_variable_t? = _tensor
     var _output: ccv_nnc_tensor_variable_t? = _tensor
@@ -1526,7 +1526,7 @@ extension DynamicGraph.Group {
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
     let outputSize = Int32(underlyingArray.count)

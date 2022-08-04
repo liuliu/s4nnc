@@ -190,3 +190,21 @@ extension SummaryWriter {
       description: description)
   }
 }
+
+extension SummaryWriter {
+  /// Add graph for tensorboard graphs dashboard.
+  public func addGraph(
+    _ tag: String, _ value: Model, step: Int,
+    wallTime: Double = Date().timeIntervalSince1970, displayName: String? = nil,
+    description: String? = nil
+  ) {
+  }
+
+  /// Add graph for tensorboard graphs dashboard.
+  public func addGraph(
+    _ tag: String, _ value: DynamicGraph, step: Int,
+    wallTime: Double = Date().timeIntervalSince1970, displayName: String? = nil,
+    description: String? = nil
+  ) {
+  }
+}

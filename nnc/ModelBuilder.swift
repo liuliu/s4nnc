@@ -32,7 +32,7 @@ public class AnyModelBuilder {
     // Compile explicitly.
     compileModel()
     // After the model compiled, we can access the outputSize now.
-    let outputSize = Int(ccv_cnnp_model_output_size(model!._model))
+    let outputSize = Int(ccv_cnnp_model_output_size(model!.cModel))
     _outputSize = outputSize
     return outputSize
   }
@@ -61,7 +61,7 @@ public class AnyModelBuilder {
   func read(_ key: String, from store: DynamicGraph._Store) {
     // If the model is compiled (signifies by _outputSize is set)
     if _outputSize != nil {
-      ccv_cnnp_model_read(store.sqlite, key, model!._model)
+      ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
       return
     }
     _store = store
@@ -78,16 +78,16 @@ public class AnyModelBuilder {
       // You cannot run a model previously parallel and then not.
       assert(dataParallel == parallel)
     } else if parallel > 1 {
-      ccv_cnnp_model_set_data_parallel(model!._model, Int32(parallel))
+      ccv_cnnp_model_set_data_parallel(model!.cModel, Int32(parallel))
     }
     let inputParams: [ccv_nnc_tensor_param_t] = inputs.map {
       let tensor = $0.untyped[0]
-      return ccv_nnc_tensor_variable_params(tensor.graph._graph, tensor._tensor)
+      return ccv_nnc_tensor_variable_params(tensor.graph.cGraph, tensor._tensor)
     }
-    ccv_cnnp_model_compile(model!._model, inputParams, Int32(inputParams.count), noop, noop)
+    ccv_cnnp_model_compile(model!.cModel, inputParams, Int32(inputParams.count), noop, noop)
     // If we have store / key, try to load parameters now after it is compiled.
     if let store = _store, let key = _key {
-      ccv_cnnp_model_read(store.sqlite, key, model!._model)
+      ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
       _store = nil
       _key = nil
     }

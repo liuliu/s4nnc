@@ -10,7 +10,7 @@ extension DynamicGraph.AnyTensor {
    */
   public func backward<S: Sequence>(to tensors: S, streamContext: StreamContext? = nil)
   where S.Element: DynamicGraph.AnyTensor {
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     var gradients = graph.gradients(for: [self])
     var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors {
@@ -75,7 +75,7 @@ extension DynamicGraph.Group {
         gradientsSet.insert(ObjectIdentifier(tensor))
       }
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     let _inputs: [ccv_nnc_tensor_variable_t?] = gradients.map { $0._tensor }
     let inputSize = Int32(_inputs.count)
     let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
@@ -124,7 +124,7 @@ extension Collection where Element: DynamicGraph.AnyTensor {
     for f in self {
       assert(f.graph === graph)
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     var gradients = graph.gradients(for: self)
     var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors {
@@ -181,7 +181,7 @@ extension Collection where Element: DynamicGraph.AnyGroup {
         assert(f.graph === graph)
       }
     }
-    let _graph = graph._graph
+    let _graph = graph.cGraph
     var gradients = graph.gradients(for: self.flatMap { $0.untyped })
     var gradientsSet = Set(gradients.map { ObjectIdentifier($0) })
     for tensor in tensors.flatMap({ $0.untyped }) {
