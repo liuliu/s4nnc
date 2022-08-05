@@ -197,6 +197,8 @@ for epoch in 0..<max_epoch {
     print(
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std))"
     )
+    summary.addGraph("actor", actor)
+    summary.addGraph("critic", critic)
     summary.addScalar("critic_loss", criticLoss, step: epoch)
     summary.addScalar("actor_loss", actorLoss, step: epoch)
     summary.addScalar("avg_reward", stats.episodeReward.mean, step: epoch)

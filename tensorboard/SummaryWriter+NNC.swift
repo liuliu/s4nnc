@@ -445,7 +445,7 @@ extension SummaryWriter {
 
   /// Add graph for tensorboard graphs dashboard.
   public func addGraph(
-    _ value: DynamicGraph,
+    _ tag: String, _ value: DynamicGraph,
     wallTime: Double = Date().timeIntervalSince1970
   ) {
     let graphDef = Graph()
@@ -457,7 +457,11 @@ extension SummaryWriter {
     event.graphDef = try! graphDef.proto.serializedData()
     event.wallTime = wallTime
     do {
+      let logDirectory =
+        self.logDirectory + "-graphs/\(tag.isEmpty ? Self.dateFormatter.string(from: Date()) : tag)"
+      let eventLogger = try EventLogger(logDirectory: logDirectory)
       try eventLogger.add(event)
+      try eventLogger.close()
     } catch {
       fatalError("Could not add \(event) to log: \(error)")
     }
@@ -465,7 +469,7 @@ extension SummaryWriter {
 
   /// Add graph for tensorboard graphs dashboard.
   public func addGraph(
-    _ value: Model,
+    _ tag: String, _ value: Model,
     wallTime: Double = Date().timeIntervalSince1970
   ) {
     let graphDef = Graph()
@@ -476,7 +480,11 @@ extension SummaryWriter {
     event.graphDef = try! graphDef.proto.serializedData()
     event.wallTime = wallTime
     do {
+      let logDirectory =
+        self.logDirectory + "-graphs/\(tag.isEmpty ? Self.dateFormatter.string(from: Date()) : tag)"
+      let eventLogger = try EventLogger(logDirectory: logDirectory)
       try eventLogger.add(event)
+      try eventLogger.close()
     } catch {
       fatalError("Could not add \(event) to log: \(error)")
     }

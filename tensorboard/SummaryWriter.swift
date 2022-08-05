@@ -12,11 +12,13 @@ public struct SummaryWriter {
     return dateFormatter
   }()
 
+  let logDirectory: String
+
   /// Creates an instance with log located at `logDirectory`.
   public init(logDirectory: String, comment: String = "") {
     // Properly construct the folder name. It should be runs/currentdatetimecomment/
-    let suffix = "/runs/\(Self.dateFormatter.string(from: Date()))\(comment)"
-    eventLogger = try! EventLogger(logDirectory: logDirectory + suffix)
+    self.logDirectory = logDirectory + "/runs/\(Self.dateFormatter.string(from: Date()))\(comment)"
+    eventLogger = try! EventLogger(logDirectory: self.logDirectory)
   }
 
   public func close() throws {
