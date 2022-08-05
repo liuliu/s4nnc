@@ -205,18 +205,24 @@ func formatGraph(
   let name = name.map { String(cString: $0) } ?? ""
   var node = SummaryWriter.Graph.Node(
     id: node, name: name, op: cmd.cmd, inputs: [],
-    outputs: outputs.map { Array(UnsafeBufferPointer(start: $0, count: Int(outputSize))) } ?? [])
+    outputs: outputs.map { Array(UnsafeBufferPointer(start: $0, count: Int(outputSize))) } ?? [],
+    kind: .CPU, grad: ccv_nnc_cmd_is_backward(cmd) != 0)
   // Create a map from nodes input to incomings. The mapping is more involved because it needs to
   // take into account alias.
+
   if let inputs = inputs, let incomings = incomings {
     for i in 0..<Int(inputSize) {
       guard inputs[i] >= 0 else { continue }
       var tensor = ccv_nnc_tensor_symbol_t(d: inputs[i], graph: graph)
       let cTensorParams = ccv_nnc_tensor_symbol_params(graph, tensor)  // There is no exposed method to get name at the moment.
       if ccv_nnc_is_tensor_auto(cTensorParams) == 0 {  // Now I can parse its shape.
+        let kind = DeviceKind.from(cTensorParams: cTensorParams)
         graphDef.tensors[tensor.d] = SummaryWriter.Graph.Tensor(
           id: tensor.d, dimensions: fromCDimensions(cTensorParams.dim),
-          dataType: .from(cTensorParams: cTensorParams), kind: .from(cTensorParams: cTensorParams))
+          dataType: .from(cTensorParams: cTensorParams), kind: kind)
+        if kind != .CPU {
+          node.kind = kind
+        }
       }
       let aliasTo = ccv_nnc_tensor_symbol_alias_to(graph, tensor)
       if aliasTo.d >= 0 {
@@ -264,11 +270,32 @@ extension SummaryWriter {
       var op: UInt32
       var inputs: [Input]
       var outputs: [Int32]
+      var kind: DeviceKind
+      var grad: Bool
       var opName: String {
         guard let cName = ccv_nnc_cmd_name(op) else { return "<unknown>" }
-        let name = String(cString: cName)
+        var name = String(cString: cName)
         if name.hasPrefix("CCV_NNC_") {
-          return String(name.suffix(from: name.index(name.startIndex, offsetBy: 8)))
+          let prefixRemoved = name.suffix(from: name.index(name.startIndex, offsetBy: 8))
+          if prefixRemoved.hasSuffix("_FORWARD") {
+            name = String(
+              prefixRemoved.prefix(upTo: prefixRemoved.index(prefixRemoved.endIndex, offsetBy: -8)))
+          } else {
+            name = String(prefixRemoved)
+          }
+        }
+        return name
+      }
+      static let optimizers: Set<UInt32> = Set([
+        UInt32(CCV_NNC_ADAM_FORWARD), UInt32(CCV_NNC_RMSPROP_FORWARD), UInt32(CCV_NNC_SGD_FORWARD),
+        UInt32(CCV_NNC_LAMB_FORWARD),
+      ])
+      var defName: String {
+        if grad {
+          return "Backward/\(name)"
+        }
+        if Self.optimizers.contains(op) {
+          return "Optimizing/\(name)"
         }
         return name
       }
@@ -288,7 +315,11 @@ extension SummaryWriter {
       var nameMap = Set<String>()
       for (id, var node) in nodes {
         if node.name.isEmpty {
-          node.name = "node_\(id)"
+          var opName = node.opName
+          if opName.hasSuffix("_BACKWARD") {
+            opName = String(opName.prefix(upTo: opName.index(opName.endIndex, offsetBy: -9)))
+          }
+          node.name = "\(opName.lowercased())_\(id)"
           nodes[id] = node
         } else if nameMap.contains(node.name) {  // Check if there are duplicate names already.
           var name = "\(node.name)_\(id)"
@@ -301,6 +332,15 @@ extension SummaryWriter {
           node.name = name
           nodes[id] = node
         }
+      }
+    }
+
+    static func deviceString(_ kind: DeviceKind) -> String {
+      switch kind {
+      case .CPU:
+        return "/device:CPU:0"
+      case .GPU(let ordinal):
+        return "/device:GPU:\(ordinal)"
       }
     }
 
@@ -345,12 +385,13 @@ extension SummaryWriter {
           }
           shape.shape = shapeProto
           nodeDef.attr = ["dtype": dtype, "shape": shape]
+          nodeDef.device = Self.deviceString(tensor.kind)
         }
         nodeDefs.append(nodeDef)
       }
       for node in nodes.values {
         var nodeDef = Tensorboard_NodeDef()
-        nodeDef.name = node.name
+        nodeDef.name = node.defName
         nodeDef.op = node.opName
         var inputDef = [String]()
         for input in node.inputs {
@@ -358,10 +399,11 @@ extension SummaryWriter {
           case .variable(let id):
             inputDef.append("tensor_\(id)")
           case .node(let id, let idx):
-            inputDef.append("\(nodes[id]!.name):\(idx)")
+            inputDef.append("\(nodes[id]!.defName):\(idx)")
           }
         }
         nodeDef.input = inputDef
+        nodeDef.device = Self.deviceString(node.kind)
         nodeDefs.append(nodeDef)
       }
       graphDef.node = nodeDefs

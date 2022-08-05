@@ -6,7 +6,7 @@ public struct SummaryWriter {
   /// Logger for writing the summaries as protobuf events to the file.
   let eventLogger: EventLogger
 
-  static var dateFormatter: DateFormatter = {
+  static let dateFormatter: DateFormatter = {
     let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "MMMd-yyyy-HH-mm-ss"
     return dateFormatter
