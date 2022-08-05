@@ -374,7 +374,7 @@ extension SummaryWriter {
 
   /// Add graph for tensorboard graphs dashboard.
   public func addGraph(
-    _ value: DynamicGraph, step: Int,
+    _ value: DynamicGraph,
     wallTime: Double = Date().timeIntervalSince1970
   ) {
     let graphDef = Graph()
@@ -385,7 +385,6 @@ extension SummaryWriter {
     var event = Tensorboard_Event()
     event.graphDef = try! graphDef.proto.serializedData()
     event.wallTime = wallTime
-    event.step = Int64(step)
     do {
       try eventLogger.add(event)
     } catch {
@@ -395,7 +394,7 @@ extension SummaryWriter {
 
   /// Add graph for tensorboard graphs dashboard.
   public func addGraph(
-    _ value: Model, step: Int,
+    _ value: Model,
     wallTime: Double = Date().timeIntervalSince1970
   ) {
     let graphDef = Graph()
@@ -405,7 +404,6 @@ extension SummaryWriter {
     var event = Tensorboard_Event()
     event.graphDef = try! graphDef.proto.serializedData()
     event.wallTime = wallTime
-    event.step = Int64(step)
     do {
       try eventLogger.add(event)
     } catch {

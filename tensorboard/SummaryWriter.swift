@@ -6,9 +6,17 @@ public struct SummaryWriter {
   /// Logger for writing the summaries as protobuf events to the file.
   let eventLogger: EventLogger
 
+  static var dateFormatter: DateFormatter = {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "MMMd-yyyy-HH-mm-ss"
+    return dateFormatter
+  }()
+
   /// Creates an instance with log located at `logDirectory`.
-  public init(logDirectory: String) {
-    eventLogger = try! EventLogger(logDirectory: logDirectory)
+  public init(logDirectory: String, comment: String = "") {
+    // Properly construct the folder name. It should be runs/currentdatetimecomment/
+    let suffix = "/runs/\(Self.dateFormatter.string(from: Date()))\(comment)"
+    eventLogger = try! EventLogger(logDirectory: logDirectory + suffix)
   }
 
   public func close() throws {
