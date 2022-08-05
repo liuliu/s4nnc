@@ -254,6 +254,19 @@ func formatGraph(
       node.inputs.append(input)
     }
   }
+  if let outputs = outputs {
+    for i in 0..<Int(outputSize) {
+      guard outputs[i] >= 0 else { continue }
+      let tensor = ccv_nnc_tensor_symbol_t(d: outputs[i], graph: graph)
+      let cTensorParams = ccv_nnc_tensor_symbol_params(graph, tensor)  // There is no exposed method to get name at the moment.
+      if ccv_nnc_is_tensor_auto(cTensorParams) == 0 {  // Now I can parse its shape.
+        let kind = DeviceKind.from(cTensorParams: cTensorParams)
+        graphDef.tensors[tensor.d] = SummaryWriter.Graph.Tensor(
+          id: tensor.d, dimensions: fromCDimensions(cTensorParams.dim),
+          dataType: .from(cTensorParams: cTensorParams), kind: kind)
+      }
+    }
+  }
   graphDef.nodes[node.id] = node
 }
 
@@ -384,7 +397,9 @@ extension SummaryWriter {
             return dim
           }
           shape.shape = shapeProto
-          nodeDef.attr = ["dtype": dtype, "shape": shape]
+          var list = Tensorboard_AttrValue()
+          list.list.shape = [shapeProto]
+          nodeDef.attr = ["dtype": dtype, "shape": shape, "_output_shapes": list]
           nodeDef.device = Self.deviceString(tensor.kind)
         }
         nodeDefs.append(nodeDef)
@@ -404,6 +419,20 @@ extension SummaryWriter {
         }
         nodeDef.input = inputDef
         nodeDef.device = Self.deviceString(node.kind)
+        var shapes = [Tensorboard_TensorShapeProto]()
+        for output in node.outputs {
+          guard let tensor = tensors[output] else { continue }
+          var shapeProto = Tensorboard_TensorShapeProto()
+          shapeProto.dim = tensor.dimensions.map {
+            var dim = Tensorboard_TensorShapeProto.Dim()
+            dim.size = Int64($0)
+            return dim
+          }
+          shapes.append(shapeProto)
+        }
+        var list = Tensorboard_AttrValue()
+        list.list.shape = shapes
+        nodeDef.attr = ["_output_shapes": list]
         nodeDefs.append(nodeDef)
       }
       graphDef.node = nodeDefs
