@@ -202,7 +202,7 @@ func formatGraph(
     return
   }
   let graphDef = Unmanaged<SummaryWriter.Graph>.fromOpaque(context).takeUnretainedValue()
-  let name = name.map { String(cString: $0) } ?? ""
+  let name = name.map { "\(String(cString: $0))_\(node)" } ?? ""
   var node = SummaryWriter.Graph.Node(
     id: node, name: name, op: cmd.cmd, inputs: [],
     outputs: outputs.map { Array(UnsafeBufferPointer(start: $0, count: Int(outputSize))) } ?? [],
@@ -217,8 +217,11 @@ func formatGraph(
       let cTensorParams = ccv_nnc_tensor_symbol_params(graph, tensor)  // There is no exposed method to get name at the moment.
       if ccv_nnc_is_tensor_auto(cTensorParams) == 0 {  // Now I can parse its shape.
         let kind = DeviceKind.from(cTensorParams: cTensorParams)
+        let tensorName =
+          ccv_nnc_tensor_symbol_name(graph, tensor).map { "\(String(cString: $0))_\(tensor.d)" }
+          ?? ""
         graphDef.tensors[tensor.d] = SummaryWriter.Graph.Tensor(
-          id: tensor.d, dimensions: fromCDimensions(cTensorParams.dim),
+          id: tensor.d, name: tensorName, dimensions: fromCDimensions(cTensorParams.dim),
           dataType: .from(cTensorParams: cTensorParams), kind: kind)
         if kind != .CPU {
           node.kind = kind
@@ -261,8 +264,11 @@ func formatGraph(
       let cTensorParams = ccv_nnc_tensor_symbol_params(graph, tensor)  // There is no exposed method to get name at the moment.
       if ccv_nnc_is_tensor_auto(cTensorParams) == 0 {  // Now I can parse its shape.
         let kind = DeviceKind.from(cTensorParams: cTensorParams)
+        let tensorName =
+          ccv_nnc_tensor_symbol_name(graph, tensor).map { "\(String(cString: $0))_\(tensor.d)" }
+          ?? ""
         graphDef.tensors[tensor.d] = SummaryWriter.Graph.Tensor(
-          id: tensor.d, dimensions: fromCDimensions(cTensorParams.dim),
+          id: tensor.d, name: tensorName, dimensions: fromCDimensions(cTensorParams.dim),
           dataType: .from(cTensorParams: cTensorParams), kind: kind)
       }
     }
@@ -316,6 +322,7 @@ extension SummaryWriter {
 
     struct Tensor {
       var id: Int32
+      var name: String
       var dimensions: [Int]
       var dataType: DataType
       var kind: DeviceKind
@@ -333,17 +340,40 @@ extension SummaryWriter {
             opName = String(opName.prefix(upTo: opName.index(opName.endIndex, offsetBy: -9)))
           }
           node.name = "\(opName.lowercased())_\(id)"
-          nodes[id] = node
-        } else if nameMap.contains(node.name) {  // Check if there are duplicate names already.
-          var name = "\(node.name)_\(id)"
-          var i = 0
+        }
+        if nameMap.contains(node.name) {  // Check if there are duplicate names already.
+          var name = "\(node.name)_0"
+          var i = 1
           while nameMap.contains(name) {
-            name = "\(node.name)_\(id)_\(i)"
+            name = "\(node.name)_\(i)"
             i += 1
           }
           nameMap.insert(name)
           node.name = name
           nodes[id] = node
+        } else {
+          nameMap.insert(node.name)
+          nodes[id] = node
+        }
+      }
+      nameMap.removeAll()
+      for (id, var tensor) in tensors {
+        if tensor.name.isEmpty {
+          tensor.name = "tensor_\(id)"
+        }
+        if nameMap.contains(tensor.name) {
+          var name = "\(tensor.name)_0"
+          var i = 1
+          while nameMap.contains(name) {
+            name = "\(tensor.name)_\(i)"
+            i += 1
+          }
+          nameMap.insert(name)
+          tensor.name = name
+          tensors[id] = tensor
+        } else {
+          nameMap.insert(tensor.name)
+          tensors[id] = tensor
         }
       }
     }
@@ -374,6 +404,7 @@ extension SummaryWriter {
         nodeDef.op = "Variable"
         nodeDef.input = []
         if let tensor = tensors[variable] {
+          nodeDef.name = tensor.name
           var dtype = Tensorboard_AttrValue()
           switch tensor.dataType {
           case .Float32:
@@ -412,7 +443,11 @@ extension SummaryWriter {
         for input in node.inputs {
           switch input {
           case .variable(let id):
-            inputDef.append("tensor_\(id)")
+            if let tensor = tensors[id] {
+              inputDef.append(tensor.name)
+            } else {
+              inputDef.append("tensor_\(id)")
+            }
           case .node(let id, let idx):
             inputDef.append("\(nodes[id]!.defName):\(idx)")
           }
