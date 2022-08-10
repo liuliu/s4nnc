@@ -692,7 +692,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
 }
 
 extension Tensor: ExpressibleByArrayLiteral {
-  public init(arrayLiteral elements: Element...) {
+  public init(_ elements: [Element]) {
     let wrapped = Wrapped(elements)
     let newt = wrapped.value.withUnsafeBytes {
       ccv_nnc_tensor_new(
@@ -701,6 +701,9 @@ extension Tensor: ExpressibleByArrayLiteral {
           .CPU, dataType: Element.dataType, format: .NCHW, dimensions: [elements.count]), 0)!
     }
     self.init(AnyTensorStorage(newt, original: wrapped))
+  }
+  public init(arrayLiteral elements: Element...) {
+    self.init(elements)
   }
 }
 
