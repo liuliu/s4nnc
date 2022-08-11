@@ -24,7 +24,7 @@ public final class Ant: MuJoCoEnv {
     if let runfilesDir = ProcessInfo.processInfo.environment["RUNFILES_DIR"] {
       model = try MjModel(fromXMLPath: runfilesDir + "/s4nnc/gym/assets/ant.xml")
     } else {
-      model = try MjModel(fromXMLPath: "gym/assets/ant.xml")
+      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/ant.xml")
     }
     data = model.makeData()
     initData = data.copied(model: model)
