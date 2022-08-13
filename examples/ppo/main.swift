@@ -41,7 +41,7 @@ let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
 let step_per_epoch = 30_000
-let collect_per_step = 20_000
+let collect_per_step = 5_000
 let update_per_step = 10
 let batch_size = 64
 let vf_coef: Float = 0.25
@@ -125,7 +125,8 @@ for epoch in 0..<max_epoch {
     var collectedData = training_collector.data
     training_collector.resetData()
     for (i, buffer) in collectedData.enumerated() {
-      let obs = graph.variable(Tensor<Float>(from: buffer.lastObservation).toGPU(0))
+      guard let lastObservation = buffer.lastObservation else { continue }
+      let obs = graph.variable(Tensor<Float>(from: lastObservation).toGPU(0))
       let variable = obsRms.norm(obs)
       obsRms.update([obs])
       collectedData[i].lastObservation = variable.rawValue.toCPU()

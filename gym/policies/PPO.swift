@@ -89,7 +89,7 @@ extension PPO {
       var rewStd: Float = 1
       var invStd: Float = 1
       if rewTotal > 0 {
-        rewStd = Float(rewVar.squareRoot()) + 1e-5
+        rewStd = Float(rewVar.squareRoot()) + 1e-8
         invStd = 1.0 / rewStd
       }
       // Recompute value with critics.
@@ -98,8 +98,12 @@ extension PPO {
         let value = critic(other.observation)
         values.append(value[0])
       }
-      let value = critic(data.lastObservation)
-      values.append(value[0])
+      if let lastObservation = data.lastObservation {
+        let value = critic(lastObservation)
+        values.append(value[0])
+      } else {
+        values.append(0)
+      }
       let (advantages, unnormalizedReturns) = Self.computeEpisodicGAEReturns(
         values: values, rewards: data.rewards, rewStd: rewStd)
       var returns = [Float]()

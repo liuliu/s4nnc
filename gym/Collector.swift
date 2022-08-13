@@ -29,11 +29,11 @@ where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElemen
 public struct CollectedData<Element: TensorNumeric, OtherType> {
   public typealias ObsType = Tensor<Element>
   public typealias ActType = Tensor<Element>
-  public var lastObservation: ObsType
+  public var lastObservation: ObsType?
   public var actions: [ActType]
   public var rewards: [Float]
   public var others: [OtherType]
-  public init(lastObservation: ObsType) {
+  public init(lastObservation: ObsType?) {
     self.lastObservation = lastObservation
     actions = []
     rewards = []
@@ -91,15 +91,18 @@ extension Collector where EnvType.DoneType == Bool, EnvType.RewardType == Float 
     var episodeLengths = [Float]()
     while stepCount < nStep {
       for i in 0..<envs.count {
-        let obs = batch[i].lastObservation
+        let obs = batch[i].lastObservation!
         let (action, other) = policy(obs)
-        let (newObs, reward, done, _) = envs[i].step(action: EnvType.ActType(from: action))
+        let (newObs, reward, done, info) = envs[i].step(action: EnvType.ActType(from: action))
         batch[i].actions.append(action)
         batch[i].others.append(other)
         batch[i].rewards.append(reward)
         batch[i].lastObservation = ObsType(from: newObs)
         if done {
           episodeRewards.append(batch[i].rewards.reduce(0) { $0 + $1 })
+          if info["TimeLimit.truncated"] as? Bool? != true {
+            batch[i].lastObservation = nil
+          }
           episodeLengths.append(Float(batch[i].rewards.count))
           let (newObs, _) = envs[i].reset()
           finalizedBatch.append(batch[i])

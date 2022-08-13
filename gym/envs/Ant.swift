@@ -79,13 +79,15 @@ extension Ant: Env {
     precondition(id >= 0)
     let xyPositionBefore = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
     data.ctrl[...] = action
-    model.step(data: &data)
+    for _ in 0..<5 {
+      model.step(data: &data)
+    }
     // As of MuJoCo 2.0, force-related quantities like cacc are not computed
     // unless there's a force sensor in the model.
     // See https://github.com/openai/gym/issues/1541
     model.rnePostConstraint(data: &data)
     let xyPositionAfter = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
-    let dt = model.opt.timestep
+    let dt = model.opt.timestep * 5
     let xyVelocity = (
       (xyPositionAfter.0 - xyPositionBefore.0) / dt, (xyPositionAfter.1 - xyPositionBefore.1) / dt
     )
