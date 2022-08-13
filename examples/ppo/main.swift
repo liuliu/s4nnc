@@ -6,10 +6,10 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = InvertedPendulum
-let input_dim = 4
+typealias TargetEnv = InvertedDoublePendulum
+let input_dim = 11
 let output_dim = 1
-let action_range: Float = 3
+let action_range: Float = 1
 
 func NetA() -> (Model, Model) {
   let lastLayer = Dense(count: output_dim)
