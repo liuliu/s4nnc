@@ -84,6 +84,7 @@ extension PPO {
   {
     var resultReturns = [[Float]]()
     var resultAdvatanges = [[Float]]()
+    var resultUnnormalizedReturns = [[Float]]()
     for data in batch {
       var rewStd: Float = 1
       var invStd: Float = 1
@@ -102,13 +103,18 @@ extension PPO {
       let (advantages, unnormalizedReturns) = Self.computeEpisodicGAEReturns(
         values: values, rewards: data.rewards, rewStd: rewStd)
       var returns = [Float]()
-      var batchMean: Double = 0
       for unnormalizedReturn in unnormalizedReturns {
         returns.append(invStd * unnormalizedReturn)
-        batchMean += Double(unnormalizedReturn)
       }
       resultReturns.append(returns)
       resultAdvatanges.append(advantages)
+      resultUnnormalizedReturns.append(unnormalizedReturns)
+    }
+    for unnormalizedReturns in resultUnnormalizedReturns {
+      var batchMean: Double = 0
+      for unnormalizedReturn in unnormalizedReturns {
+        batchMean += Double(unnormalizedReturn)
+      }
       var batchVar: Double = 0
       batchMean = batchMean / Double(unnormalizedReturns.count)
       for rew in unnormalizedReturns {

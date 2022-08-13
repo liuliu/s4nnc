@@ -6,8 +6,10 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-let input_dim = 27
-let output_dim = 8
+typealias TargetEnv = InvertedPendulum
+let input_dim = 4
+let output_dim = 1
+let action_range: Float = 3
 
 func NetA() -> (Model, Model) {
   let lastLayer = Dense(count: output_dim)
@@ -49,16 +51,16 @@ let testing_num = 10
 let max_grad_norm: Float = 0.5
 let eps_clip: Float = 0.2
 
-var envs = [TimeLimit<Ant>]()
+var envs = [TimeLimit<TargetEnv>]()
 for i in 0..<training_num {
-  let env = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
+  let env = TimeLimit(env: try TargetEnv(), maxEpisodeSteps: 1_000)
   let _ = env.reset(seed: i)
   envs.append(env)
 }
 DynamicGraph.setSeed(0)
-var testEnv = TimeLimit(env: try Ant(), maxEpisodeSteps: 1_000)
+var testEnv = TimeLimit(env: try TargetEnv(), maxEpisodeSteps: 1_000)
 let _ = testEnv.reset(seed: 180)
-let viewer = MuJoCoViewer(env: envs[0])
+let viewer = MuJoCoViewer(env: testEnv)
 var episodes = 0
 
 let (actor, actorLastLayer) = NetA()
@@ -84,7 +86,7 @@ var obsRms = RunningMeanStd(
   })())
 var env_step = 0
 var initActorLastLayer = false
-var training_collector = Collector<Float, PPO.ContinuousActionSpace, TimeLimit<Ant>, Double>(
+var training_collector = Collector<Float, PPO.ContinuousActionSpace, TimeLimit<TargetEnv>, Double>(
   envs: envs
 ) {
   let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
@@ -104,7 +106,8 @@ var training_collector = Collector<Float, PPO.ContinuousActionSpace, TimeLimit<A
   }
   let n = graph.variable(Tensor<Float32>(.GPU(0), .C(output_dim)))
   n.randn(std: 1, mean: 0)
-  let act_f = (n .* Functional.exp(scale) + act).clamped(-1...1).toCPU().rawValue.copied()
+  let act_f = (n .* Functional.exp(scale) + act).clamped(-action_range...action_range).toCPU()
+    .rawValue.copied()
   let act_mu = act.toCPU().rawValue.copied()
   return (
     act_f, PPO.ContinuousActionSpace(centroid: act_mu, observation: variable.rawValue.toCPU())
@@ -170,7 +173,7 @@ for epoch in 0..<max_epoch {
         grad.full(-1.0 / Float(batch_size))
         clip_loss.grad = grad
         clip_loss.backward(to: [variable, scale])
-        actor.parameters.clipGradNorm(maxNorm: 0.5)
+        actor.parameters.clipGradNorm(maxNorm: max_grad_norm)
         actorOptim.step()
         let v = DynamicGraph.Tensor<Float32>(critic(inputs: variable)[0])
         let returnsv = graph.constant(returns.toGPU(0))
@@ -192,7 +195,7 @@ for epoch in 0..<max_epoch {
     actorLoss = -actorLoss / Float(batch_size * update_count)
     let scaleCPU = scale.toCPU()
     print(
-      "rew std \(ppo.statistics.rewardsNormalization.std), log scale [\(scaleCPU[0]), \(scaleCPU[1]), \(scaleCPU[2]), \(scaleCPU[3]), \(scaleCPU[4]), \(scaleCPU[5])]"
+      "rew std \(ppo.statistics.rewardsNormalization.std), log scale \(Array(scaleCPU.rawValue))"
     )
     print(
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std))"
@@ -206,7 +209,6 @@ for epoch in 0..<max_epoch {
   // Running test and print how many steps we can perform in an episode before it fails.
   let (obs, _) = testEnv.reset()
   var last_obs = Tensor<Float>(from: obs)
-  summary.addHistogram("init_obs", last_obs, step: epoch)
   var testing_rewards = [Float]()
   for _ in 0..<testing_num {
     var rewards: Float = 0
@@ -214,7 +216,7 @@ for epoch in 0..<max_epoch {
       let lastObs = graph.variable(last_obs.toGPU(0))
       let variable = obsRms.norm(lastObs)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-      act.clamp(-1...1)
+      act.clamp(-action_range...action_range)
       let act_v = act.rawValue.toCPU()
       let (obs, reward, done, _) = testEnv.step(action: Tensor(from: act_v))
       last_obs = Tensor(from: obs)
@@ -240,7 +242,7 @@ while episodes < 10 {
   let lastObs = graph.variable(last_obs.toGPU(0))
   let variable = obsRms.norm(lastObs)
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-  act.clamp(-1...1)
+  act.clamp(-action_range...action_range)
   let act_v = act.rawValue.toCPU()
   let (obs, _, done, _) = testEnv.step(action: Tensor(from: act_v))
   last_obs = Tensor(from: obs)
