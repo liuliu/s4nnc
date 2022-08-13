@@ -84,9 +84,9 @@ struct TransformerParameter {
 let parameters = TransformerParameter(ff: 4, layers: 2, h: 8, dropout: 0.1)
 
 let transformer: ModelBuilder = ModelBuilder { inputs in
-  let b = inputs[0].dimensions[0]
-  let t = inputs[0].dimensions[1]
-  let k = inputs[0].dimensions[2]
+  let b = inputs[0].shape[0]
+  let t = inputs[0].shape[1]
+  let k = inputs[0].shape[2]
   return ClassicTransformer(
     layers: parameters.layers, k: k, h: parameters.h, b: b, t: t, ff: parameters.ff * k,
     dropout: parameters.dropout)
@@ -221,7 +221,7 @@ for epoch in 0..<10 {
     let tensorGPU = (0..<deviceCount).map { batch[$0 * 3] as! Tensor<Int32> }
     let oneHotGPU = (0..<deviceCount).map { batch[$0 * 3 + 1] as! Tensor<Float32> }
     let squaredMaskGPU = (0..<deviceCount).map { batch[$0 * 3 + 2] as! Tensor<Int32> }
-    let batchLength = tensorGPU[0].dimensions[1]
+    let batchLength = tensorGPU[0].shape[1]
     let output = graph.withStream(computeStream) {
       () -> DynamicGraph.Group<DynamicGraph.AnyTensor> in
       let wordIndices = graph.variable(tensorGPU.reshaped(.C(batchSize * batchLength)))
