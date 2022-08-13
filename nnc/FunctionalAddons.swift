@@ -311,35 +311,35 @@ extension DynamicGraph.Tensor {
   {
     get {
       precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(ranges.count == dimensions.count)
-      let offset = ranges.map { $0.lowerBound }
-      let newDimensions = ranges.map { $0.count }
-      let increments = self.increments
-      precondition(ranges.count == increments.count)
+      let shape = self.shape
+      precondition(ranges.count == shape.count)
+      let offset = TensorShape(ranges.map { $0.lowerBound })
+      let newShape = TensorShape(ranges.map { $0.count })
+      let step = self.step
+      precondition(ranges.count == step.count)
       for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+        assert(range.lowerBound >= 0 && range.lowerBound < step[i])
+        assert(range.upperBound > 0 && range.upperBound <= step[i])
       }
       return reshaped(
-        format: format, dimensions: newDimensions, offset: offset, increments: increments)
+        format: format, shape: newShape, offset: offset, step: step)
     }
     set(v) {
       precondition(v.graph === graph)
       precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(ranges.count == dimensions.count)
-      let offset = ranges.map { $0.lowerBound }
-      let newDimensions = ranges.map { $0.count }
-      let increments = self.increments
-      precondition(ranges.count == increments.count)
+      let shape = self.shape
+      precondition(ranges.count == shape.count)
+      let offset = TensorShape(ranges.map { $0.lowerBound })
+      let newShape = TensorShape(ranges.map { $0.count })
+      let step = self.step
+      precondition(ranges.count == step.count)
       for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+        assert(range.lowerBound >= 0 && range.lowerBound < step[i])
+        assert(range.upperBound > 0 && range.upperBound <= step[i])
       }
       // Intentionally use the format of the input so we don't do unnecessary format conversion.
       let output = reshaped(
-        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
+        format: v.format, shape: newShape, offset: offset, step: step
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
@@ -366,27 +366,27 @@ extension DynamicGraph.Tensor {
   {
     get {
       precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(indices.count + 1 == dimensions.count)
-      let offset = indices + [range.lowerBound]
-      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
-      let increments = self.increments
-      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      let shape = self.shape
+      precondition(indices.count + 1 == shape.count)
+      let offset = TensorShape(indices + [range.lowerBound])
+      let newShape = TensorShape(Array(repeating: 1, count: indices.count) + [range.count])
+      let step = self.step
+      assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
       return reshaped(
-        format: format, dimensions: newDimensions, offset: offset, increments: increments)
+        format: format, shape: newShape, offset: offset, step: step)
     }
     set(v) {
       precondition(v.graph === graph)
       precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(indices.count + 1 == dimensions.count)
-      let offset = indices + [range.lowerBound]
-      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
-      let increments = self.increments
-      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      let shape = self.shape
+      precondition(indices.count + 1 == shape.count)
+      let offset = TensorShape(indices + [range.lowerBound])
+      let newShape = TensorShape(Array(repeating: 1, count: indices.count) + [range.count])
+      let step = self.step
+      assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
       // Intentionally use the format of the input so we don't do unnecessary format conversion.
       let output = reshaped(
-        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
+        format: v.format, shape: newShape, offset: offset, step: step
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
@@ -404,12 +404,12 @@ extension DynamicGraph.Tensor {
     -> DynamicGraph.Tensor<Element>
   {
     get {
-      let dimensions = self.dimensions
-      return self[indices, 0..<dimensions[indices.count], streamContext: streamContext]
+      let shape = self.shape
+      return self[indices, 0..<shape[indices.count], streamContext: streamContext]
     }
     set(v) {
-      let dimensions = self.dimensions
-      self[indices, 0..<dimensions[indices.count], streamContext: streamContext] = v
+      let shape = self.shape
+      self[indices, 0..<shape[indices.count], streamContext: streamContext] = v
     }
   }
 
@@ -569,18 +569,18 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   {
     get {
       precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(ranges.count == dimensions.count)
-      let offset = ranges.map { $0.lowerBound }
-      let newDimensions = ranges.map { $0.count }
-      let increments = self.increments
-      precondition(ranges.count == increments.count)
+      let shape = self.shape
+      precondition(ranges.count == shape.count)
+      let offset = TensorShape(ranges.map { $0.lowerBound })
+      let newShape = TensorShape(ranges.map { $0.count })
+      let step = self.step
+      precondition(ranges.count == step.count)
       for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+        assert(range.lowerBound >= 0 && range.lowerBound < step[i])
+        assert(range.upperBound > 0 && range.upperBound <= step[i])
       }
       return reshaped(
-        format: format, dimensions: newDimensions, offset: offset, increments: increments)
+        format: format, shape: newShape, offset: offset, step: step)
     }
     set(v) {
       precondition(v.count == count)
@@ -590,19 +590,19 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         precondition(x.graph === graph)
       }
       precondition(ranges.count < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(ranges.count == dimensions.count)
-      let offset = ranges.map { $0.lowerBound }
-      let newDimensions = ranges.map { $0.count }
-      let increments = self.increments
-      precondition(ranges.count == increments.count)
+      let shape = self.shape
+      precondition(ranges.count == shape.count)
+      let offset = TensorShape(ranges.map { $0.lowerBound })
+      let newShape = TensorShape(ranges.map { $0.count })
+      let step = self.step
+      precondition(ranges.count == step.count)
       for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+        assert(range.lowerBound >= 0 && range.lowerBound < step[i])
+        assert(range.upperBound > 0 && range.upperBound <= step[i])
       }
       // Intentionally use the format of the input so we don't do unnecessary format conversion.
       let outputs = reshaped(
-        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
+        format: v.format, shape: newShape, offset: offset, step: step
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
@@ -636,14 +636,14 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   {
     get {
       precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(indices.count + 1 == dimensions.count)
-      let offset = indices + [range.lowerBound]
-      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
-      let increments = self.increments
-      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      let shape = self.shape
+      precondition(indices.count + 1 == shape.count)
+      let offset = TensorShape(indices + [range.lowerBound])
+      let newShape = TensorShape(Array(repeating: 1, count: indices.count) + [range.count])
+      let step = self.step
+      assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
       return reshaped(
-        format: format, dimensions: newDimensions, offset: offset, increments: increments)
+        format: format, shape: newShape, offset: offset, step: step)
     }
     set(v) {
       precondition(v.count == count)
@@ -653,15 +653,15 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         precondition(x.graph === graph)
       }
       precondition(indices.count + 1 < CCV_NNC_MAX_DIM_ALLOC)
-      let dimensions = self.dimensions
-      precondition(indices.count + 1 == dimensions.count)
-      let offset = indices + [range.lowerBound]
-      let newDimensions = Array(repeating: 1, count: indices.count) + [range.count]
-      let increments = self.increments
-      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
+      let shape = self.shape
+      precondition(indices.count + 1 == shape.count)
+      let offset = TensorShape(indices + [range.lowerBound])
+      let newShape = TensorShape(Array(repeating: 1, count: indices.count) + [range.count])
+      let step = self.step
+      assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
       // Intentionally use the format of the input so we don't do unnecessary format conversion.
       let outputs = reshaped(
-        format: v.format, dimensions: newDimensions, offset: offset, increments: increments
+        format: v.format, shape: newShape, offset: offset, step: step
       )
       let params = CmdParamsFactory.factory.newParams()
       let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
@@ -686,12 +686,12 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
     -> DynamicGraph.Group<Element>
   {
     get {
-      let dimensions = self.dimensions
-      return self[indices, 0..<dimensions[indices.count], streamContext: streamContext]
+      let shape = self.shape
+      return self[indices, 0..<shape[indices.count], streamContext: streamContext]
     }
     set(v) {
-      let dimensions = self.dimensions
-      self[indices, 0..<dimensions[indices.count], streamContext: streamContext] = v
+      let shape = self.shape
+      self[indices, 0..<shape[indices.count], streamContext: streamContext] = v
     }
   }
 
@@ -976,7 +976,7 @@ extension DynamicGraph.Tensor {
     var _input: ccv_nnc_tensor_variable_t? = self._tensor
     let rawInput = self.rawValue
     let output: DynamicGraph.Tensor<Element> = graph.variable(
-      .GPU(ordinal), format: rawInput.format, dimensions: rawInput.dimensions)
+      .GPU(ordinal), format: rawInput.format, shape: rawInput.shape)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
     let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
@@ -993,7 +993,7 @@ extension DynamicGraph.Tensor {
     var _input: ccv_nnc_tensor_variable_t? = self._tensor
     let rawInput = self.rawValue
     let output: DynamicGraph.Tensor<Element> = graph.variable(
-      .CPU, format: rawInput.format, dimensions: rawInput.dimensions)
+      .CPU, format: rawInput.format, shape: rawInput.shape)
     var _output: ccv_nnc_tensor_variable_t? = output._tensor
     let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream

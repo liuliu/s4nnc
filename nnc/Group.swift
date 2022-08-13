@@ -7,9 +7,9 @@ public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var graph: DynamicGraph { get }
   var untyped: [DynamicGraph.AnyTensor] { get }
   var kind: DeviceKind { get }
-  var dimensions: [Int] { get }
+  var shape: TensorShape { get }
   var format: TensorFormat { get }
-  var increments: [Int] { get }
+  var step: TensorShape { get }
   var isConstant: Bool { get }
   var requiresGrad: Bool { get set }
 }
@@ -76,12 +76,12 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
     }
     return kind
   }
-  public var dimensions: [Int] {
-    let dimensions = underlyingArray[0].dimensions
+  public var shape: TensorShape {
+    let shape = underlyingArray[0].shape
     for tensor in underlyingArray {
-      assert(dimensions == tensor.dimensions)
+      assert(shape == tensor.shape)
     }
-    return dimensions
+    return shape
   }
   public var format: TensorFormat {
     let format = underlyingArray[0].format
@@ -90,12 +90,12 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
     }
     return format
   }
-  public var increments: [Int] {
-    let increments = underlyingArray[0].increments
+  public var step: TensorShape {
+    let step = underlyingArray[0].step
     for tensor in underlyingArray {
-      assert(increments == tensor.increments)
+      assert(step == tensor.step)
     }
-    return increments
+    return step
   }
   public var isConstant: Bool {
     let isConstant = underlyingArray[0].isConstant
@@ -122,18 +122,18 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
 
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> Self {
     return DynamicGraph.Group(
       underlyingArray.map {
-        $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+        $0.reshaped(format: format, shape: shape, offset: offset, step: step)
       })
   }
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> Self {
     return reshaped(
-      format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
-      increments: increments)
+      format: shapeFormat.format, shape: shapeFormat.shape, offset: offset,
+      step: step)
   }
 }

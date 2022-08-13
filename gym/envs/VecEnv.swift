@@ -44,7 +44,7 @@ extension VecEnv: Env where EnvType.DoneType == Bool {
     }
     var obs = Tensor<Element>(
       self.obs[0].kind, format: self.obs[0].format,
-      dimensions: [envs.count, self.obs[0].dimensions[0]])
+      shape: [envs.count, self.obs[0].shape[0]])
     for i in 0..<envs.count {
       obs[i, ...] = self.obs[i]
     }
@@ -81,7 +81,7 @@ extension VecEnv: Env where EnvType.DoneType == Bool {
     }
     var obs = Tensor<Element>(
       self.obs[0].kind, format: self.obs[0].format,
-      dimensions: [envs.count, self.obs[0].dimensions[0]])
+      shape: [envs.count, self.obs[0].shape[0]])
     for i in 0..<envs.count {
       obs[i, ...] = self.obs[i]
       done[i] = false

@@ -76,10 +76,10 @@ public final class DynamicGraph {
       self.underlying = tensor.underlying
     }
 
-    public var dimensions: [Int] {
+    public var shape: TensorShape {
       let _graph = graph.cGraph
       let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
-      return fromCDimensions(info.dim)
+      return TensorShape(dims: info.dim)
     }
 
     public var kind: DeviceKind {
@@ -94,11 +94,18 @@ public final class DynamicGraph {
       return TensorFormat.from(cTensorParams: info)
     }
 
-    public var increments: [Int] {
+    public var step: TensorShape {
       let _graph = graph.cGraph
       let _streamContext = graph.streamContext?._stream
       let cTensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
-      return fromCTensorIncrements(cTensor)
+      let type = Int(cTensor.pointee.type)
+      guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
+        return TensorShape(dims: cTensor.pointee.info.dim)
+      }
+      return TensorShape(
+        dims: UnsafeMutableRawPointer(cTensor).bindMemory(
+          to: ccv_nnc_tensor_view_t.self, capacity: 1
+        ).pointee.inc)
     }
 
     /**
@@ -289,20 +296,20 @@ extension DynamicGraph.WeakAnyTensor: Hashable {
 extension DynamicGraph.AnyTensor {
 
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> Self {
     let _graph = graph.cGraph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     let device = DeviceKind.from(cTensorParams: cTensorParams)
     let dataType = DataType.from(cTensorParams: cTensorParams)
-    var offset = toCDimensions(offset)
-    var increments = toCDimensions(increments)
+    var offset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    var step = step?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let _alias = withUnsafePointer(to: &offset.0) { offset in
-      withUnsafePointer(to: &increments.0) { increments in
+      withUnsafePointer(to: &step.0) { step in
         ccv_nnc_tensor_variable_alias_new(
-          _graph, _tensor, offset, increments,
+          _graph, _tensor, offset, step,
           toCTensorParams(
-            device, dataType: dataType, format: format, dimensions: dimensions))!
+            device, dataType: dataType, format: format, shape: shape))!
       }
     }
     return Self(graph: underlying.graph, tensor: _alias, original: self)
@@ -312,17 +319,17 @@ extension DynamicGraph.AnyTensor {
    * Create a new tensor representing the same variable but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensor with different format but the same underlying variable.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> Self {
     return reshaped(
-      format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
-      increments: increments)
+      format: shapeFormat.format, shape: shapeFormat.shape, offset: offset,
+      step: step)
   }
 
 }
@@ -337,9 +344,9 @@ extension DynamicGraph.AnyTensor: CustomStringConvertible {
       let dataType = DataType.from(cTensorParams: cTensorParams)
       let format = TensorFormat.from(cTensorParams: cTensorParams)
       let device = DeviceKind.from(cTensorParams: cTensorParams)
-      let dimensions = fromCDimensions(cTensorParams.dim)
+      let shape = fromCDimensions(cTensorParams.dim)
       return
-        "DynamicGraph.Tensor<\(dataType)>(kind: .\(device), format: .\(format), dimensions: \(dimensions))"
+        "DynamicGraph.Tensor<\(dataType)>(kind: .\(device), format: .\(format), shape: \(shape))"
     }
   }
 }
@@ -435,33 +442,33 @@ extension DynamicGraph {
   }
 
   public func variable<Element: TensorNumeric>(
-    _ device: DeviceKind, format: TensorFormat, dimensions: [Int], of: Element.Type = Element.self
+    _ device: DeviceKind, format: TensorFormat, shape: TensorShape, of: Element.Type = Element.self
   ) -> Tensor<Element> {
     let _tensor = ccv_nnc_tensor_variable_new_impl(
       cGraph,
-      toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
+      toCTensorParams(device, dataType: Element.dataType, format: format, shape: shape))!
     return Tensor<Element>(graph: self, tensor: _tensor)
   }
 
   public func constant<Element: TensorNumeric>(
-    _ device: DeviceKind, format: TensorFormat, dimensions: [Int], of: Element.Type = Element.self
+    _ device: DeviceKind, format: TensorFormat, shape: TensorShape, of: Element.Type = Element.self
   ) -> Tensor<Element> {
     let tensor = ccv_nnc_tensor_constant_new_impl(
       cGraph,
-      toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions))!
+      toCTensorParams(device, dataType: Element.dataType, format: format, shape: shape))!
     return Tensor<Element>(graph: self, tensor: tensor)
   }
 
   public func variable<Element: TensorNumeric>(
-    _ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat, of: Element.Type = Element.self
+    _ device: DeviceKind, _ shapeFormat: TensorShapeFormat, of: Element.Type = Element.self
   ) -> Tensor<Element> {
-    return variable(device, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
+    return variable(device, format: shapeFormat.format, shape: shapeFormat.shape)
   }
 
   public func constant<Element: TensorNumeric>(
-    _ device: DeviceKind, _ dimensionFormat: TensorDimensionFormat, of: Element.Type = Element.self
+    _ device: DeviceKind, _ shapeFormat: TensorShapeFormat, of: Element.Type = Element.self
   ) -> Tensor<Element> {
-    return constant(device, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
+    return constant(device, format: shapeFormat.format, shape: shapeFormat.shape)
   }
 
 }
@@ -472,13 +479,13 @@ extension DynamicGraph {
     switch like {
     case is DynamicGraph.AnyTensor:
       return graph.variable(
-        like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+        like.kind, format: like.format, shape: like.shape, of: T.ElementNumeric.self)
         as! T
     case is DynamicGraph.AnyGroup:
       return DynamicGraph.Group(
         (0..<like.untyped.count).map { _ in
           graph.variable(
-            like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+            like.kind, format: like.format, shape: like.shape, of: T.ElementNumeric.self)
         }) as! T
     default:
       fatalError("Cannot support the given type")
@@ -489,13 +496,13 @@ extension DynamicGraph {
     switch like {
     case is DynamicGraph.AnyTensor:
       return graph.constant(
-        like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+        like.kind, format: like.format, shape: like.shape, of: T.ElementNumeric.self)
         as! T
     case is DynamicGraph.AnyGroup:
       return DynamicGraph.Group(
         (0..<like.untyped.count).map { _ in
           graph.constant(
-            like.kind, format: like.format, dimensions: like.dimensions, of: T.ElementNumeric.self)
+            like.kind, format: like.format, shape: like.shape, of: T.ElementNumeric.self)
         }) as! T
     default:
       fatalError("Cannot support the given type")

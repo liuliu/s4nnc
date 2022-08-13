@@ -52,7 +52,7 @@ extension SummaryWriter {
     histogram.max = Double(statsTensor[1])
     histogram.sum = Double(statsTensor[2])
     histogram.sumSquares = Double(statsTensor[3])
-    histogram.num = Double(value.dimensions.reduce(1, *))
+    histogram.num = Double(value.shape.reduce(1, *))
     var bucket: [Double] = Array(repeating: 0, count: bucketLimit.count)
     for i in 0..<bucket.count {
       bucket[i] = Double(histoTensor[i])
@@ -103,30 +103,30 @@ extension SummaryWriter {
 
     var image = Tensorboard_Summary.Image()
     let vTensor = value.kind == .CPU ? value : value.toCPU()  // Move to CPU if needed.
-    let dimensions = vTensor.dimensions
+    let shape = vTensor.shape
     let width: Int
     let height: Int
     let channel: Int
-    switch dimensions.count {
+    switch shape.count {
     case 1:
-      width = dimensions[0]
+      width = shape[0]
       height = 1
       channel = 1
     case 2:
-      height = dimensions[0]
-      width = dimensions[1]
+      height = shape[0]
+      width = shape[1]
       channel = 1
     case 3...:
       switch vTensor.format {
       case .NHWC:
-        height = dimensions[dimensions.count - 3]
-        width = dimensions[dimensions.count - 2]
-        channel = dimensions[dimensions.count - 1]
+        height = shape[shape.count - 3]
+        width = shape[shape.count - 2]
+        channel = shape[shape.count - 1]
         break
       case .NCHW:
-        channel = dimensions[dimensions.count - 3]
-        height = dimensions[dimensions.count - 2]
-        width = dimensions[dimensions.count - 1]
+        channel = shape[shape.count - 3]
+        height = shape[shape.count - 2]
+        width = shape[shape.count - 1]
         break
       default:
         fatalError("Unsupported tensor \(vTensor)")
@@ -137,7 +137,7 @@ extension SummaryWriter {
     precondition(channel <= 4)
     image.width = Int32(width)
     image.height = Int32(height)
-    var fTensor: Tensor<Float> = Tensor(.CPU, format: .NHWC, dimensions: [height, width, channel])
+    var fTensor: Tensor<Float> = Tensor(.CPU, format: .NHWC, shape: [height, width, channel])
     if vTensor.format == .NCHW {  // Need to convert to .NHWC format.
       fTensor[...] = vTensor.reshaped(.CHW(channel, height, width))
     } else {
@@ -221,7 +221,7 @@ func formatGraph(
           ccv_nnc_tensor_symbol_name(graph, tensor).map { "\(String(cString: $0))_\(tensor.d)" }
           ?? ""
         graphDef.tensors[tensor.d] = SummaryWriter.Graph.Tensor(
-          id: tensor.d, name: tensorName, dimensions: fromCDimensions(cTensorParams.dim),
+          id: tensor.d, name: tensorName, shape: TensorShape(dims: cTensorParams.dim),
           dataType: .from(cTensorParams: cTensorParams), kind: kind)
         if kind != .CPU {
           node.kind = kind
@@ -268,7 +268,7 @@ func formatGraph(
           ccv_nnc_tensor_symbol_name(graph, tensor).map { "\(String(cString: $0))_\(tensor.d)" }
           ?? ""
         graphDef.tensors[tensor.d] = SummaryWriter.Graph.Tensor(
-          id: tensor.d, name: tensorName, dimensions: fromCDimensions(cTensorParams.dim),
+          id: tensor.d, name: tensorName, shape: TensorShape(dims: cTensorParams.dim),
           dataType: .from(cTensorParams: cTensorParams), kind: kind)
       }
     }
@@ -323,7 +323,7 @@ extension SummaryWriter {
     struct Tensor {
       var id: Int32
       var name: String
-      var dimensions: [Int]
+      var shape: TensorShape
       var dataType: DataType
       var kind: DeviceKind
     }
@@ -422,7 +422,7 @@ extension SummaryWriter {
           }
           var shape = Tensorboard_AttrValue()
           var shapeProto = Tensorboard_TensorShapeProto()
-          shapeProto.dim = tensor.dimensions.map {
+          shapeProto.dim = tensor.shape.map {
             var dim = Tensorboard_TensorShapeProto.Dim()
             dim.size = Int64($0)
             return dim
@@ -458,7 +458,7 @@ extension SummaryWriter {
         for output in node.outputs {
           guard let tensor = tensors[output] else { continue }
           var shapeProto = Tensorboard_TensorShapeProto()
-          shapeProto.dim = tensor.dimensions.map {
+          shapeProto.dim = tensor.shape.map {
             var dim = Tensorboard_TensorShapeProto.Dim()
             dim.size = Int64($0)
             return dim

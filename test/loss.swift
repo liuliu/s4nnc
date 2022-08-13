@@ -9,8 +9,8 @@ final class LossTests: XCTestCase {
     let tv1 = dynamicGraph.variable(Tensor<Float32>([0, 1, 1, 0], .CPU, .NC(2, 2)))
     let loss = SoftmaxCrossEntropyLoss()
     let tv2 = loss(tv0, target: tv1)
-    XCTAssertEqual([2, 1], tv2[0].dimensions)
-    XCTAssertEqual([2, 2], tv2[1].dimensions)
+    XCTAssertEqual([2, 1], tv2[0].shape)
+    XCTAssertEqual([2, 2], tv2[1].shape)
   }
 
   func testTargetLoss() throws {
@@ -19,8 +19,8 @@ final class LossTests: XCTestCase {
     let tv1 = dynamicGraph.variable(Tensor<Int32>([0, 1], .CPU, .NC(2, 1)))
     let loss = SoftmaxCrossEntropyLoss()
     let tv2 = loss(tv0, target: tv1)
-    XCTAssertEqual([2, 1], tv2[0].dimensions)
-    XCTAssertEqual([2, 2], tv2[1].dimensions)
+    XCTAssertEqual([2, 1], tv2[0].shape)
+    XCTAssertEqual([2, 2], tv2[1].shape)
   }
 
   static let allTests = [

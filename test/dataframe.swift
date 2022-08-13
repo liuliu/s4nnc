@@ -424,8 +424,8 @@ final class DataFrameTests: XCTestCase {
     for tensor in df["truncated", Tensor<Float32>.self] {
       XCTAssertEqual(1.1, tensor[0, 0])
       XCTAssertEqual(2.1, tensor[0, 1])
-      XCTAssertEqual(1, tensor.dimensions[0])
-      XCTAssertEqual(2, tensor.dimensions[1])
+      XCTAssertEqual(1, tensor.shape[0])
+      XCTAssertEqual(2, tensor.shape[1])
     }
   }
 

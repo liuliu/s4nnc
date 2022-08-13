@@ -113,6 +113,34 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual([2, 1, 0], Array(cpuTensor[1, ...]))
   }
 
+  func testTensorShapeAccessors() throws {
+    let tensorShape: TensorShape = [1, 2, 3, 4]
+    XCTAssertEqual(tensorShape[0], 1)
+    XCTAssertEqual(tensorShape[1], 2)
+    XCTAssertEqual(tensorShape[2], 3)
+    XCTAssertEqual(tensorShape[3], 4)
+    XCTAssertEqual(tensorShape[4], 0)
+    var newTensorShape = tensorShape[2...]
+    XCTAssertEqual(newTensorShape[0], 3)
+    XCTAssertEqual(newTensorShape[1], 4)
+    XCTAssertEqual(newTensorShape[2], 0)
+    XCTAssertEqual(newTensorShape[3], 0)
+    let array = Array(newTensorShape)
+    XCTAssertEqual(array, [3, 4])
+    var oldShape = [Int]()
+    for i in tensorShape {
+      oldShape.append(i)
+    }
+    XCTAssertEqual(oldShape, [1, 2, 3, 4])
+    newTensorShape[1..<8] = tensorShape
+    XCTAssertEqual(newTensorShape[0], 3)
+    XCTAssertEqual(newTensorShape[1], 1)
+    XCTAssertEqual(newTensorShape[2], 2)
+    XCTAssertEqual(newTensorShape[3], 3)
+    XCTAssertEqual(newTensorShape[4], 4)
+    XCTAssertEqual(newTensorShape[5], 0)
+  }
+
   static let allTests = [
     ("testGetSetPartTensor", testGetSetPartTensor),
     ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
@@ -120,5 +148,6 @@ final class TensorTests: XCTestCase {
     ("testTensorTypeConversion", testTensorTypeConversion),
     ("testNoneMatchTensorAssignments", testNoneMatchTensorAssignments),
     ("testNoneMatchTensorAssignmentsWithGPU", testNoneMatchTensorAssignmentsWithGPU),
+    ("testTensorShapeAccessors", testTensorShapeAccessors),
   ]
 }

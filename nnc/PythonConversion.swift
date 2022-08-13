@@ -50,7 +50,7 @@ extension Tensor where Element: NumpyScalarCompatible {
       fatalError("numpy.ndarray data pointer was nil")
     }
     self.init(
-      .CPU, format: .NCHW, dimensions: shape, unsafeMutablePointer: pointer,
+      .CPU, format: .NCHW, shape: TensorShape(shape), unsafeMutablePointer: pointer,
       bindLifetimeOf: numpyArray)
   }
 }
@@ -63,7 +63,7 @@ extension Tensor where Element: NumpyScalarCompatible {
     precondition(!isTensorView)
     return withUnsafeBytes { bytes in
       let data = ctypes.cast(Int(bitPattern: bytes.baseAddress), ctypes.POINTER(Element.ctype))
-      let ndarray = np.ctypeslib.as_array(data, shape: PythonObject(tupleContentsOf: dimensions))
+      let ndarray = np.ctypeslib.as_array(data, shape: PythonObject(tupleContentsOf: Array(shape)))
       return np.copy(ndarray)
     }
   }

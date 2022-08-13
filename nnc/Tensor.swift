@@ -84,8 +84,149 @@ public enum TensorFormat {
   }
 }
 
-/// Tensor dimensions and its arrangements.
-public enum TensorDimensionFormat {
+/// Tensor shape (or dimensions)
+public struct TensorShape {
+  public var dims:
+    (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
+  public init(
+    dims: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
+  ) {
+    self.dims = dims
+  }
+}
+
+extension TensorShape: ExpressibleByArrayLiteral {
+  public init(_ elements: [Int]) {
+    dims = toCDimensions(elements)
+  }
+  public init(arrayLiteral elements: Int...) {
+    dims = toCDimensions(elements)
+  }
+}
+
+extension TensorShape: Equatable {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    return lhs.dims.0 == lhs.dims.0 && lhs.dims.1 == lhs.dims.1 && lhs.dims.2 == lhs.dims.2
+      && lhs.dims.3 == lhs.dims.3 && lhs.dims.4 == lhs.dims.4 && lhs.dims.5 == lhs.dims.5
+      && lhs.dims.6 == lhs.dims.6 && lhs.dims.7 == lhs.dims.7 && lhs.dims.8 == lhs.dims.8
+      && lhs.dims.9 == lhs.dims.9 && lhs.dims.10 == lhs.dims.10 && lhs.dims.11 == lhs.dims.11
+  }
+}
+
+extension Array where Element == Int {
+  public init(_ shape: TensorShape) {
+    self = fromCDimensions(shape.dims)
+  }
+}
+
+extension TensorShape: RandomAccessCollection {
+  public typealias Element = Int
+  public typealias Index = Int
+  public typealias Indices = Range<Index>
+  public typealias SubSequence = TensorShape
+  public var startIndex: Index { 0 }
+  public var endIndex: Index {
+    var dims = self.dims
+    return Int(
+      withUnsafePointer(to: &dims.0) {
+        ccv_nnc_tensor_nd($0)
+      })
+  }
+  public var indices: Indices { startIndex..<endIndex }
+  public func formIndex(after i: inout Index) { i += 1 }
+  public func formIndex(before i: inout Index) { i -= 1 }
+  public subscript(position: Index) -> Element {
+    get {
+      switch position {
+      case 0:
+        return Int(dims.0)
+      case 1:
+        return Int(dims.1)
+      case 2:
+        return Int(dims.2)
+      case 3:
+        return Int(dims.3)
+      case 4:
+        return Int(dims.4)
+      case 5:
+        return Int(dims.5)
+      case 6:
+        return Int(dims.6)
+      case 7:
+        return Int(dims.7)
+      case 8:
+        return Int(dims.8)
+      case 9:
+        return Int(dims.9)
+      case 10:
+        return Int(dims.10)
+      case 11:
+        return Int(dims.11)
+      default:
+        fatalError("Cannot find index \(position) for dims \(dims)")
+      }
+    }
+    set {
+      switch position {
+      case 0:
+        dims.0 = Int32(newValue)
+      case 1:
+        dims.1 = Int32(newValue)
+      case 2:
+        dims.2 = Int32(newValue)
+      case 3:
+        dims.3 = Int32(newValue)
+      case 4:
+        dims.4 = Int32(newValue)
+      case 5:
+        dims.5 = Int32(newValue)
+      case 6:
+        dims.6 = Int32(newValue)
+      case 7:
+        dims.7 = Int32(newValue)
+      case 8:
+        dims.8 = Int32(newValue)
+      case 9:
+        dims.9 = Int32(newValue)
+      case 10:
+        dims.10 = Int32(newValue)
+      case 11:
+        dims.11 = Int32(newValue)
+      default:
+        fatalError("Cannot find index \(position) for dims \(dims)")
+      }
+    }
+  }
+  public subscript(indices: Indices) -> SubSequence {
+    get {
+      precondition(indices.lowerBound >= 0 && indices.upperBound <= CCV_NNC_MAX_DIM_ALLOC)
+      assert(indices.upperBound > indices.lowerBound)
+      var shape = self
+      withUnsafeMutablePointer(to: &shape.dims.0) {
+        let length = indices.upperBound - indices.lowerBound
+        memmove($0, $0 + indices.lowerBound, MemoryLayout<Int32>.size * length)
+        for i in length..<Int(CCV_NNC_MAX_DIM_ALLOC) {
+          $0[i] = 0
+        }
+      }
+      return shape
+    }
+    set {
+      precondition(indices.lowerBound >= 0 && indices.upperBound <= CCV_NNC_MAX_DIM_ALLOC)
+      assert(indices.upperBound > indices.lowerBound)
+      let length = indices.upperBound - indices.lowerBound
+      var newValue = newValue
+      withUnsafeMutablePointer(to: &dims.0) { to in
+        withUnsafePointer(to: &newValue.dims.0) { from in
+          let _ = memmove(to + indices.lowerBound, from, MemoryLayout<Int32>.size * length)
+        }
+      }
+    }
+  }
+}
+
+/// Tensor shapes and its arrangements.
+public enum TensorShapeFormat {
   case C(Int)  // Assuming NCHW
   case NC(Int, Int)  // Assuming NCHW
   case HWC(Int, Int, Int)  // Assuming NHWC
@@ -115,7 +256,7 @@ public enum TensorDimensionFormat {
   }
 
   @usableFromInline
-  var dimensions: [Int] {
+  var shape: TensorShape {
     switch self {
     case let .C(c):
       assert(c > 0)
@@ -266,32 +407,39 @@ public final class AnyTensorStorage {
   }
 
   @usableFromInline
-  var increments: [Int] {
-    fromCTensorIncrements(cTensor)
+  var step: TensorShape {
+    let type = Int(cTensor.pointee.type)
+    guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
+      return TensorShape(dims: cTensor.pointee.info.dim)
+    }
+    return TensorShape(
+      dims: UnsafeMutableRawPointer(cTensor).bindMemory(
+        to: ccv_nnc_tensor_view_t.self, capacity: 1
+      ).pointee.inc)
   }
 
   @usableFromInline
   subscript<Element: TensorNumeric>(indices: [Int], type: Element.Type) -> Element {
     get {
-      let increments = self.increments
-      assert(increments.count == indices.count)
-      let count = increments.reduce(1, *)
+      let step = self.step
+      assert(step.count == indices.count)
+      let count = step.reduce(1, *)
       let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       var offset = 0
-      for (i, increment) in increments.enumerated() {
+      for (i, increment) in step.enumerated() {
         offset *= increment
         offset += indices[i]
       }
       return (pointer + offset).pointee
     }
     set(v) {
-      let increments = self.increments
-      assert(increments.count == indices.count)
-      let count = increments.reduce(1, *)
+      let step = self.step
+      assert(step.count == indices.count)
+      let count = step.reduce(1, *)
       // We need to deal with GPU memory.
       let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
       var offset = 0
-      for (i, increment) in increments.enumerated() {
+      for (i, increment) in step.enumerated() {
         offset *= increment
         offset += indices[i]
       }
@@ -308,16 +456,16 @@ extension AnyTensorStorage {
       let cTensorParams = cTensor.pointee.info
       let device = DeviceKind.from(cTensorParams: cTensorParams)
       let format = TensorFormat.from(cTensorParams: cTensorParams)
-      let increments = self.increments
-      assert(increments.count == ranges.count)
+      let step = self.step
+      assert(step.count == ranges.count)
       for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+        assert(range.lowerBound >= 0 && range.lowerBound < step[i])
+        assert(range.upperBound > 0 && range.upperBound <= step[i])
       }
       let offset = ranges.map { $0.lowerBound }
       let dimensions = ranges.map { $0.count }
       var cOffset = toCDimensions(offset)
-      var cIncrements = toCDimensions(increments)
+      var cIncrements = step.dims
       let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
         withUnsafePointer(to: &cIncrements.0) { cIncrements in
           ccv_nnc_tensor_view_new(
@@ -336,16 +484,16 @@ extension AnyTensorStorage {
       let device = DeviceKind.from(cTensorParams: cTensorParams)
       // Use the format of the input to make sure we don't do unnecessary format conversions.
       let vFormat = TensorFormat.from(cTensorParams: v.cTensor.pointee.info)
-      let increments = self.increments
-      assert(increments.count == ranges.count)
+      let step = self.step
+      assert(step.count == ranges.count)
       for (i, range) in ranges.enumerated() {
-        assert(range.lowerBound >= 0 && range.lowerBound < increments[i])
-        assert(range.upperBound > 0 && range.upperBound <= increments[i])
+        assert(range.lowerBound >= 0 && range.lowerBound < step[i])
+        assert(range.upperBound > 0 && range.upperBound <= step[i])
       }
       let offset = ranges.map { $0.lowerBound }
       let dimensions = ranges.map { $0.count }
       var cOffset = toCDimensions(offset)
-      var cIncrements = toCDimensions(increments)
+      var cIncrements = step.dims
       var newt = withUnsafePointer(to: &cOffset.0) { cOffset in
         withUnsafePointer(to: &cIncrements.0) { cIncrements in
           ccv_nnc_tensor_view(
@@ -382,19 +530,19 @@ extension AnyTensorStorage {
       let cTensorParams = cTensor.pointee.info
       let device = DeviceKind.from(cTensorParams: cTensorParams)
       let format = TensorFormat.from(cTensorParams: cTensorParams)
-      let increments = self.increments
-      assert(increments.count == indices.count + 1)
+      let step = self.step
+      assert(step.count == indices.count + 1)
       let dimensions = Array(repeating: 1, count: indices.count) + [range.count]
-      let count = increments.reduce(1, *)
+      let count = step.reduce(1, *)
       let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
-      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
-      assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
+      assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
+      assert(range.upperBound > 0 && range.upperBound <= step[indices.count])
       var offset = 0
-      for (i, increment) in increments.prefix(indices.count).enumerated() {
+      for (i, increment) in step.prefix(indices.count).enumerated() {
         offset *= increment
         offset += indices[i]
       }
-      offset *= increments[indices.count]
+      offset *= step[indices.count]
       offset += range.lowerBound
       let newt = ccv_nnc_tensor_new(
         pointer + offset,
@@ -408,23 +556,23 @@ extension AnyTensorStorage {
       // Use the format of the input to make sure we don't do unnecessary format conversions.
       let vFormat = TensorFormat.from(cTensorParams: v.cTensor.pointee.info)
       assert(device == DeviceKind.from(cTensorParams: v.cTensor.pointee.info))
-      let increments = self.increments
-      assert(increments.count == indices.count + 1)
-      let count = increments.reduce(1, *)
+      let step = self.step
+      assert(step.count == indices.count + 1)
+      let count = step.reduce(1, *)
       let pointer = cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
-      assert(range.lowerBound >= 0 && range.lowerBound < increments[indices.count])
-      assert(range.upperBound > 0 && range.upperBound <= increments[indices.count])
-      let inputDim = fromCDimensions(v.cTensor.pointee.info.dim)
+      assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
+      assert(range.upperBound > 0 && range.upperBound <= step[indices.count])
+      let inputDim = TensorShape(dims: v.cTensor.pointee.info.dim)
       for d in inputDim {
         assert(d == 1 || d == range.count)
       }
       assert(inputDim.reduce(1, *) == range.count)
       var offset = 0
-      for (i, increment) in increments.prefix(indices.count).enumerated() {
+      for (i, increment) in step.prefix(indices.count).enumerated() {
         offset *= increment
         offset += indices[i]
       }
-      offset *= increments[indices.count]
+      offset *= step[indices.count]
       offset += range.lowerBound
       if case .CPU = device {  // If it is CPU, do direct copy.
         memcpy(
@@ -435,7 +583,7 @@ extension AnyTensorStorage {
       var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = v.cTensor
       var newt = ccv_nnc_tensor(
         pointer + offset,
-        toCTensorParams(device, dataType: Element.dataType, format: vFormat, dimensions: inputDim),
+        toCTensorParams(device, dataType: Element.dataType, format: vFormat, shape: inputDim),
         0)
       withUnsafeMutablePointer(to: &newt) { newt in
         var output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = newt
@@ -472,8 +620,8 @@ extension AnyTensor {
   }
 
   @inlinable
-  public var dimensions: [Int] {
-    fromCDimensions(cTensor.pointee.info.dim)
+  public var shape: TensorShape {
+    TensorShape(dims: cTensor.pointee.info.dim)
   }
 
   @inlinable
@@ -483,21 +631,21 @@ extension AnyTensor {
   }
 
   @inlinable
-  public var increments: [Int] {
+  public var step: TensorShape {
     guard isTensorView else {
-      return dimensions
+      return shape
     }
-    let inc = UnsafeMutableRawPointer(cTensor).bindMemory(
-      to: ccv_nnc_tensor_view_t.self, capacity: 1
-    ).pointee.inc
-    return fromCDimensions(inc)
+    return TensorShape(
+      dims: UnsafeMutableRawPointer(cTensor).bindMemory(
+        to: ccv_nnc_tensor_view_t.self, capacity: 1
+      ).pointee.inc)
   }
 }
 
 extension Tensor {
   @inlinable
   public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-    let count = increments.reduce(MemoryLayout<Element>.size, *)
+    let count = step.reduce(MemoryLayout<Element>.size, *)
     return try body(UnsafeRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
   }
 }
@@ -511,18 +659,18 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
   @usableFromInline
   var _storage: AnyTensorStorage
 
-  private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]) {
+  private init(_ kind: DeviceKind, dataType: DataType, format: TensorFormat, shape: TensorShape) {
     let cTensor = ccv_nnc_tensor_new(
       nil,
-      toCTensorParams(kind, dataType: dataType, format: format, dimensions: dimensions),
+      toCTensorParams(kind, dataType: dataType, format: format, shape: shape),
       0)!
     _storage = AnyTensorStorage(cTensor)
   }
 
-  private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorDimensionFormat) {
+  private init(_ kind: DeviceKind, _ dataType: DataType, _ dimensionFormat: TensorShapeFormat) {
     self.init(
       kind, dataType: dataType, format: dimensionFormat.format,
-      dimensions: dimensionFormat.dimensions)
+      shape: dimensionFormat.shape)
   }
 
   @usableFromInline
@@ -552,7 +700,7 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
         nil,
         toCTensorParams(
           tensor.kind, dataType: Element.dataType, format: tensor.format,
-          dimensions: tensor.dimensions),
+          shape: tensor.shape),
         0)
       var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = tensor.cTensor
       ccv_nnc_cmd_exec(
@@ -563,8 +711,8 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
     }
   }
 
-  public init(_ kind: DeviceKind, format: TensorFormat, dimensions: [Int]) {
-    self.init(kind, dataType: Element.dataType, format: format, dimensions: dimensions)
+  public init(_ kind: DeviceKind, format: TensorFormat, shape: TensorShape) {
+    self.init(kind, dataType: Element.dataType, format: format, shape: shape)
   }
 
   /**
@@ -572,20 +720,22 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
    *
    * - Parameters:
    *   - kind: Which device this new tensor is on.
-   *   - dimensionFormat: The format and dimensions of the new tensor.
+   *   - dimensionFormat: The format and shape of the new tensor.
    */
-  public init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) {
+  public init(_ kind: DeviceKind, _ dimensionFormat: TensorShapeFormat) {
     self.init(kind, Element.dataType, dimensionFormat)
   }
 
-  public init<S: Sequence>(_ sequence: S, kind: DeviceKind, format: TensorFormat, dimensions: [Int])
+  public init<S: Sequence>(
+    _ sequence: S, kind: DeviceKind, format: TensorFormat, shape: TensorShape
+  )
   where S.Element == Element {
-    self.init(kind, format: format, dimensions: dimensions)
+    self.init(kind, format: format, shape: shape)
     let cArray = ContiguousArray(sequence)
     cArray.withUnsafeBytes { bytes -> Void in
       var tensor = ccv_nnc_tensor(
         bytes.baseAddress,
-        toCTensorParams(.CPU, dataType: Element.dataType, format: format, dimensions: dimensions), 0
+        toCTensorParams(.CPU, dataType: Element.dataType, format: format, shape: shape), 0
       )
       let cmd = ccv_nnc_cmd(
         CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
@@ -602,23 +752,23 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
    *
    * - Parameters:
    *   - sequence: The sequence to initialize the new tensor with.
-   *   - dimensionFormat: The format and dimensions of the new tensor.
+   *   - dimensionFormat: The format and shape of the new tensor.
    */
   public init<S: Sequence>(
-    _ sequence: S, _ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat
+    _ sequence: S, _ kind: DeviceKind, _ dimensionFormat: TensorShapeFormat
   )
   where S.Element == Element {
     self.init(
-      sequence, kind: kind, format: dimensionFormat.format, dimensions: dimensionFormat.dimensions)
+      sequence, kind: kind, format: dimensionFormat.format, shape: dimensionFormat.shape)
   }
 
   public init(
-    _ kind: DeviceKind, format: TensorFormat, dimensions: [Int],
+    _ kind: DeviceKind, format: TensorFormat, shape: TensorShape,
     unsafeMutablePointer: UnsafeMutablePointer<Element>, bindLifetimeOf: Any
   ) {
     let cTensor = ccv_nnc_tensor_new(
       unsafeMutablePointer,
-      toCTensorParams(kind, dataType: Element.dataType, format: format, dimensions: dimensions),
+      toCTensorParams(kind, dataType: Element.dataType, format: format, shape: shape),
       0)!
     self.init(AnyTensorStorage(cTensor, original: bindLifetimeOf))
   }
@@ -677,16 +827,16 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
   @usableFromInline
   subscript(indices: [Int], range: UnboundedRange) -> Tensor<Element> {
     get {
-      let dimensions = self.dimensions
-      return Tensor<Element>(_storage[indices, 0..<dimensions[indices.count], Element.self])
+      let shape = self.shape
+      return Tensor<Element>(_storage[indices, 0..<shape[indices.count], Element.self])
     }
     set(v) {
       if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
         _storage = _storage.copy()
       }
-      let dimensions = self.dimensions
-      _storage[indices, 0..<dimensions[indices.count], Element.self] = v._storage
+      let shape = self.shape
+      _storage[indices, 0..<shape[indices.count], Element.self] = v._storage
     }
   }
 }
@@ -698,7 +848,7 @@ extension Tensor: ExpressibleByArrayLiteral {
       ccv_nnc_tensor_new(
         $0.baseAddress,
         toCTensorParams(
-          .CPU, dataType: Element.dataType, format: .NCHW, dimensions: [elements.count]), 0)!
+          .CPU, dataType: Element.dataType, format: .NCHW, shape: [elements.count]), 0)!
     }
     self.init(AnyTensorStorage(newt, original: wrapped))
   }
@@ -709,7 +859,7 @@ extension Tensor: ExpressibleByArrayLiteral {
 
 extension Array where Element: TensorNumeric {
   public init(_ tensor: Tensor<Element>) {
-    let count = tensor.increments.reduce(1, *)
+    let count = tensor.step.reduce(1, *)
     let pointer = tensor.cTensor.pointee.data.ptr.bindMemory(to: Element.self, capacity: count)
     self.init(UnsafeBufferPointer(start: pointer, count: count))
   }
@@ -843,7 +993,7 @@ extension Tensor {
   public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(
       nil,
-      toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, dimensions: dimensions),
+      toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, shape: shape),
       0)
     let cmd = ccv_nnc_cmd(
       CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
@@ -863,7 +1013,7 @@ extension Tensor {
   public func toCPU(streamContext: StreamContext? = nil) -> Self {
     var _output = ccv_nnc_tensor_new(
       nil,
-      toCTensorParams(.CPU, dataType: dataType, format: format, dimensions: dimensions),
+      toCTensorParams(.CPU, dataType: dataType, format: format, shape: shape),
       0)
     let cmd = ccv_nnc_cmd(
       CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
@@ -895,25 +1045,25 @@ extension Tensor {
 extension Tensor {
 
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> Self {
     let cTensorParams = cTensor.pointee.info
     let device = DeviceKind.from(cTensorParams: cTensorParams)
-    guard let offset = offset, let increments = increments else {
+    guard let offset = offset, let step = step else {
       let newt = ccv_nnc_tensor_new(
         cTensor.pointee.data.ptr,
-        toCTensorParams(device, dataType: Element.dataType, format: format, dimensions: dimensions),
+        toCTensorParams(device, dataType: Element.dataType, format: format, shape: shape),
         0)!
       return Self(AnyTensorStorage(newt, original: _storage))
     }
-    var cOffset = toCDimensions(offset)
-    var cIncrements = toCDimensions(increments)
+    var cOffset = offset.dims
+    var cIncrements = step.dims
     let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
       withUnsafePointer(to: &cIncrements.0) { cIncrements in
         ccv_nnc_tensor_view_new(
           cTensor,
           toCTensorParams(
-            device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset,
+            device, dataType: Element.dataType, format: format, shape: shape), cOffset,
           cIncrements)!
       }
     }
@@ -927,162 +1077,162 @@ extension Tensor {
    * Create a new tensor pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensor with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> Self {
     return reshaped(
-      format: dimensionFormat.format, dimensions: dimensionFormat.dimensions, offset: offset,
-      increments: increments)
+      format: shapeFormat.format, shape: shapeFormat.shape, offset: offset,
+      step: step)
   }
 
 }
 
 extension Collection where Element == Tensor<Float64> {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
     return map {
-      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, shape: shape, offset: offset, step: step)
     }
   }
   /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
-    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(shapeFormat, offset: offset, step: step) }
   }
 }
 
 extension Collection where Element == Tensor<Int64> {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
     return map {
-      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, shape: shape, offset: offset, step: step)
     }
   }
   /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
-    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(shapeFormat, offset: offset, step: step) }
   }
 }
 
 extension Collection where Element == Tensor<Float32> {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
     return map {
-      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, shape: shape, offset: offset, step: step)
     }
   }
   /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - dimensionFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
-    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(shapeFormat, offset: offset, step: step) }
   }
 }
 
 extension Collection where Element == Tensor<Int32> {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
     return map {
-      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, shape: shape, offset: offset, step: step)
     }
   }
   /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
-    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(shapeFormat, offset: offset, step: step) }
   }
 }
 
 extension Collection where Element == Tensor<Float16> {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
     return map {
-      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, shape: shape, offset: offset, step: step)
     }
   }
   /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
-    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(shapeFormat, offset: offset, step: step) }
   }
 }
 
 extension Collection where Element == Tensor<UInt8> {
   public func reshaped(
-    format: TensorFormat, dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
     return map {
-      $0.reshaped(format: format, dimensions: dimensions, offset: offset, increments: increments)
+      $0.reshaped(format: format, shape: shape, offset: offset, step: step)
     }
   }
   /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
-   *   - dimensionFormat: New format and dimensions for the tensor.
-   *   - offset: Whether offset on each dimensions.
-   *   - increments: The step on each dimensions.
+   *   - shapeFormat: New format and shape for the tensor.
+   *   - offset: Whether offset on each shape.
+   *   - step: The step on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
   public func reshaped(
-    _ dimensionFormat: TensorDimensionFormat, offset: [Int]? = nil, increments: [Int]? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
   ) -> [Element] {
-    return map { $0.reshaped(dimensionFormat, offset: offset, increments: increments) }
+    return map { $0.reshaped(shapeFormat, offset: offset, step: step) }
   }
 }
 
@@ -1127,7 +1277,7 @@ extension AnyTensorStorage {
 extension Tensor: CustomStringConvertible {
   public var description: String {
     return
-      "Tensor<\(dataType)>(kind: .\(kind), format: .\(format), dimensions: \(dimensions), increments: \(increments))"
+      "Tensor<\(dataType)>(kind: .\(kind), format: .\(format), shape: \(shape), step: \(step))"
   }
 }
 
@@ -1274,7 +1424,7 @@ func toCDimensionsArray(_ dimensions: [Int]?) -> [Int32] {
 }
 
 @inlinable
-public func fromCDimensions(
+func fromCDimensions(
   _ dim: (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
 ) -> [Int] {
   if dim.0 == 0 {
@@ -1322,18 +1472,6 @@ public func fromCDimensions(
 }
 
 @inlinable
-func fromCTensorIncrements(_ cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>) -> [Int] {
-  let type = Int(cTensor.pointee.type)
-  guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
-    return fromCDimensions(cTensor.pointee.info.dim)
-  }
-  let inc = UnsafeMutableRawPointer(cTensor).bindMemory(
-    to: ccv_nnc_tensor_view_t.self, capacity: 1
-  ).pointee.inc
-  return fromCDimensions(inc)
-}
-
-@inlinable
 func toCTensorParams(
   _ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]
 ) -> ccv_nnc_tensor_param_t {
@@ -1347,5 +1485,22 @@ func toCTensorParams(
   params.datatype = dataType.toC
   params.format = format.toC
   params.dim = toCDimensions(dimensions)
+  return params
+}
+
+@inlinable
+func toCTensorParams(
+  _ kind: DeviceKind, dataType: DataType, format: TensorFormat, shape: TensorShape
+) -> ccv_nnc_tensor_param_t {
+  var params = ccv_nnc_tensor_param_t()
+  switch kind {
+  case .CPU:
+    params.type = Int32(CCV_TENSOR_CPU_MEMORY)
+  case .GPU(let ordinal):
+    params.type = Int32(CCV_TENSOR_GPU_MEMORY | (ordinal << 8))
+  }
+  params.datatype = dataType.toC
+  params.format = format.toC
+  params.dim = shape.dims
   return params
 }

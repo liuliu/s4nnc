@@ -19,8 +19,8 @@ Currently, s4nnc works better under Linux with CUDA 11, CuDNN and NCCL. The API 
 
 ```swift
 public struct Tensor<Element> {
-  init(_ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat)
-  init<S: Sequence>(_ sequence: S, _ kind: DeviceKind, _ dimensionFormat: TensorDimensionFormat) where S.Element == Element
+  init(_ kind: DeviceKind, _ shapeFormat: TensorShapeFormat)
+  init<S: Sequence>(_ sequence: S, _ kind: DeviceKind, _ shapeFormat: TensorShapeFormat) where S.Element == Element
 }
 ```
 

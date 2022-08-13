@@ -8,7 +8,7 @@ final class OpsTests: XCTestCase {
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2], .CPU, .NC(2, 1)))
     let a1 = dynamicGraph.variable(Tensor<Float32>([3.3, 4.4], .CPU, .NC(2, 1)))
     let a2 = a0 ./ a1
-    XCTAssertEqual(a2.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a2.rawValue.shape, [2, 1])
     XCTAssertEqual(a2.rawValue[0, 0], 1.1 / 3.3, accuracy: 1e-5)
     XCTAssertEqual(a2.rawValue[1, 0], 2.2 / 4.4, accuracy: 1e-5)
   }
@@ -17,7 +17,7 @@ final class OpsTests: XCTestCase {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2], .CPU, .NC(2, 1)))
     let a1 = 0.5 / a0
-    XCTAssertEqual(a1.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a1.rawValue.shape, [2, 1])
     XCTAssertEqual(a1.rawValue[0, 0], 0.5 / 1.1, accuracy: 1e-5)
     XCTAssertEqual(a1.rawValue[1, 0], 0.5 / 2.2, accuracy: 1e-5)
   }
@@ -26,7 +26,7 @@ final class OpsTests: XCTestCase {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
     let a1 = a0.reduced(.sum, axis: [1])
-    XCTAssertEqual(a1.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a1.rawValue.shape, [2, 1])
     XCTAssertEqual(a1.rawValue[0, 0], 1.1 + 2.2)
     XCTAssertEqual(a1.rawValue[1, 0], 3.3 + 4.4)
   }
@@ -35,7 +35,7 @@ final class OpsTests: XCTestCase {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
     let a1 = a0.reduced(.max, axis: [0])
-    XCTAssertEqual(a1.rawValue.dimensions, [1, 2])
+    XCTAssertEqual(a1.rawValue.shape, [1, 2])
     XCTAssertEqual(a1.rawValue[0, 0], 3.3)
     XCTAssertEqual(a1.rawValue[0, 1], 4.4)
   }
@@ -46,7 +46,7 @@ final class OpsTests: XCTestCase {
     let model = Model([input], [input.reduced(.sum, axis: [1])])
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
     let a1 = DynamicGraph.Tensor<Float32>(model(inputs: a0)[0])
-    XCTAssertEqual(a1.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a1.rawValue.shape, [2, 1])
     XCTAssertEqual(a1.rawValue[0, 0], 1.1 + 2.2)
     XCTAssertEqual(a1.rawValue[1, 0], 3.3 + 4.4)
   }
@@ -57,7 +57,7 @@ final class OpsTests: XCTestCase {
     let model = Model([input], [input.reduced(.max, axis: [0])])
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
     let a1 = DynamicGraph.Tensor<Float32>(model(inputs: a0)[0])
-    XCTAssertEqual(a1.rawValue.dimensions, [1, 2])
+    XCTAssertEqual(a1.rawValue.shape, [1, 2])
     XCTAssertEqual(a1.rawValue[0, 0], 3.3)
     XCTAssertEqual(a1.rawValue[0, 1], 4.4)
   }
@@ -70,7 +70,7 @@ final class OpsTests: XCTestCase {
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 4.4], .CPU, .NC(2, 1)))
     let a1 = dynamicGraph.variable(Tensor<Float32>([2.2, 3.3], .CPU, .NC(2, 1)))
     let a2 = DynamicGraph.Tensor<Float32>(model(inputs: a0, a1)[0])
-    XCTAssertEqual(a2.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a2.rawValue.shape, [2, 1])
     XCTAssertEqual(a2.rawValue[0, 0], 1.1)
     XCTAssertEqual(a2.rawValue[1, 0], 3.3)
   }
@@ -83,7 +83,7 @@ final class OpsTests: XCTestCase {
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 4.4], .CPU, .NC(2, 1)))
     let a1 = dynamicGraph.variable(Tensor<Float32>([2.2, 3.3], .CPU, .NC(2, 1)))
     let a2 = DynamicGraph.Tensor<Float32>(model(inputs: a0, a1)[0])
-    XCTAssertEqual(a2.rawValue.dimensions, [2, 1])
+    XCTAssertEqual(a2.rawValue.shape, [2, 1])
     XCTAssertEqual(a2.rawValue[0, 0], 2.2)
     XCTAssertEqual(a2.rawValue[1, 0], 4.4)
   }
@@ -96,7 +96,7 @@ final class OpsTests: XCTestCase {
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 4.4], .CPU, .NC(2, 1)))
     let a1 = dynamicGraph.variable(Tensor<Float32>([2.2, 3.3], .CPU, .NC(2, 1)))
     let a2 = DynamicGraph.Tensor<Float32>(model(inputs: a0, a1)[0])
-    XCTAssertEqual(a2.rawValue.dimensions, [2, 2])
+    XCTAssertEqual(a2.rawValue.shape, [2, 2])
     XCTAssertEqual(a2.rawValue[0, 0], 1.1)
     XCTAssertEqual(a2.rawValue[1, 0], 4.4)
     XCTAssertEqual(a2.rawValue[0, 1], 2.2)

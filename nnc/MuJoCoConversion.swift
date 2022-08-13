@@ -13,7 +13,7 @@ extension Tensor {
   public init(mjArray: MjArray<Element>) {
     // MjArray is one dimension. Treat this as a C dimension.
     self.init(
-      .CPU, format: .NCHW, dimensions: [mjArray.count], unsafeMutablePointer: mjArray + 0,
+      .CPU, format: .NCHW, shape: [mjArray.count], unsafeMutablePointer: mjArray + 0,
       bindLifetimeOf: mjArray)
   }
 }
