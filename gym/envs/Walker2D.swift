@@ -4,41 +4,47 @@ import NNC
 import NNCMuJoCoConversion
 import Numerics
 
-public final class Ant: MuJoCoEnv {
+public final class Walker2D: MuJoCoEnv {
   public let model: MjModel
   public var data: MjData
 
   private let initData: MjData
+  private let forwardRewardWeight: Double
   private let ctrlCostWeight: Double
   private let healthyReward: Double
   private let terminateWhenUnhealthy: Bool
   private let healthyZRange: ClosedRange<Double>
+  private let healthyAngleRange: ClosedRange<Double>
   private let resetNoiseScale: Double
 
   private var sfmt: SFMT
 
   public init(
-    ctrlCostWeight: Double = 0.5, healthyReward: Double = 1.0, terminateWhenUnhealthy: Bool = true,
-    healthyZRange: ClosedRange<Double> = 0.2...1.0, resetNoiseScale: Double = 0.1
+    forwardRewardWeight: Double = 1.0, ctrlCostWeight: Double = 1e-3, healthyReward: Double = 1.0,
+    terminateWhenUnhealthy: Bool = true, healthyZRange: ClosedRange<Double> = 0.8...2,
+    healthyAngleRange: ClosedRange<Double> = -1...1, resetNoiseScale: Double = 5e-3
   ) throws {
     if let runfilesDir = ProcessInfo.processInfo.environment["RUNFILES_DIR"] {
-      model = try MjModel(fromXMLPath: runfilesDir + "/s4nnc/gym/assets/ant.xml")
+      model = try MjModel(
+        fromXMLPath: runfilesDir + "/s4nnc/gym/assets/walker2d.xml")
     } else {
-      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/ant.xml")
+      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/walker2d.xml")
     }
     data = model.makeData()
     initData = data.copied(model: model)
     var g = SystemRandomNumberGenerator()
     sfmt = SFMT(seed: g.next())
+    self.forwardRewardWeight = forwardRewardWeight
     self.ctrlCostWeight = ctrlCostWeight
     self.healthyReward = healthyReward
     self.terminateWhenUnhealthy = terminateWhenUnhealthy
     self.healthyZRange = healthyZRange
+    self.healthyAngleRange = healthyAngleRange
     self.resetNoiseScale = resetNoiseScale
   }
 }
 
-extension Ant: Env {
+extension Walker2D: Env {
   public typealias ActType = Tensor<Float64>
   public typealias ObsType = Tensor<Float64>
   public typealias RewardType = Float
@@ -46,19 +52,9 @@ extension Ant: Env {
 
   private var isHealthy: Bool {
     let qpos = data.qpos
-    let z = qpos[2]
-    for i in 0..<qpos.count {
-      if qpos[i].isInfinite {
-        return false
-      }
-    }
-    let qvel = data.qvel
-    for i in 0..<qvel.count {
-      if qvel[i].isInfinite {
-        return false
-      }
-    }
-    return healthyZRange.contains(z)
+    let z = qpos[1]
+    let angle = qpos[2]
+    return healthyZRange.contains(z) && healthyAngleRange.contains(angle)
   }
 
   private var done: Bool {
@@ -68,51 +64,39 @@ extension Ant: Env {
   private func observations() -> Tensor<Float64> {
     let qpos = data.qpos
     let qvel = data.qvel
-    var tensor = Tensor<Float64>(.CPU, .C(27))
-    tensor[0..<13] = qpos[2...]
-    tensor[13..<27] = qvel[...]
+    var tensor = Tensor<Float64>(.CPU, .C(17))
+    tensor[0..<8] = qpos[1...]
+    tensor[8..<17] = qvel[...]
     return tensor
   }
 
   public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
-    let id = model.name2id(type: .body, name: "torso")
-    precondition(id >= 0)
-    let xyPositionBefore = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
     data.ctrl[...] = action
-    for _ in 0..<5 {
+    let xPositionBefore = data.qpos[0]
+    for _ in 0..<4 {
       model.step(data: &data)
     }
     // As of MuJoCo 2.0, force-related quantities like cacc are not computed
     // unless there's a force sensor in the model.
     // See https://github.com/openai/gym/issues/1541
     model.rnePostConstraint(data: &data)
-    let xyPositionAfter = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
-    let dt = model.opt.timestep * 5
-    let xyVelocity = (
-      (xyPositionAfter.0 - xyPositionBefore.0) / dt, (xyPositionAfter.1 - xyPositionBefore.1) / dt
-    )
-    let forwardReward = xyVelocity.0
-    let healthyReward = terminateWhenUnhealthy || isHealthy ? self.healthyReward : 0
+    let xPositionAfter = data.qpos[0]
+    let dt = model.opt.timestep * 4
+    let xVelocity = (xPositionAfter - xPositionBefore) / dt
     var ctrlCost: Double = 0
-    for i in 0..<8 {
+    for i in 0..<6 {
       ctrlCost += Double(action[i] * action[i])
     }
     ctrlCost *= ctrlCostWeight
+    let forwardReward = forwardRewardWeight * xVelocity
+    let healthyReward = isHealthy ? self.healthyReward : 0
     let rewards = forwardReward + healthyReward
-    let costs = ctrlCost
+    let cost = ctrlCost
     let obs = observations()
-    let reward = Float(rewards - costs)
+    let reward = Float(rewards - cost)
     let info: [String: Any] = [
-      "reward_forward": forwardReward,
-      "reward_ctrl": -ctrlCost,
-      "reward_survive": healthyReward,
-      "x_position": xyPositionAfter.0,
-      "y_position": xyPositionAfter.1,
-      "distance_from_origin":
-        (xyPositionAfter.0 * xyPositionAfter.0 + xyPositionAfter.1 * xyPositionAfter.1)
-        .squareRoot(),
-      "x_velocity": xyVelocity.0,
-      "y_velocity": xyVelocity.1,
+      "x_position": xPositionAfter,
+      "x_velocity": xVelocity,
     ]
     return (obs, reward, done, info)
   }
@@ -129,7 +113,7 @@ extension Ant: Env {
       qpos[i] = initQpos[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
     }
     for i in 0..<qvel.count {
-      qvel[i] = initQvel[i] + noise(resetNoiseScale, using: &sfmt)
+      qvel[i] = initQvel[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
     }
     // After this, forward data to finish reset.
     model.forward(data: &data)
@@ -137,5 +121,5 @@ extension Ant: Env {
     return (obs, [:])
   }
 
-  public var rewardThreshold: Float { 6_000 }
+  public var rewardThreshold: Float { 4_000 }
 }

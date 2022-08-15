@@ -73,3 +73,16 @@ swift_binary(
         "@SwiftNumerics//:Numerics",
     ],
 )
+
+swift_binary(
+    name = "py_sf_ppo",  # Python, Single-File, PPO. This is kept as is to check against any changes in PPO.
+    srcs = ["py_sf_ppo/main.swift"],
+    deps = [
+        "//gym",
+        "//nnc",
+        "//nnc:nnc_python",
+        "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
+        "@SwiftNumerics//:Numerics",
+    ],
+)

@@ -6,9 +6,9 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = InvertedDoublePendulum
-let input_dim = 11
-let output_dim = 1
+typealias TargetEnv = Ant
+let input_dim = 27
+let output_dim = 8
 let action_range: Float = 1
 
 func NetA() -> (Model, Model) {
@@ -41,7 +41,7 @@ let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
 let step_per_epoch = 30_000
-let collect_per_step = 5_000
+let collect_per_step = 20_000
 let update_per_step = 10
 let batch_size = 64
 let vf_coef: Float = 0.25
@@ -145,7 +145,7 @@ for epoch in 0..<max_epoch {
     for _ in 0..<update_per_step {
       let (returns, advantages) = ppo.computeReturns(from: collectedData)
       var dataframe = PPO.samples(
-        from: collectedData, episodeCount: batch_size, using: &sfmt, returns: returns,
+        from: collectedData, episodeCount: collectedData.count, using: &sfmt, returns: returns,
         advantages: advantages, oldDistributions: oldDistributions)
       dataframe.shuffle()
       let batched = dataframe[
