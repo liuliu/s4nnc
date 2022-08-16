@@ -6,7 +6,7 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = HalfCheetah
+typealias TargetEnv = Swimmer
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
