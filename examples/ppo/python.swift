@@ -22,5 +22,7 @@ extension PythonEnv: Env {
     let obs = pythonObject.reset(seed: seed)
     return (try! Tensor<Float64>(numpy: obs), [:])
   }
-  public var rewardThreshold: Float { 6_000 }
+  public static var rewardThreshold: Float { 6_000 }
+  public static var actionSpace: [ClosedRange<Float>] { fatalError() }
+  public static var stateSize: Int { fatalError() }
 }

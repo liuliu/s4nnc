@@ -30,14 +30,14 @@ extension InvertedDoublePendulum: Env {
   public typealias ActType = Tensor<Float64>
   public typealias ObsType = Tensor<Float64>
   public typealias RewardType = Float
-  public typealias DoneType = Bool
+  public typealias TerminatedType = Bool
 
   private var isHealthy: Bool {
     let y = data.siteXpos[2]
     return y > 1
   }
 
-  private var done: Bool {
+  private var terminated: Bool {
     return !isHealthy
   }
 
@@ -60,7 +60,7 @@ extension InvertedDoublePendulum: Env {
     return tensor
   }
 
-  public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
+  public func step(action: ActType) -> (ObsType, RewardType, TerminatedType, [String: Any]) {
     data.ctrl[...] = action
     for _ in 0..<5 {
       model.step(data: &data)
@@ -77,7 +77,7 @@ extension InvertedDoublePendulum: Env {
     let v2 = data.qvel[2]
     let velPenality = 1e-3 * v1 * v1 + 5e-3 * v2 * v2
     let reward = Float(10 - distPenality - velPenality)
-    return (obs, reward, done, [:])
+    return (obs, reward, terminated, [:])
   }
 
   public func reset(seed: Int?) -> (ObsType, [String: Any]) {
@@ -100,5 +100,7 @@ extension InvertedDoublePendulum: Env {
     return (obs, [:])
   }
 
-  public var rewardThreshold: Float { 9_100 }
+  public static var rewardThreshold: Float { 9_100 }
+  public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -1...1, count: 1) }
+  public static var stateSize: Int { 11 }
 }

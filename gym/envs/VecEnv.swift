@@ -4,42 +4,42 @@ import NNC
 public final class VecEnv<EnvType: Env, Element: TensorNumeric>
 where EnvType.ActType == Tensor<Element>, EnvType.ObsType == Tensor<Element> {
   private var envs = [EnvType]()
-  private var done = [Bool]()
+  private var terminated = [Bool]()
   private var obs = [EnvType.ObsType]()
   private var rewards = [EnvType.RewardType]()
   public init(count: Int, _ closure: (_: Int) throws -> EnvType) rethrows {
     precondition(count > 0)
     envs = []
-    done = []
+    terminated = []
     for i in 0..<count {
       envs.append(try closure(i))
-      done.append(false)
+      terminated.append(false)
     }
   }
 }
 
-extension VecEnv: Env where EnvType.DoneType == Bool {
+extension VecEnv: Env where EnvType.TerminatedType == Bool {
   public typealias ActType = EnvType.ActType
   public typealias ObsType = EnvType.ObsType
   public typealias RewardType = [EnvType.RewardType]
-  public typealias DoneType = [Bool]
-  public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
+  public typealias TerminatedType = [Bool]
+  public func step(action: ActType) -> (ObsType, RewardType, TerminatedType, [String: Any]) {
     if obs.count == 0 || rewards.count == 0 {  // If we never done obs, we need to build up the array, do it serially. The reason because I cannot construct the array with optional types easily.
       obs = []
       rewards = []
       for i in 0..<envs.count {
-        assert(!self.done[i])
-        let (obs, reward, done, _) = envs[i].step(action: action[i, ...])
+        assert(!self.terminated[i])
+        let (obs, reward, terminated, _) = envs[i].step(action: action[i, ...])
         self.obs.append(obs)
         self.rewards.append(reward)
-        self.done[i] = done
+        self.terminated[i] = terminated
       }
     } else {  // Once we built up, we can do it concurrently.
       DispatchQueue.concurrentPerform(iterations: envs.count) { [self] i in
-        let (obs, reward, done, _) = envs[i].step(action: action[i, ...])
+        let (obs, reward, terminated, _) = envs[i].step(action: action[i, ...])
         self.obs[i] = obs
         self.rewards[i] = reward
-        self.done[i] = done
+        self.terminated[i] = terminated
       }
     }
     var obs = Tensor<Element>(
@@ -48,7 +48,7 @@ extension VecEnv: Env where EnvType.DoneType == Bool {
     for i in 0..<envs.count {
       obs[i, ...] = self.obs[i]
     }
-    return (obs, rewards, done, [:])
+    return (obs, rewards, terminated, [:])
   }
 
   public func reset(seed: Int?) -> (ObsType, [String: Any]) {
@@ -84,10 +84,12 @@ extension VecEnv: Env where EnvType.DoneType == Bool {
       shape: [envs.count, self.obs[0].shape[0]])
     for i in 0..<envs.count {
       obs[i, ...] = self.obs[i]
-      done[i] = false
+      terminated[i] = false
     }
     return (obs, [:])
   }
 
-  public var rewardThreshold: Float { envs[0].rewardThreshold }
+  public static var rewardThreshold: Float { EnvType.rewardThreshold }
+  public static var actionSpace: [ClosedRange<Float>] { EnvType.actionSpace }
+  public static var stateSize: Int { EnvType.stateSize }
 }

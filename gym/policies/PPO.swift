@@ -85,6 +85,8 @@ extension PPO {
     var resultReturns = [[Float]]()
     var resultAdvatanges = [[Float]]()
     var resultUnnormalizedReturns = [[Float]]()
+    var batchMean: Double = 0
+    var batchCount: Int = 0
     for data in batch {
       var rewStd: Float = 1
       var invStd: Float = 1
@@ -109,33 +111,29 @@ extension PPO {
       var returns = [Float]()
       for unnormalizedReturn in unnormalizedReturns {
         returns.append(invStd * unnormalizedReturn)
+        batchMean += Double(unnormalizedReturn)
       }
       resultReturns.append(returns)
       resultAdvatanges.append(advantages)
       resultUnnormalizedReturns.append(unnormalizedReturns)
+      batchCount += unnormalizedReturns.count
     }
+    batchMean = batchMean / Double(batchCount)
+    var batchVar: Double = 0
     for unnormalizedReturns in resultUnnormalizedReturns {
-      var batchMean: Double = 0
-      for unnormalizedReturn in unnormalizedReturns {
-        batchMean += Double(unnormalizedReturn)
-      }
-      var batchVar: Double = 0
-      batchMean = batchMean / Double(unnormalizedReturns.count)
       for rew in unnormalizedReturns {
         batchVar += (Double(rew) - batchMean) * (Double(rew) - batchMean)
       }
-      batchVar = batchVar / Double(unnormalizedReturns.count)
-      let delta = batchMean - rewMean
-      let totalCount = unnormalizedReturns.count + rewTotal
-      rewMean = rewMean + delta * Double(unnormalizedReturns.count) / Double(totalCount)
-      let mA = rewVar * Double(rewTotal)
-      let mB = batchVar * Double(unnormalizedReturns.count)
-      let m2 =
-        mA + mB + delta * delta * Double(rewTotal) * Double(unnormalizedReturns.count)
-        / Double(totalCount)
-      rewVar = m2 / Double(totalCount)
-      rewTotal = totalCount
     }
+    batchVar = batchVar / Double(batchCount)
+    let delta = batchMean - rewMean
+    let totalCount = batchCount + rewTotal
+    rewMean = rewMean + delta * Double(batchCount) / Double(totalCount)
+    let mA = rewVar * Double(rewTotal)
+    let mB = batchVar * Double(batchCount)
+    let m2 = mA + mB + delta * delta * Double(rewTotal) * Double(batchCount) / Double(totalCount)
+    rewVar = m2 / Double(totalCount)
+    rewTotal = totalCount
     return (returns: resultReturns, advantages: resultAdvatanges)
   }
 

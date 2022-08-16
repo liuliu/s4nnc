@@ -4,31 +4,25 @@ import NNC
 import NNCMuJoCoConversion
 import Numerics
 
-public final class Walker2D: MuJoCoEnv {
+public final class HalfCheetah: MuJoCoEnv {
   public let model: MjModel
   public var data: MjData
 
   private let initData: MjData
   private let forwardRewardWeight: Double
   private let ctrlCostWeight: Double
-  private let healthyReward: Double
-  private let terminateWhenUnhealthy: Bool
-  private let healthyZRange: ClosedRange<Double>
-  private let healthyAngleRange: ClosedRange<Double>
   private let resetNoiseScale: Double
 
   private var sfmt: SFMT
 
   public init(
-    forwardRewardWeight: Double = 1.0, ctrlCostWeight: Double = 1e-3, healthyReward: Double = 1.0,
-    terminateWhenUnhealthy: Bool = true, healthyZRange: ClosedRange<Double> = 0.8...2,
-    healthyAngleRange: ClosedRange<Double> = -1...1, resetNoiseScale: Double = 5e-3
+    forwardRewardWeight: Double = 1.0, ctrlCostWeight: Double = 0.1, resetNoiseScale: Double = 0.1
   ) throws {
     if let runfilesDir = ProcessInfo.processInfo.environment["RUNFILES_DIR"] {
       model = try MjModel(
-        fromXMLPath: runfilesDir + "/s4nnc/gym/assets/walker2d.xml")
+        fromXMLPath: runfilesDir + "/s4nnc/gym/assets/half_cheetah.xml")
     } else {
-      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/walker2d.xml")
+      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/half_cheetah.xml")
     }
     data = model.makeData()
     initData = data.copied(model: model)
@@ -36,46 +30,29 @@ public final class Walker2D: MuJoCoEnv {
     sfmt = SFMT(seed: g.next())
     self.forwardRewardWeight = forwardRewardWeight
     self.ctrlCostWeight = ctrlCostWeight
-    self.healthyReward = healthyReward
-    self.terminateWhenUnhealthy = terminateWhenUnhealthy
-    self.healthyZRange = healthyZRange
-    self.healthyAngleRange = healthyAngleRange
     self.resetNoiseScale = resetNoiseScale
   }
 }
 
-extension Walker2D: Env {
+extension HalfCheetah: Env {
   public typealias ActType = Tensor<Float64>
   public typealias ObsType = Tensor<Float64>
   public typealias RewardType = Float
   public typealias TerminatedType = Bool
-
-  private var isHealthy: Bool {
-    let qpos = data.qpos
-    let z = qpos[1]
-    let angle = qpos[2]
-    return healthyZRange.contains(z) && healthyAngleRange.contains(angle)
-  }
-
-  private var terminated: Bool {
-    return !isHealthy ? terminateWhenUnhealthy : false
-  }
 
   private func observations() -> Tensor<Float64> {
     let qpos = data.qpos
     let qvel = data.qvel
     var tensor = Tensor<Float64>(.CPU, .C(17))
     tensor[0..<8] = qpos[1...]
-    for i in 0..<qvel.count {
-      tensor[8 + i] = max(min(qvel[i], 10), -10)
-    }
+    tensor[8..<17] = qvel[...]
     return tensor
   }
 
   public func step(action: ActType) -> (ObsType, RewardType, TerminatedType, [String: Any]) {
     data.ctrl[...] = action
     let xPositionBefore = data.qpos[0]
-    for _ in 0..<4 {
+    for _ in 0..<5 {
       model.step(data: &data)
     }
     // As of MuJoCo 2.0, force-related quantities like cacc are not computed
@@ -83,7 +60,7 @@ extension Walker2D: Env {
     // See https://github.com/openai/gym/issues/1541
     model.rnePostConstraint(data: &data)
     let xPositionAfter = data.qpos[0]
-    let dt = model.opt.timestep * 4
+    let dt = model.opt.timestep * 5
     let xVelocity = (xPositionAfter - xPositionBefore) / dt
     var ctrlCost: Double = 0
     for i in 0..<6 {
@@ -91,16 +68,15 @@ extension Walker2D: Env {
     }
     ctrlCost *= ctrlCostWeight
     let forwardReward = forwardRewardWeight * xVelocity
-    let healthyReward = terminateWhenUnhealthy || isHealthy ? self.healthyReward : 0
-    let rewards = forwardReward + healthyReward
-    let costs = ctrlCost
     let obs = observations()
-    let reward = Float(rewards - costs)
+    let reward = Float(forwardReward - ctrlCost)
     let info: [String: Any] = [
       "x_position": xPositionAfter,
       "x_velocity": xVelocity,
+      "reward_run": forwardReward,
+      "reward_ctrl": -ctrlCost,
     ]
-    return (obs, reward, terminated, info)
+    return (obs, reward, false, info)
   }
 
   public func reset(seed: Int?) -> (ObsType, [String: Any]) {
@@ -115,7 +91,7 @@ extension Walker2D: Env {
       qpos[i] = initQpos[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
     }
     for i in 0..<qvel.count {
-      qvel[i] = initQvel[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
+      qvel[i] = initQvel[i] + noise(resetNoiseScale, using: &sfmt)
     }
     // After this, forward data to finish reset.
     model.forward(data: &data)
@@ -123,7 +99,7 @@ extension Walker2D: Env {
     return (obs, [:])
   }
 
-  public static var rewardThreshold: Float { 4_000 }
+  public static var rewardThreshold: Float { 4_800 }
   public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -1...1, count: 6) }
   public static var stateSize: Int { 17 }
 }

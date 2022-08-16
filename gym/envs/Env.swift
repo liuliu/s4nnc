@@ -2,10 +2,12 @@ public protocol Env {
   associatedtype ObsType
   associatedtype ActType
   associatedtype RewardType
-  associatedtype DoneType
-  mutating func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any])
+  associatedtype TerminatedType
+  mutating func step(action: ActType) -> (ObsType, RewardType, TerminatedType, [String: Any])
   mutating func reset(seed: Int?) -> (ObsType, [String: Any])
-  var rewardThreshold: Float { get }
+  static var rewardThreshold: Float { get }
+  static var stateSize: Int { get }
+  static var actionSpace: [ClosedRange<Float>] { get }
 }
 
 extension Env {

@@ -4,41 +4,50 @@ import NNC
 import NNCMuJoCoConversion
 import Numerics
 
-public final class Ant: MuJoCoEnv {
+public final class Hopper: MuJoCoEnv {
   public let model: MjModel
   public var data: MjData
 
   private let initData: MjData
+  private let forwardRewardWeight: Double
   private let ctrlCostWeight: Double
   private let healthyReward: Double
   private let terminateWhenUnhealthy: Bool
+  private let healthyStateRange: ClosedRange<Double>
   private let healthyZRange: ClosedRange<Double>
+  private let healthyAngleRange: ClosedRange<Double>
   private let resetNoiseScale: Double
 
   private var sfmt: SFMT
 
   public init(
-    ctrlCostWeight: Double = 0.5, healthyReward: Double = 1.0, terminateWhenUnhealthy: Bool = true,
-    healthyZRange: ClosedRange<Double> = 0.2...1.0, resetNoiseScale: Double = 0.1
+    forwardRewardWeight: Double = 1.0, ctrlCostWeight: Double = 1e-3, healthyReward: Double = 1.0,
+    terminateWhenUnhealthy: Bool = true, healthyStateRange: ClosedRange<Double> = -100...100,
+    healthyZRange: ClosedRange<Double> = 0.7...Double.infinity,
+    healthyAngleRange: ClosedRange<Double> = -0.2...0.2, resetNoiseScale: Double = 5e-3
   ) throws {
     if let runfilesDir = ProcessInfo.processInfo.environment["RUNFILES_DIR"] {
-      model = try MjModel(fromXMLPath: runfilesDir + "/s4nnc/gym/assets/ant.xml")
+      model = try MjModel(
+        fromXMLPath: runfilesDir + "/s4nnc/gym/assets/hopper.xml")
     } else {
-      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/ant.xml")
+      model = try MjModel(fromXMLPath: "../s4nnc/gym/assets/hopper.xml")
     }
     data = model.makeData()
     initData = data.copied(model: model)
     var g = SystemRandomNumberGenerator()
     sfmt = SFMT(seed: g.next())
+    self.forwardRewardWeight = forwardRewardWeight
     self.ctrlCostWeight = ctrlCostWeight
     self.healthyReward = healthyReward
     self.terminateWhenUnhealthy = terminateWhenUnhealthy
+    self.healthyStateRange = healthyStateRange
     self.healthyZRange = healthyZRange
+    self.healthyAngleRange = healthyAngleRange
     self.resetNoiseScale = resetNoiseScale
   }
 }
 
-extension Ant: Env {
+extension Hopper: Env {
   public typealias ActType = Tensor<Float64>
   public typealias ObsType = Tensor<Float64>
   public typealias RewardType = Float
@@ -46,19 +55,23 @@ extension Ant: Env {
 
   private var isHealthy: Bool {
     let qpos = data.qpos
-    let z = qpos[2]
-    for i in 0..<qpos.count {
-      if qpos[i].isInfinite {
+    let z = qpos[1]
+    let angle = qpos[2]
+    if !healthyZRange.contains(z) || !healthyAngleRange.contains(angle) {
+      return false
+    }
+    for i in 3..<qpos.count {
+      if !healthyStateRange.contains(qpos[i]) {
         return false
       }
     }
     let qvel = data.qvel
     for i in 0..<qvel.count {
-      if qvel[i].isInfinite {
+      if !healthyStateRange.contains(qvel[i]) {
         return false
       }
     }
-    return healthyZRange.contains(z)
+    return true
   }
 
   private var terminated: Bool {
@@ -68,51 +81,41 @@ extension Ant: Env {
   private func observations() -> Tensor<Float64> {
     let qpos = data.qpos
     let qvel = data.qvel
-    var tensor = Tensor<Float64>(.CPU, .C(27))
-    tensor[0..<13] = qpos[2...]
-    tensor[13..<27] = qvel[...]
+    var tensor = Tensor<Float64>(.CPU, .C(11))
+    tensor[0..<5] = qpos[1...]
+    for i in 0..<qvel.count {
+      tensor[5 + i] = max(min(qvel[i], 10), -10)
+    }
     return tensor
   }
 
   public func step(action: ActType) -> (ObsType, RewardType, TerminatedType, [String: Any]) {
-    let id = model.name2id(type: .body, name: "torso")
-    precondition(id >= 0)
-    let xyPositionBefore = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
     data.ctrl[...] = action
-    for _ in 0..<5 {
+    let xPositionBefore = data.qpos[0]
+    for _ in 0..<4 {
       model.step(data: &data)
     }
     // As of MuJoCo 2.0, force-related quantities like cacc are not computed
     // unless there's a force sensor in the model.
     // See https://github.com/openai/gym/issues/1541
     model.rnePostConstraint(data: &data)
-    let xyPositionAfter = (data.xpos[Int(id) * 3], data.xpos[Int(id) * 3 + 1])
-    let dt = model.opt.timestep * 5
-    let xyVelocity = (
-      (xyPositionAfter.0 - xyPositionBefore.0) / dt, (xyPositionAfter.1 - xyPositionBefore.1) / dt
-    )
-    let forwardReward = xyVelocity.0
-    let healthyReward = terminateWhenUnhealthy || isHealthy ? self.healthyReward : 0
+    let xPositionAfter = data.qpos[0]
+    let dt = model.opt.timestep * 4
+    let xVelocity = (xPositionAfter - xPositionBefore) / dt
     var ctrlCost: Double = 0
-    for i in 0..<8 {
+    for i in 0..<6 {
       ctrlCost += Double(action[i] * action[i])
     }
     ctrlCost *= ctrlCostWeight
+    let forwardReward = forwardRewardWeight * xVelocity
+    let healthyReward = terminateWhenUnhealthy || isHealthy ? self.healthyReward : 0
     let rewards = forwardReward + healthyReward
     let costs = ctrlCost
     let obs = observations()
     let reward = Float(rewards - costs)
     let info: [String: Any] = [
-      "reward_forward": forwardReward,
-      "reward_ctrl": -ctrlCost,
-      "reward_survive": healthyReward,
-      "x_position": xyPositionAfter.0,
-      "y_position": xyPositionAfter.1,
-      "distance_from_origin":
-        (xyPositionAfter.0 * xyPositionAfter.0 + xyPositionAfter.1 * xyPositionAfter.1)
-        .squareRoot(),
-      "x_velocity": xyVelocity.0,
-      "y_velocity": xyVelocity.1,
+      "x_position": xPositionAfter,
+      "x_velocity": xVelocity,
     ]
     return (obs, reward, terminated, info)
   }
@@ -129,7 +132,7 @@ extension Ant: Env {
       qpos[i] = initQpos[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
     }
     for i in 0..<qvel.count {
-      qvel[i] = initQvel[i] + noise(resetNoiseScale, using: &sfmt)
+      qvel[i] = initQvel[i] + Double.random(in: -resetNoiseScale...resetNoiseScale, using: &sfmt)
     }
     // After this, forward data to finish reset.
     model.forward(data: &data)
@@ -137,7 +140,7 @@ extension Ant: Env {
     return (obs, [:])
   }
 
-  public static var rewardThreshold: Float { 6_000 }
-  public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -1...1, count: 8) }
-  public static var stateSize: Int { 27 }
+  public static var rewardThreshold: Float { 3_800 }
+  public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -1...1, count: 3) }
+  public static var stateSize: Int { 11 }
 }

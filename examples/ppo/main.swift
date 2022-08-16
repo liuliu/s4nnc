@@ -6,10 +6,11 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = Ant
-let input_dim = 27
-let output_dim = 8
-let action_range: Float = 1
+typealias TargetEnv = HalfCheetah
+
+let input_dim = TargetEnv.stateSize
+let output_dim = TargetEnv.actionSpace.count
+let action_range: Float = TargetEnv.actionSpace[0].upperBound
 
 func NetA() -> (Model, Model) {
   let lastLayer = Dense(count: output_dim)
@@ -41,11 +42,11 @@ let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
 let step_per_epoch = 30_000
-let collect_per_step = 20_000
+let collect_per_step = 10_000
 let update_per_step = 10
 let batch_size = 64
 let vf_coef: Float = 0.25
-let ent_coef: Float = 0.001
+let ent_coef: Float = 0.0
 let training_num = 64
 let testing_num = 10
 let max_grad_norm: Float = 0.5
@@ -68,7 +69,7 @@ let critic = NetC()
 
 var actorOptim = AdamOptimizer(graph, rate: actor_lr)
 let scale = graph.variable(.GPU(0), .C(output_dim), of: Float32.self)
-scale.full(0)
+scale.full(-0.5)
 actorOptim.parameters = [actor.parameters, scale]
 var criticOptim = AdamOptimizer(graph, rate: critic_lr)
 criticOptim.parameters = [critic.parameters]
@@ -91,6 +92,7 @@ var training_collector = Collector<Float, PPO.ContinuousActionSpace, TimeLimit<T
 ) {
   let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
   let variable = obsRms.norm(obs)
+  variable.clamp(-10...10)
   obsRms.update([obs])
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
   if !initActorLastLayer {
@@ -128,6 +130,7 @@ for epoch in 0..<max_epoch {
       guard let lastObservation = buffer.lastObservation else { continue }
       let obs = graph.variable(Tensor<Float>(from: lastObservation).toGPU(0))
       let variable = obsRms.norm(obs)
+      variable.clamp(-10...10)
       obsRms.update([obs])
       collectedData[i].lastObservation = variable.rawValue.toCPU()
     }
@@ -199,13 +202,14 @@ for epoch in 0..<max_epoch {
       "rew std \(ppo.statistics.rewardsNormalization.std), log scale \(Array(scaleCPU.rawValue))"
     )
     print(
-      "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std))"
+      "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std)), length \(stats.episodeLength.mean) (±\(stats.episodeLength.std))"
     )
     summary.addGraph("actor", actor)
     summary.addGraph("critic", critic)
     summary.addScalar("critic_loss", criticLoss, step: epoch)
     summary.addScalar("actor_loss", actorLoss, step: epoch)
     summary.addScalar("avg_reward", stats.episodeReward.mean, step: epoch)
+    summary.addScalar("avg_length", stats.episodeLength.mean, step: epoch)
   }
   // Running test and print how many steps we can perform in an episode before it fails.
   let (obs, _) = testEnv.reset()
@@ -216,6 +220,7 @@ for epoch in 0..<max_epoch {
     while true {
       let lastObs = graph.variable(last_obs.toGPU(0))
       let variable = obsRms.norm(lastObs)
+      variable.clamp(-10...10)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
       act.clamp(-action_range...action_range)
       let act_v = act.rawValue.toCPU()
@@ -232,7 +237,8 @@ for epoch in 0..<max_epoch {
   }
   let avg_testing_rewards = NumericalStatistics(testing_rewards)
   print("Epoch \(epoch), testing reward \(avg_testing_rewards.mean) (±\(avg_testing_rewards.std))")
-  if avg_testing_rewards.mean > testEnv.rewardThreshold {
+  summary.addScalar("testing_reward", avg_testing_rewards.mean, step: epoch)
+  if avg_testing_rewards.mean > TargetEnv.rewardThreshold {
     break
   }
 }
@@ -242,6 +248,7 @@ var last_obs = Tensor<Float>(from: obs)
 while episodes < 10 {
   let lastObs = graph.variable(last_obs.toGPU(0))
   let variable = obsRms.norm(lastObs)
+  variable.clamp(-10...10)
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
   act.clamp(-action_range...action_range)
   let act_v = act.rawValue.toCPU()

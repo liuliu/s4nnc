@@ -33,11 +33,15 @@ public struct CollectedData<Element: TensorNumeric, OtherType> {
   public var actions: [ActType]
   public var rewards: [Float]
   public var others: [OtherType]
+  public var episodeReward: Float
+  public var episodeLength: Int
   public init(lastObservation: ObsType?) {
     self.lastObservation = lastObservation
     actions = []
     rewards = []
     others = []
+    episodeReward = 0
+    episodeLength = 0
   }
   mutating func reset() {
     actions.removeAll()
@@ -83,7 +87,7 @@ extension Collector {
   }
 }
 
-extension Collector where EnvType.DoneType == Bool, EnvType.RewardType == Float {
+extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == Float {
   public mutating func collect(nStep: Int) -> Statistics {
     var episodeCount = 0
     var stepCount = 0
@@ -98,16 +102,20 @@ extension Collector where EnvType.DoneType == Bool, EnvType.RewardType == Float 
         batch[i].others.append(other)
         batch[i].rewards.append(reward)
         batch[i].lastObservation = ObsType(from: newObs)
+        batch[i].episodeReward += reward
+        batch[i].episodeLength += 1
         if done {
-          episodeRewards.append(batch[i].rewards.reduce(0) { $0 + $1 })
+          episodeRewards.append(batch[i].episodeReward)
           if info["TimeLimit.truncated"] as? Bool? != true {
             batch[i].lastObservation = nil
           }
-          episodeLengths.append(Float(batch[i].rewards.count))
+          episodeLengths.append(Float(batch[i].episodeLength))
           let (newObs, _) = envs[i].reset()
           finalizedBatch.append(batch[i])
           batch[i].reset()
           batch[i].lastObservation = ObsType(from: newObs)
+          batch[i].episodeReward = 0
+          batch[i].episodeLength = 0
           episodeCount += 1
         }
       }

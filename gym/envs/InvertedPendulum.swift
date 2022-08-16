@@ -29,7 +29,7 @@ extension InvertedPendulum: Env {
   public typealias ActType = Tensor<Float64>
   public typealias ObsType = Tensor<Float64>
   public typealias RewardType = Float
-  public typealias DoneType = Bool
+  public typealias TerminatedType = Bool
 
   private var isHealthy: Bool {
     let qpos = data.qpos
@@ -48,7 +48,7 @@ extension InvertedPendulum: Env {
     return abs(y) <= 0.2
   }
 
-  private var done: Bool {
+  private var terminated: Bool {
     return !isHealthy
   }
 
@@ -61,7 +61,7 @@ extension InvertedPendulum: Env {
     return tensor
   }
 
-  public func step(action: ActType) -> (ObsType, RewardType, DoneType, [String: Any]) {
+  public func step(action: ActType) -> (ObsType, RewardType, TerminatedType, [String: Any]) {
     data.ctrl[...] = action
     for _ in 0..<2 {
       model.step(data: &data)
@@ -72,7 +72,7 @@ extension InvertedPendulum: Env {
     model.rnePostConstraint(data: &data)
     let obs = observations()
     let reward: Float = 1.0
-    return (obs, reward, done, [:])
+    return (obs, reward, terminated, [:])
   }
 
   public func reset(seed: Int?) -> (ObsType, [String: Any]) {
@@ -95,5 +95,7 @@ extension InvertedPendulum: Env {
     return (obs, [:])
   }
 
-  public var rewardThreshold: Float { 950 }
+  public static var rewardThreshold: Float { 950 }
+  public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -3...3, count: 1) }
+  public static var stateSize: Int { 4 }
 }
