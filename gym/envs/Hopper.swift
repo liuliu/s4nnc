@@ -103,7 +103,7 @@ extension Hopper: Env {
     let dt = model.opt.timestep * 4
     let xVelocity = (xPositionAfter - xPositionBefore) / dt
     var ctrlCost: Double = 0
-    for i in 0..<6 {
+    for i in 0..<3 {
       ctrlCost += Double(action[i] * action[i])
     }
     ctrlCost *= ctrlCostWeight

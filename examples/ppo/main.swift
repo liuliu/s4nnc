@@ -6,7 +6,7 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = Swimmer
+typealias TargetEnv = Hopper
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
@@ -197,6 +197,10 @@ for epoch in 0..<max_epoch {
     }
     criticLoss = criticLoss / Float(batch_size * update_count)
     actorLoss = -actorLoss / Float(batch_size * update_count)
+    if criticLoss < 1e-4 {
+      // If critic loss is too small, reseed the scale.
+      scale.full(-0.5)
+    }
     let scaleCPU = scale.toCPU()
     print(
       "rew std \(ppo.statistics.rewardsNormalization.std), log scale \(Array(scaleCPU.rawValue))"
