@@ -538,9 +538,11 @@ extension AnyTensorStorage {
       assert(range.lowerBound >= 0 && range.lowerBound < step[indices.count])
       assert(range.upperBound > 0 && range.upperBound <= step[indices.count])
       var offset = 0
-      for (i, increment) in step.prefix(indices.count).enumerated() {
-        offset *= increment
-        offset += indices[i]
+      if indices.count > 0 {
+        for (i, increment) in step.prefix(indices.count).enumerated() {
+          offset *= increment
+          offset += indices[i]
+        }
       }
       offset *= step[indices.count]
       offset += range.lowerBound
@@ -568,9 +570,11 @@ extension AnyTensorStorage {
       }
       assert(inputDim.reduce(1, *) == range.count)
       var offset = 0
-      for (i, increment) in step.prefix(indices.count).enumerated() {
-        offset *= increment
-        offset += indices[i]
+      if indices.count > 0 {
+        for (i, increment) in step.prefix(indices.count).enumerated() {
+          offset *= increment
+          offset += indices[i]
+        }
       }
       offset *= step[indices.count]
       offset += range.lowerBound

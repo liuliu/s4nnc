@@ -6,7 +6,7 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = Hopper
+typealias TargetEnv = Humanoid
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
