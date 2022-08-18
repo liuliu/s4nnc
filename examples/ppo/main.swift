@@ -42,7 +42,7 @@ let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
 let step_per_epoch = 30_000
-let collect_per_step = 10_000
+let collect_per_step = 2_048
 let update_per_step = 10
 let batch_size = 64
 let vf_coef: Float = 0.25
@@ -87,7 +87,7 @@ var obsRms = RunningMeanStd(
   })())
 var env_step = 0
 var initActorLastLayer = false
-var training_collector = Collector<Float, PPO.ContinuousActionSpace, _, Double>(
+var training_collector = Collector<Float, PPO.ContinuousState, TimeLimit<TargetEnv>, Double>(
   envs: envs
 ) {
   let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
@@ -108,11 +108,13 @@ var training_collector = Collector<Float, PPO.ContinuousActionSpace, _, Double>(
   }
   let n = graph.variable(Tensor<Float32>(.GPU(0), .C(output_dim)))
   n.randn(std: 1, mean: 0)
-  let act_f = (n .* Functional.exp(scale) + act).clamped(-action_range...action_range).toCPU()
-    .rawValue.copied()
-  let act_mu = act.toCPU().rawValue.copied()
+  let act_f = n .* Functional.exp(scale) + act
+  let action = act_f.rawValue.toCPU()
+  let map_action = act_f.clamped(-action_range...action_range).rawValue.toCPU()
+  let act_mu = act.rawValue.toCPU()
   return (
-    act_f, PPO.ContinuousActionSpace(centroid: act_mu, observation: variable.rawValue.toCPU())
+    map_action,
+    PPO.ContinuousState(centroid: act_mu, action: action, observation: variable.rawValue.toCPU())
   )
 }
 var ppo = PPO(graph: graph) {
@@ -147,17 +149,28 @@ for epoch in 0..<max_epoch {
     let oldDistributions = ppo.distributions(scale: scale.toCPU().rawValue, from: collectedData)
     for _ in 0..<update_per_step {
       let (returns, advantages) = ppo.computeReturns(from: collectedData)
+      /*
+      var len = 0
+      for advs in advantages {
+        len += advs.count
+      }
+      var advTensor = Tensor<Float>(.CPU, .C(len))
+      len = 0
+      for advs in advantages {
+        advTensor[len..<(len + advs.count)] = Tensor(advs)
+        len += advs.count
+      }
+      summary.addHistogram("advs", advTensor, step: epoch)
+      */
       var dataframe = PPO.samples(
-        from: collectedData, episodeCount: collectedData.count, using: &sfmt, returns: returns,
+        from: collectedData, episodeCount: max(collectedData.count, batch_size), using: &sfmt,
+        returns: returns,
         advantages: advantages, oldDistributions: oldDistributions)
       dataframe.shuffle()
       let batched = dataframe[
         "observations", "actions", "returns", "advantages", "oldDistributions"
       ].combine(size: batch_size)
       for batch in batched["observations", "actions", "returns", "advantages", "oldDistributions"] {
-        if epoch == 10 && step_in_epoch + collect_per_step >= step_per_epoch {
-          DynamicGraph.logLevel = .verbose
-        }
         let obs = batch[0] as! Tensor<Float32>
         let act = batch[1] as! Tensor<Float32>
         let returns = batch[2] as! Tensor<Float32>
@@ -168,15 +181,17 @@ for epoch in 0..<max_epoch {
         let actv = graph.constant(act.toGPU(0))
         let distOldv = graph.constant(distOld.toGPU(0))
         let advantagesv = graph.constant(advantages.toGPU(0))
-        let clip_loss = PPO.ClipLoss(epsilon: eps_clip, entropyCoefficient: ent_coef)(
+        let (clip_loss, _, _, _) = PPO.ClipLoss(epsilon: eps_clip, entropyCoefficient: ent_coef)(
           mu, oldAction: actv, oldDistribution: distOldv, advantages: advantagesv, scale: scale)
         let cpu_clip_loss = clip_loss.toCPU()
+        // summary.addHistogram("batched_advs", advantages, step: epoch)
+        // summary.addHistogram("surr1", surr1, step: epoch)
+        // summary.addHistogram("surr2", surr2, step: epoch)
+        // summary.addHistogram("ratio", ratio, step: epoch)
+        // summary.addHistogram("clip_loss", cpu_clip_loss, step: epoch)
         var totalLoss: Float = 0
         for i in 0..<batch_size {
           totalLoss += cpu_clip_loss[i, 0]
-        }
-        if epoch == 10 && step_in_epoch + collect_per_step >= step_per_epoch {
-          DynamicGraph.logLevel = .none
         }
         actorLoss += totalLoss
         let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 1))
@@ -215,6 +230,7 @@ for epoch in 0..<max_epoch {
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std)), length \(stats.episodeLength.mean) (±\(stats.episodeLength.std))"
     )
     if actorLoss > 10_000 {
+      try summary.close()
       fatalError()
     }
     summary.addGraph("actor", actor)

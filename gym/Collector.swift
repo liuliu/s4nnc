@@ -2,19 +2,19 @@ import NNC
 
 /// The helper to collect data from the given Envs.
 ///
-/// The policy is intentional to be flexible as a simple closure. We collect both the action and other
+/// The policy is intentional to be flexible as a simple closure. We collect both the action and state
 /// data the closure provides. There may be some type conversions for what the Env expects and what
 /// the policy provides, thus, need to specify both. To make this easier to use, the placeholder
 /// type would be useful: `Collector<Float, (), _, _>(envs: envs) { ... }`
-public struct Collector<Element: TensorNumeric, OtherType, EnvType: Env, EnvElement: TensorNumeric>
+public struct Collector<Element: TensorNumeric, StateType, EnvType: Env, EnvElement: TensorNumeric>
 where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElement> {
   public typealias ObsType = Tensor<Element>
   public typealias ActType = Tensor<Element>
   var envs: [EnvType]
-  var batch: [CollectedData<Element, OtherType>]
-  var finalizedBatch: [CollectedData<Element, OtherType>]
-  let policy: (_: ObsType) -> (ActType, OtherType)
-  public init(envs: [EnvType], policy: @escaping (_: ObsType) -> (ActType, OtherType)) {
+  var batch: [CollectedData<Element, StateType>]
+  var finalizedBatch: [CollectedData<Element, StateType>]
+  let policy: (_: ObsType) -> (ActType, StateType)
+  public init(envs: [EnvType], policy: @escaping (_: ObsType) -> (ActType, StateType)) {
     self.envs = envs
     self.policy = policy
     batch = []
@@ -26,27 +26,24 @@ where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElemen
   }
 }
 
-public struct CollectedData<Element: TensorNumeric, OtherType> {
+public struct CollectedData<Element: TensorNumeric, StateType> {
   public typealias ObsType = Tensor<Element>
   public typealias ActType = Tensor<Element>
   public var lastObservation: ObsType?
-  public var actions: [ActType]
   public var rewards: [Float]
-  public var others: [OtherType]
+  public var states: [StateType]
   public var episodeReward: Float
   public var episodeLength: Int
   public init(lastObservation: ObsType?) {
     self.lastObservation = lastObservation
-    actions = []
     rewards = []
-    others = []
+    states = []
     episodeReward = 0
     episodeLength = 0
   }
   mutating func reset() {
-    actions.removeAll()
     rewards.removeAll()
-    others.removeAll()
+    states.removeAll()
   }
 }
 
@@ -82,8 +79,8 @@ extension Collector {
     }
   }
 
-  public var data: [CollectedData<Element, OtherType>] {
-    finalizedBatch + batch.filter { $0.actions.count > 0 }
+  public var data: [CollectedData<Element, StateType>] {
+    finalizedBatch + batch.filter { $0.rewards.count > 0 }
   }
 }
 
@@ -96,10 +93,9 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
     while stepCount < nStep {
       for i in 0..<envs.count {
         let obs = batch[i].lastObservation!
-        let (action, other) = policy(obs)
+        let (action, state) = policy(obs)
         let (newObs, reward, done, info) = envs[i].step(action: EnvType.ActType(from: action))
-        batch[i].actions.append(action)
-        batch[i].others.append(other)
+        batch[i].states.append(state)
         batch[i].rewards.append(reward)
         batch[i].lastObservation = ObsType(from: newObs)
         batch[i].episodeReward += reward

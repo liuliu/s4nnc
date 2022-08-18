@@ -22,11 +22,13 @@ public struct PPO {
     return (advantages, unnormalizedReturns)
   }
 
-  public struct ContinuousActionSpace {
+  public struct ContinuousState {
     public var centroid: Tensor<Float>
+    public var action: Tensor<Float>
     public var observation: Tensor<Float>
-    public init(centroid: Tensor<Float>, observation: Tensor<Float>) {
+    public init(centroid: Tensor<Float>, action: Tensor<Float>, observation: Tensor<Float>) {
       self.centroid = centroid
+      self.action = action
       self.observation = observation
     }
   }
@@ -60,7 +62,7 @@ extension PPO {
 
 extension PPO {
   public func distributions(
-    scale: Tensor<Float>, from batch: [CollectedData<Float, ContinuousActionSpace>]
+    scale: Tensor<Float>, from batch: [CollectedData<Float, ContinuousState>]
   ) -> [[Tensor<Float>]] {
     let scaleVar = graph.constant(scale)
     let expScale = Functional.exp(scaleVar)
@@ -68,9 +70,9 @@ extension PPO {
     var resultDistributions = [[Tensor<Float>]]()
     for data in batch {
       var distributions = [Tensor<Float>]()
-      for (i, other) in data.others.enumerated() {
-        let mu = graph.constant(other.centroid)
-        let action = graph.constant(data.actions[i])
+      for state in data.states {
+        let mu = graph.constant(state.centroid)
+        let action = graph.constant(state.action)
         let distOld = ((mu - action) .* (mu - action) .* var2 + scaleVar).rawValue.copied()
         distributions.append(distOld)
       }
@@ -79,7 +81,7 @@ extension PPO {
     return resultDistributions
   }
 
-  public mutating func computeReturns(from batch: [CollectedData<Float, ContinuousActionSpace>])
+  public mutating func computeReturns(from batch: [CollectedData<Float, ContinuousState>])
     -> (returns: [[Float]], advantages: [[Float]])
   {
     var resultReturns = [[Float]]()
@@ -96,8 +98,8 @@ extension PPO {
       }
       // Recompute value with critics.
       var values = [Float]()
-      for other in data.others {
-        let value = critic(other.observation)
+      for state in data.states {
+        let value = critic(state.observation)
         values.append(value[0])
       }
       if let lastObservation = data.lastObservation {
@@ -146,7 +148,7 @@ extension PPO {
   }
 
   public static func samples<T: RandomNumberGenerator>(
-    from collectedData: [CollectedData<Float, ContinuousActionSpace>], episodeCount: Int,
+    from collectedData: [CollectedData<Float, ContinuousState>], episodeCount: Int,
     using generator: inout T, returns: [[Float]], advantages: [[Float]],
     oldDistributions: [[Tensor<Float>]]
   ) -> DataFrame {
@@ -156,11 +158,11 @@ extension PPO {
       let bufferReturns = returns[i]
       let bufferAdvantages = advantages[i]
       let bufferOldDistributions = oldDistributions[i]
-      let bufferActions = collectedData[i].actions
-      for j in 0..<bufferActions.count {
+      let bufferStates = collectedData[i].states
+      for j in 0..<bufferStates.count {
         samples.append(
           Sample(
-            observation: collectedData[i].others[j].observation, action: bufferActions[j],
+            observation: collectedData[i].states[j].observation, action: bufferStates[j].action,
             advantage: Tensor([bufferAdvantages[j]], .CPU, .C(1)),
             return: Tensor([bufferReturns[j]], .CPU, .C(1)),
             oldDistribution: bufferOldDistributions[j]))
@@ -184,7 +186,7 @@ extension PPO {
     }
     public func callAsFunction<T: DynamicGraph.TensorGroup>(
       _ mu: T, oldAction: T, oldDistribution: T, advantages: T, scale: T
-    ) -> T {
+    ) -> (T, T, T, T) {
       let expScale = Functional.exp(scale)
       let var2 = 1 / (2 * (expScale .* expScale))
       let dist = ((mu - oldAction) .* (mu - oldAction) .* var2 + scale)
@@ -192,9 +194,9 @@ extension PPO {
       let surr1 = advantages .* ratio
       let surr2 = advantages .* ratio.clamped((1.0 - epsilon)...(1.0 + epsilon))
       let clipLoss =
-        entropyCoefficient * scale.reduced(.sum, axis: [0])
-        + Functional.min(surr1, surr2).reduced(.sum, axis: [1])
-      return clipLoss
+        entropyCoefficient * scale.reduced(.mean, axis: [0])
+        + Functional.min(surr1, surr2).reduced(.mean, axis: [1])
+      return (clipLoss, surr1, surr2, ratio)
     }
   }
 
