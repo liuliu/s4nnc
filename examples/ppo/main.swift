@@ -6,7 +6,7 @@ import NNCPythonConversion
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = Humanoid
+typealias TargetEnv = Walker2D
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
@@ -212,10 +212,6 @@ for epoch in 0..<max_epoch {
     print(
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std)), length \(stats.episodeLength.mean) (±\(stats.episodeLength.std))"
     )
-    if actorLoss > 10_000 {
-      try summary.close()
-      fatalError()
-    }
     summary.addGraph("actor", actor)
     summary.addGraph("critic", critic)
     summary.addScalar("critic_loss", criticLoss, step: epoch)

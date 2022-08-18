@@ -106,3 +106,5 @@ clang.bazelrc
 .index/
 _env/
 compile_commands.json
+
+runs/
