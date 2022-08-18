@@ -87,7 +87,7 @@ var obsRms = RunningMeanStd(
   })())
 var env_step = 0
 var initActorLastLayer = false
-var training_collector = Collector<Float, PPO.ContinuousActionSpace, TimeLimit<TargetEnv>, Double>(
+var training_collector = Collector<Float, PPO.ContinuousActionSpace, _, Double>(
   envs: envs
 ) {
   let obs = graph.variable(Tensor<Float>(from: $0).toGPU(0))
@@ -155,6 +155,9 @@ for epoch in 0..<max_epoch {
         "observations", "actions", "returns", "advantages", "oldDistributions"
       ].combine(size: batch_size)
       for batch in batched["observations", "actions", "returns", "advantages", "oldDistributions"] {
+        if epoch == 10 && step_in_epoch + collect_per_step >= step_per_epoch {
+          DynamicGraph.logLevel = .verbose
+        }
         let obs = batch[0] as! Tensor<Float32>
         let act = batch[1] as! Tensor<Float32>
         let returns = batch[2] as! Tensor<Float32>
@@ -171,6 +174,9 @@ for epoch in 0..<max_epoch {
         var totalLoss: Float = 0
         for i in 0..<batch_size {
           totalLoss += cpu_clip_loss[i, 0]
+        }
+        if epoch == 10 && step_in_epoch + collect_per_step >= step_per_epoch {
+          DynamicGraph.logLevel = .none
         }
         actorLoss += totalLoss
         let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 1))
@@ -208,6 +214,9 @@ for epoch in 0..<max_epoch {
     print(
       "Epoch \(epoch), step \(env_step), critic loss \(criticLoss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std)), length \(stats.episodeLength.mean) (±\(stats.episodeLength.std))"
     )
+    if actorLoss > 10_000 {
+      fatalError()
+    }
     summary.addGraph("actor", actor)
     summary.addGraph("critic", critic)
     summary.addScalar("critic_loss", criticLoss, step: epoch)

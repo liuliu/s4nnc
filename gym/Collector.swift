@@ -105,13 +105,13 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
         batch[i].episodeReward += reward
         batch[i].episodeLength += 1
         if done {
-          episodeRewards.append(batch[i].episodeReward)
           if info["TimeLimit.truncated"] as? Bool? != true {
             batch[i].lastObservation = nil
           }
+          episodeRewards.append(batch[i].episodeReward)
           episodeLengths.append(Float(batch[i].episodeLength))
-          let (newObs, _) = envs[i].reset()
           finalizedBatch.append(batch[i])
+          let (newObs, _) = envs[i].reset()
           batch[i].reset()
           batch[i].lastObservation = ObsType(from: newObs)
           batch[i].episodeReward = 0

@@ -146,6 +146,6 @@ extension Humanoid: Env {
   }
 
   public static var rewardThreshold: Float { 1_000 }
-  public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -1...1, count: 17) }
+  public static var actionSpace: [ClosedRange<Float>] { Array(repeating: -0.4...0.4, count: 17) }
   public static var stateSize: Int { 376 }
 }

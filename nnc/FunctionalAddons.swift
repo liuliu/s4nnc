@@ -2,6 +2,7 @@ import C_nnc
 
 public enum ReduceOp {
   case sum
+  case mean
   case max
   case norm2
 }
@@ -1275,6 +1276,8 @@ extension DynamicGraph.Tensor {
     switch op {
     case .sum:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_SUM_FORWARD, nil, params, 0)
+    case .mean:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MEAN_FORWARD, nil, params, 0)
     case .max:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
     case .norm2:
@@ -1299,6 +1302,8 @@ extension DynamicGraph.Group {
     switch op {
     case .sum:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_SUM_FORWARD, nil, params, 0)
+    case .mean:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MEAN_FORWARD, nil, params, 0)
     case .max:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
     case .norm2:

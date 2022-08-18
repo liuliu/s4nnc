@@ -31,6 +31,15 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a1.rawValue[1, 0], 3.3 + 4.4)
   }
 
+  func testReduceMean() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
+    let a1 = a0.reduced(.mean, axis: [1])
+    XCTAssertEqual(a1.rawValue.shape, [2, 1])
+    XCTAssertEqual(a1.rawValue[0, 0], (1.1 + 2.2) / 2)
+    XCTAssertEqual(a1.rawValue[1, 0], (3.3 + 4.4) / 2)
+  }
+
   func testReduceMax() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
@@ -49,6 +58,17 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a1.rawValue.shape, [2, 1])
     XCTAssertEqual(a1.rawValue[0, 0], 1.1 + 2.2)
     XCTAssertEqual(a1.rawValue[1, 0], 3.3 + 4.4)
+  }
+
+  func testReduceMeanModel() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = Input()
+    let model = Model([input], [input.reduced(.mean, axis: [1])])
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
+    let a1 = DynamicGraph.Tensor<Float32>(model(inputs: a0)[0])
+    XCTAssertEqual(a1.rawValue.shape, [2, 1])
+    XCTAssertEqual(a1.rawValue[0, 0], (1.1 + 2.2) / 2)
+    XCTAssertEqual(a1.rawValue[1, 0], (3.3 + 4.4) / 2)
   }
 
   func testReduceMaxModel() throws {
@@ -107,8 +127,10 @@ final class OpsTests: XCTestCase {
     ("testDivision", testDivision),
     ("testScalarDivision", testScalarDivision),
     ("testReduceSum", testReduceSum),
+    ("testReduceMean", testReduceMean),
     ("testReduceMax", testReduceMax),
     ("testReduceSumModel", testReduceSumModel),
+    ("testReduceMeanModel", testReduceMeanModel),
     ("testReduceMaxModel", testReduceMaxModel),
     ("testMinModel", testMinModel),
     ("testMaxModel", testMaxModel),

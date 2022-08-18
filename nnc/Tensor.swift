@@ -104,6 +104,12 @@ extension TensorShape: ExpressibleByArrayLiteral {
   }
 }
 
+extension TensorShape: CustomStringConvertible {
+  public var description: String {
+    return Array(self).description
+  }
+}
+
 extension TensorShape: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     return lhs.dims.0 == lhs.dims.0 && lhs.dims.1 == lhs.dims.1 && lhs.dims.2 == lhs.dims.2

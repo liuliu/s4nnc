@@ -482,6 +482,25 @@ public final class ReduceSum: Model {
   }
 }
 
+/// reduce mean model.
+public final class ReduceMean: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: [Int], name: String = "") {
+    precondition(axis.count > 0)
+    super.init(ccv_cnnp_reduce_mean(axis.map { Int32($0) }, Int32(axis.count), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 /// reduce max model.
 public final class ReduceMax: Model {
   required init(_ model: OpaquePointer) {
@@ -525,6 +544,8 @@ extension Model.IO {
     switch op {
     case .sum:
       return ReduceSum(axis: axis)(self)
+    case .mean:
+      return ReduceMean(axis: axis)(self)
     case .max:
       return ReduceMax(axis: axis)(self)
     case .norm2:
