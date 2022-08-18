@@ -42,7 +42,7 @@ let actor_lr: Float = 3e-4
 let critic_lr: Float = 3e-4
 let max_epoch = 100
 let step_per_epoch = 30_000
-let collect_per_step = 2_048
+let collect_per_step = 15_000
 let update_per_step = 10
 let batch_size = 64
 let vf_coef: Float = 0.25
@@ -110,7 +110,8 @@ var training_collector = Collector<Float, PPO.ContinuousState, TimeLimit<TargetE
   n.randn(std: 1, mean: 0)
   let act_f = n .* Functional.exp(scale) + act
   let action = act_f.rawValue.toCPU()
-  let map_action = act_f.clamped(-action_range...action_range).rawValue.toCPU()
+  // This is clamp + action scaling
+  let map_action = (action_range * act_f.clamped(-1...1)).rawValue.toCPU()
   let act_mu = act.rawValue.toCPU()
   return (
     map_action,
@@ -149,19 +150,6 @@ for epoch in 0..<max_epoch {
     let oldDistributions = ppo.distributions(scale: scale.toCPU().rawValue, from: collectedData)
     for _ in 0..<update_per_step {
       let (returns, advantages) = ppo.computeReturns(from: collectedData)
-      /*
-      var len = 0
-      for advs in advantages {
-        len += advs.count
-      }
-      var advTensor = Tensor<Float>(.CPU, .C(len))
-      len = 0
-      for advs in advantages {
-        advTensor[len..<(len + advs.count)] = Tensor(advs)
-        len += advs.count
-      }
-      summary.addHistogram("advs", advTensor, step: epoch)
-      */
       var dataframe = PPO.samples(
         from: collectedData, episodeCount: max(collectedData.count, batch_size), using: &sfmt,
         returns: returns,
@@ -181,14 +169,9 @@ for epoch in 0..<max_epoch {
         let actv = graph.constant(act.toGPU(0))
         let distOldv = graph.constant(distOld.toGPU(0))
         let advantagesv = graph.constant(advantages.toGPU(0))
-        let (clip_loss, _, _, _) = PPO.ClipLoss(epsilon: eps_clip, entropyCoefficient: ent_coef)(
+        let clip_loss = PPO.ClipLoss(epsilon: eps_clip, entropyCoefficient: ent_coef)(
           mu, oldAction: actv, oldDistribution: distOldv, advantages: advantagesv, scale: scale)
         let cpu_clip_loss = clip_loss.toCPU()
-        // summary.addHistogram("batched_advs", advantages, step: epoch)
-        // summary.addHistogram("surr1", surr1, step: epoch)
-        // summary.addHistogram("surr2", surr2, step: epoch)
-        // summary.addHistogram("ratio", ratio, step: epoch)
-        // summary.addHistogram("clip_loss", cpu_clip_loss, step: epoch)
         var totalLoss: Float = 0
         for i in 0..<batch_size {
           totalLoss += cpu_clip_loss[i, 0]
@@ -251,8 +234,8 @@ for epoch in 0..<max_epoch {
       let variable = obsRms.norm(lastObs)
       variable.clamp(-10...10)
       let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-      act.clamp(-action_range...action_range)
-      let act_v = act.rawValue.toCPU()
+      act.clamp(-1...1)
+      let act_v = (action_range * act).rawValue.toCPU()
       let (obs, reward, done, _) = testEnv.step(action: Tensor(from: act_v))
       last_obs = Tensor(from: obs)
       rewards += reward
@@ -279,8 +262,8 @@ while episodes < 10 {
   let variable = obsRms.norm(lastObs)
   variable.clamp(-10...10)
   let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-  act.clamp(-action_range...action_range)
-  let act_v = act.rawValue.toCPU()
+  act.clamp(-1...1)
+  let act_v = (action_range * act).rawValue.toCPU()
   let (obs, _, done, _) = testEnv.step(action: Tensor(from: act_v))
   last_obs = Tensor(from: obs)
   if done {

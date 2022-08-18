@@ -186,7 +186,7 @@ extension PPO {
     }
     public func callAsFunction<T: DynamicGraph.TensorGroup>(
       _ mu: T, oldAction: T, oldDistribution: T, advantages: T, scale: T
-    ) -> (T, T, T, T) {
+    ) -> T {
       let expScale = Functional.exp(scale)
       let var2 = 1 / (2 * (expScale .* expScale))
       let dist = ((mu - oldAction) .* (mu - oldAction) .* var2 + scale)
@@ -196,7 +196,7 @@ extension PPO {
       let clipLoss =
         entropyCoefficient * scale.reduced(.mean, axis: [0])
         + Functional.min(surr1, surr2).reduced(.mean, axis: [1])
-      return (clipLoss, surr1, surr2, ratio)
+      return clipLoss
     }
   }
 
