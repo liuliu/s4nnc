@@ -362,7 +362,10 @@ extension DataFrame {
       let data = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: count)
       let retval = ccv_cnnp_dataframe_iter_next(
         iterator.iterator, data, Int32(count), streamContext?._stream)
-      guard retval == 0 else { return nil }
+      guard retval == 0 else {
+        data.deallocate()
+        return nil
+      }
       var columnData = [AnyObject]()
       for i in 0..<count {
         let data = data[i]!

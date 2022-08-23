@@ -392,7 +392,6 @@ public final class AnyTensorStorage {
   }
 
   deinit {
-    guard original == nil else { return }
     guard selfOwned else { return }
     ccv_nnc_tensor_free(cTensor)
   }

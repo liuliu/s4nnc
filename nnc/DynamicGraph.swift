@@ -135,7 +135,7 @@ public final class DynamicGraph {
       let _graph = graph.cGraph
       let _streamContext = graph.streamContext?._stream
       let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
-      let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
+      let rawValue = NNC.AnyTensorStorage(tensor, original: self, selfOwned: false)  // To enforce copy-on-write syntax.
       _rawValue = rawValue
       return NNC.Tensor<Element>(rawValue)
     }
@@ -149,7 +149,7 @@ public final class DynamicGraph {
         let _graph = graph.cGraph
         let _streamContext = graph.streamContext?._stream
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
-        let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
+        let rawValue = NNC.AnyTensorStorage(tensor, original: self, selfOwned: false)  // To enforce copy-on-write syntax.
         _rawValue = rawValue
         return rawValue[indices, Element.self]
       }
@@ -160,7 +160,7 @@ public final class DynamicGraph {
         let _graph = graph.cGraph
         let _streamContext = graph.streamContext?._stream
         let tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
-        let rawValue = NNC.AnyTensorStorage(tensor, original: self)  // To enforce copy-on-write syntax.
+        let rawValue = NNC.AnyTensorStorage(tensor, original: self, selfOwned: false)  // To enforce copy-on-write syntax.
         _rawValue = rawValue
         rawValue[indices, Element.self] = v
       }
@@ -536,5 +536,15 @@ extension DynamicGraph {
     let result = try closure()
     self.streamContext = nil
     return result
+  }
+}
+
+extension DynamicGraph {
+  /**
+   * Perform garbage collection. This will be done automatically when GPU memory at pressure. Do
+   * it manually helps to identify actual memory leaks.
+   */
+  public func garbageCollect() {
+    ccv_nnc_dynamic_graph_gc(cGraph)
   }
 }

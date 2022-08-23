@@ -86,3 +86,30 @@ swift_binary(
         "@SwiftNumerics//:Numerics",
     ],
 )
+
+swift_binary(
+    name = "sac",
+    srcs = ["sac/main.swift"],
+    deps = [
+        "//gym",
+        "//nnc",
+        "//nnc:nnc_python",
+        "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
+        "@SwiftNumerics//:Numerics",
+    ],
+)
+
+swift_binary(
+    name = "random",
+    srcs = ["random/main.swift"],
+    deps = [
+        "//gym",
+        "//nnc",
+        "//nnc:nnc_python",
+        "//tensorboard",
+        "@PythonKit",
+        "@SwiftAlgorithms//:Algorithms",
+        "@SwiftNumerics//:Numerics",
+    ],
+)
