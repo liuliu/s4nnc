@@ -1,75 +1,60 @@
 import Algorithms
 import Foundation
+import Gym
 import NNC
 import NNCPythonConversion
 import Numerics
 import PythonKit
 
+typealias TargetEnv = Walker2D
+
+let input_dim = TargetEnv.stateSize
+let output_dim = TargetEnv.actionSpace.count
+let action_range: Float = TargetEnv.actionSpace[0].upperBound
+
 @Sequential
-func Net() -> Model {
-  Dense(count: 128)
+func NetA() -> Model {
+  Dense(count: 64)
   ReLU()
-  Dense(count: 128)
+  Dense(count: 64)
+  ReLU()
+  Dense(count: output_dim * 2)
+}
+
+@Sequential
+func NetC() -> Model {
+  Dense(count: 64)
+  ReLU()
+  Dense(count: 64)
   ReLU()
   Dense(count: 1)
 }
 
-let name = "Pendulum-v1"
-
-let gym = Python.import("gym")
-
-let env = gym.make(name)
-
-env.reset(seed: 0)
-env.spec.reward_threshold = -250
-
-let action_space = env.action_space
-
 let graph = DynamicGraph()
 
-struct Replay {
-  var obs: Tensor<Float32>  // The state before action.
-  var obs_next: Tensor<Float32>  // The state n_step ahead.
-  var rewards: [Float32]  // Rewards for 0..<n_step - 1
-  var act: Tensor<Float32>  // The act taken in the episode.
-  var act_next: Tensor<Float32>  // The act taken n_step ahead.
-  var step: Int  // The step in the episode.
-  var step_count: Int  // How many steps til the end, step < step_count.
-}
-
-let buffer_size = 20_000
-let actor_lr: Float = 1e-4
+let buffer_size = 1_000_000
+let actor_lr: Float = 1e-3
 let critic_lr: Float = 1e-3
 let gamma: Float = 0.99
 let tau: Float = 0.005
-let exploration_noise: Float = 0.1
-let policy_noise: Float = 0.2
-let noise_clip: Float = 0.5
-let update_actor_freq = 2
-let max_epoch = 20
-let step_per_epoch = 2400
-let collect_per_step = 4
+let alpha: Float = 0.2
+let alpha_lr: Float = 3e-4
+let max_epoch = 200
+let step_per_epoch = 5000
+let step_per_collect = 1
 let update_per_step = 1
-let batch_size = 128
-let training_num = 8
-let testing_num = 100
-let rew_norm = 1
 let n_step = 1
+let batch_size = 256
+let training_num = 1
+let testing_num = 10
 
-func noise(_ std: Float) -> Float {
-  let u1 = Float.random(in: 0...1)
-  let u2 = Float.random(in: 0...1)
-  let mag = std * (-2.0 * .log(u1)).squareRoot()
-  return mag * .cos(.pi * 2 * u2)
-}
-
-let actor = Net()
-let critic1 = Net()
-let critic2 = Net()
-let actorOld = actor.copy()
-let critic1Old = critic1.copy()
-let critic2Old = critic2.copy()
-
+let actor = NetA()
+let critic1 = NetC()
+let critic2 = NetC()
+let actorOld = actor.copied()
+let critic1Old = critic1.copied()
+let critic2Old = critic2.copied()
+/*
 var actorOptim = LAMBOptimizer(graph, rate: actor_lr)
 actorOptim.parameters = [actor.parameters]
 var critic1Optim = LAMBOptimizer(graph, rate: critic_lr)
@@ -292,5 +277,4 @@ while episodes < 10 {
   env.render()
   Thread.sleep(forTimeInterval: 0.0166667)
 }
-
-env.close()
+*/

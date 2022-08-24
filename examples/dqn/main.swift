@@ -53,7 +53,7 @@ struct Replay {
   var step_count: Int  // How many steps til the end, step < step_count.
 }
 
-let lastNet = net.copy()
+let lastNet = net.copied()
 var replays = [Replay]()
 
 let obs = env.reset()

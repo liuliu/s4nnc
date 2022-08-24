@@ -96,7 +96,7 @@ final class OptimizerTests: XCTestCase {
     var y = Functional.log(x)
     y = linear(y)
     XCTAssertEqual(y[0], 5, accuracy: 1e-2)
-    let copy = linear.copy()
+    let copy = linear.copied()
     copy.parameters.copy(from: linear.parameters)
     var yCopy = Functional.log(x)
     yCopy = copy(yCopy)

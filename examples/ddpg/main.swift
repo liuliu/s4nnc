@@ -62,8 +62,8 @@ func noise(_ std: Float) -> Float {
 
 let actor = Net()
 let critic = Net()
-let actorOld = actor.copy()
-let criticOld = critic.copy()
+let actorOld = actor.copied()
+let criticOld = critic.copied()
 
 var actorOptim = AdamOptimizer(graph, rate: actor_lr)
 actorOptim.parameters = [actor.parameters]

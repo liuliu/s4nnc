@@ -137,7 +137,7 @@ extension Model {
    * Make a copy of the model. This won't copy over the parameters. If you want, you need to copy
    * parameters over explicitly.
    */
-  public func copy() -> Self {
+  public func copied() -> Self {
     let newModel = Self(ccv_cnnp_model_copy(cModel))
     return newModel
   }

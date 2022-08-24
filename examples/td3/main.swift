@@ -66,9 +66,9 @@ func noise(_ std: Float) -> Float {
 let actor = Net()
 let critic1 = Net()
 let critic2 = Net()
-let actorOld = actor.copy()
-let critic1Old = critic1.copy()
-let critic2Old = critic2.copy()
+let actorOld = actor.copied()
+let critic1Old = critic1.copied()
+let critic2Old = critic2.copied()
 
 var actorOptim = LAMBOptimizer(graph, rate: actor_lr)
 actorOptim.parameters = [actor.parameters]
