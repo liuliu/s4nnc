@@ -108,3 +108,4 @@ _env/
 compile_commands.json
 
 runs/
+*.mp4

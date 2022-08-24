@@ -2,7 +2,10 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 swift_library(
     name = "gym",
-    srcs = glob(["**/*.swift"]),
+    srcs = glob(
+        ["**/*.swift"],
+        exclude = ["renders/MuJoCoVideo.swift"],
+    ),
     data = glob(["assets/*.xml"]),
     module_name = "Gym",
     visibility = ["//visibility:public"],
@@ -20,5 +23,29 @@ swift_library(
         "@ccv//lib:ccv",
         "@swift-jupyter//:JupyterDisplay",
         "@swift-mujoco//:swift-mujoco",
+    ],
+)
+
+cc_library(
+    name = "C_ffmpeg",
+    srcs = ["renders/ffmpeg_shim.c"],
+    hdrs = ["renders/ffmpeg_shim.h"],
+    linkopts = [
+        "-lavcodec",
+        "-lswscale",
+        "-lavformat",
+        "-lavutil",
+    ],
+    tags = ["swift_module=C_ffmpeg"],
+)
+
+swift_library(
+    name = "gym_video",
+    srcs = ["renders/MuJoCoVideo.swift"],
+    module_name = "GymVideo",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":C_ffmpeg",
+        ":gym",
     ],
 )

@@ -10,7 +10,6 @@ public protocol MuJoCoEnv {
 
 public final class MuJoCoViewer<EnvType: MuJoCoEnv> {
   var env: EnvType
-  var task: Task<Void, Never>? = nil
   var cpugenesis: Double = 0
   var simgenesis: Double = 0
   var simulate: Simulate

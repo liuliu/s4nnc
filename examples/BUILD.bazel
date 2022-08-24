@@ -105,6 +105,7 @@ swift_binary(
     srcs = ["random/main.swift"],
     deps = [
         "//gym",
+        "//gym:gym_video",
         "//nnc",
         "//nnc:nnc_python",
         "//tensorboard",

@@ -1,6 +1,7 @@
 import Algorithms
 import Foundation
 import Gym
+import GymVideo
 import NNC
 import NNCPythonConversion
 import Numerics
@@ -17,7 +18,8 @@ var sfmt = SFMT(seed: 10)
 DynamicGraph.setSeed(0)
 var testEnv = TimeLimit(env: try TargetEnv(), maxEpisodeSteps: 1_000)
 let _ = testEnv.reset(seed: 180)
-let video = MuJoCoVideo(env: testEnv)
+let video = MuJoCoVideo(
+  env: testEnv, filePath: "/home/liu/workspace/s4nnc/examples/random/random.mp4")
 var episodes = 0
 while episodes < 10 {
   let act = graph.variable(Tensor<Float32>(.GPU(0), .C(output_dim)))
