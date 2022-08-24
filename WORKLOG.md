@@ -1,3 +1,8 @@
+2022-08-24
+----------
+One thing interesting in Swift compiler now I discovered is how unstable tuple is. Besides it is not an existential type, `withUnsafePointer(to: &atuple.0)` will have different pointer than `withUnsafePointer(to: &atuple)`. It is not an issue if you only ever use Swift, but because static arrays in C is interoperated as tuple, the former one will give you the correct type but incorrect pointer while the later will have the correct pointer but incorrect type.
+
+
 2021-08-06
 ----------
 Swift is memory-safe language in general. But for frameworks talking to C, even C side has no memory issues (really?!), it is a good idea to run valgrind against the Swift binary.

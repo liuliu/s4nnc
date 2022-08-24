@@ -134,8 +134,8 @@ extension TensorShape: RandomAccessCollection {
   public var endIndex: Index {
     var dims = self.dims
     return Int(
-      withUnsafePointer(to: &dims.0) {
-        ccv_nnc_tensor_nd($0)
+      withUnsafePointer(to: &dims) {
+        ccv_nnc_tensor_nd(UnsafeRawPointer($0).assumingMemoryBound(to: Int32.self))
       })
   }
   public var indices: Indices { startIndex..<endIndex }
@@ -208,11 +208,12 @@ extension TensorShape: RandomAccessCollection {
       precondition(indices.lowerBound >= 0 && indices.upperBound <= CCV_NNC_MAX_DIM_ALLOC)
       assert(indices.upperBound > indices.lowerBound)
       var shape = self
-      withUnsafeMutablePointer(to: &shape.dims.0) {
+      withUnsafeMutablePointer(to: &shape.dims) {
+        let dims = UnsafeMutableRawPointer($0).assumingMemoryBound(to: Int32.self)
         let length = indices.upperBound - indices.lowerBound
-        memmove($0, $0 + indices.lowerBound, MemoryLayout<Int32>.size * length)
+        memmove(dims, dims + indices.lowerBound, MemoryLayout<Int32>.size * length)
         for i in length..<Int(CCV_NNC_MAX_DIM_ALLOC) {
-          $0[i] = 0
+          dims[i] = 0
         }
       }
       return shape
@@ -222,8 +223,10 @@ extension TensorShape: RandomAccessCollection {
       assert(indices.upperBound > indices.lowerBound)
       let length = indices.upperBound - indices.lowerBound
       var newValue = newValue
-      withUnsafeMutablePointer(to: &dims.0) { to in
-        withUnsafePointer(to: &newValue.dims.0) { from in
+      withUnsafeMutablePointer(to: &dims) { to in
+        let to = UnsafeMutableRawPointer(to).assumingMemoryBound(to: Int32.self)
+        withUnsafePointer(to: &newValue.dims) { from in
+          let from = UnsafeRawPointer(from).assumingMemoryBound(to: Int32.self)
           let _ = memmove(to + indices.lowerBound, from, MemoryLayout<Int32>.size * length)
         }
       }
@@ -471,9 +474,13 @@ extension AnyTensorStorage {
       let dimensions = ranges.map { $0.count }
       var cOffset = toCDimensions(offset)
       var cIncrements = step.dims
-      let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
-        withUnsafePointer(to: &cIncrements.0) { cIncrements in
-          ccv_nnc_tensor_view_new(
+      let newt = withUnsafePointer(to: &cOffset) {
+        cOffset -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
+        let cOffset = UnsafeRawPointer(cOffset).assumingMemoryBound(to: Int32.self)
+        return withUnsafePointer(to: &cIncrements) {
+          cIncrements -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
+          let cIncrements = UnsafeRawPointer(cIncrements).assumingMemoryBound(to: Int32.self)
+          return ccv_nnc_tensor_view_new(
             cTensor,
             toCTensorParams(
               device, dataType: Element.dataType, format: format, dimensions: dimensions), cOffset,
@@ -499,9 +506,11 @@ extension AnyTensorStorage {
       let dimensions = ranges.map { $0.count }
       var cOffset = toCDimensions(offset)
       var cIncrements = step.dims
-      var newt = withUnsafePointer(to: &cOffset.0) { cOffset in
-        withUnsafePointer(to: &cIncrements.0) { cIncrements in
-          ccv_nnc_tensor_view(
+      var newt = withUnsafePointer(to: &cOffset) { cOffset -> ccv_nnc_tensor_view_t in
+        let cOffset = UnsafeRawPointer(cOffset).assumingMemoryBound(to: Int32.self)
+        return withUnsafePointer(to: &cIncrements) { cIncrements -> ccv_nnc_tensor_view_t in
+          let cIncrements = UnsafeRawPointer(cIncrements).assumingMemoryBound(to: Int32.self)
+          return ccv_nnc_tensor_view(
             cTensor,
             toCTensorParams(
               device, dataType: Element.dataType, format: vFormat, dimensions: dimensions), cOffset,
@@ -1067,9 +1076,13 @@ extension Tensor {
     }
     var cOffset = offset.dims
     var cIncrements = step.dims
-    let newt = withUnsafePointer(to: &cOffset.0) { cOffset in
-      withUnsafePointer(to: &cIncrements.0) { cIncrements in
-        ccv_nnc_tensor_view_new(
+    let newt = withUnsafePointer(to: &cOffset) {
+      cOffset -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
+      let cOffset = UnsafeRawPointer(cOffset).assumingMemoryBound(to: Int32.self)
+      return withUnsafePointer(to: &cIncrements) {
+        cIncrements -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
+        let cIncrements = UnsafeRawPointer(cIncrements).assumingMemoryBound(to: Int32.self)
+        return ccv_nnc_tensor_view_new(
           cTensor,
           toCTensorParams(
             device, dataType: Element.dataType, format: format, shape: shape), cOffset,

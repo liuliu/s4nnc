@@ -105,10 +105,13 @@ public final class Reshape: Model {
     var dimensions = toCDimensions(dimensions)
     var offset = toCDimensions(offset)
     var increments = toCDimensions(increments)
-    let _model = withUnsafePointer(to: &dimensions.0) { dimensions in
-      withUnsafePointer(to: &offset.0) { offset in
-        withUnsafePointer(to: &increments.0) { increments in
-          ccv_cnnp_reshape(dimensions, offset, increments, name)!
+    let _model = withUnsafePointer(to: &dimensions) { dimensions -> OpaquePointer in
+      let dimensions = UnsafeRawPointer(dimensions).assumingMemoryBound(to: Int32.self)
+      return withUnsafePointer(to: &offset) { offset -> OpaquePointer in
+        let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
+        return withUnsafePointer(to: &increments) { increments -> OpaquePointer in
+          let increments = UnsafeRawPointer(increments).assumingMemoryBound(to: Int32.self)
+          return ccv_cnnp_reshape(dimensions, offset, increments, name)!
         }
       }
     }

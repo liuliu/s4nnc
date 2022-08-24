@@ -304,9 +304,11 @@ extension DynamicGraph.AnyTensor {
     let dataType = DataType.from(cTensorParams: cTensorParams)
     var offset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     var step = step?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    let _alias = withUnsafePointer(to: &offset.0) { offset in
-      withUnsafePointer(to: &step.0) { step in
-        ccv_nnc_tensor_variable_alias_new(
+    let _alias = withUnsafePointer(to: &offset) { offset -> ccv_nnc_tensor_variable_t in
+      let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
+      return withUnsafePointer(to: &step) { step -> ccv_nnc_tensor_variable_t in
+        let step = UnsafeRawPointer(step).assumingMemoryBound(to: Int32.self)
+        return ccv_nnc_tensor_variable_alias_new(
           _graph, _tensor, offset, step,
           toCTensorParams(
             device, dataType: dataType, format: format, shape: shape))!
