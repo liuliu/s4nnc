@@ -29,21 +29,28 @@ where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElemen
 public struct CollectedData<Element: TensorNumeric, StateType> {
   public typealias ObsType = Tensor<Element>
   public typealias ActType = Tensor<Element>
-  public var lastObservation: ObsType?
+  public var lastObservation: ObsType
   public var rewards: [Float]
   public var states: [StateType]
   public var episodeReward: Float
   public var episodeLength: Int
-  public init(lastObservation: ObsType?) {
+  public var terminated: Bool
+  public init(lastObservation: ObsType) {
     self.lastObservation = lastObservation
     rewards = []
     states = []
     episodeReward = 0
     episodeLength = 0
+    terminated = false
   }
-  mutating func reset() {
-    rewards.removeAll()
-    states.removeAll()
+  mutating func reset(keepLastN: Int = 0) {
+    guard keepLastN > 0 else {
+      rewards.removeAll()
+      states.removeAll()
+      return
+    }
+    rewards.removeFirst(rewards.count - keepLastN)
+    states.removeFirst(states.count - keepLastN)
   }
 }
 
@@ -64,9 +71,9 @@ extension Collector {
     }
   }
 
-  public mutating func resetData() {
+  public mutating func resetData(keepLastN: Int = 0) {
     for i in 0..<batch.count {
-      batch[i].reset()
+      batch[i].reset(keepLastN: keepLastN)
     }
     finalizedBatch.removeAll()
   }
@@ -76,6 +83,9 @@ extension Collector {
       batch[i].reset()
       let (newObs, _) = envs[i].reset()
       batch[i].lastObservation = ObsType(from: newObs)
+      batch[i].episodeReward = 0
+      batch[i].episodeLength = 0
+      batch[i].terminated = false
     }
   }
 
@@ -92,7 +102,7 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
     var episodeLengths = [Float]()
     while stepCount < nStep {
       for i in 0..<envs.count {
-        let obs = batch[i].lastObservation!
+        let obs = batch[i].lastObservation
         let (action, state) = policy(obs)
         let (newObs, reward, done, info) = envs[i].step(action: EnvType.ActType(from: action))
         batch[i].states.append(state)
@@ -102,7 +112,7 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
         batch[i].episodeLength += 1
         if done {
           if info["TimeLimit.truncated"] as? Bool? != true {
-            batch[i].lastObservation = nil
+            batch[i].terminated = true
           }
           episodeRewards.append(batch[i].episodeReward)
           episodeLengths.append(Float(batch[i].episodeLength))
@@ -112,6 +122,7 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
           batch[i].lastObservation = ObsType(from: newObs)
           batch[i].episodeReward = 0
           batch[i].episodeLength = 0
+          batch[i].terminated = false
           episodeCount += 1
         }
       }

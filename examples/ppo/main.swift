@@ -130,8 +130,8 @@ for epoch in 0..<max_epoch {
     var collectedData = training_collector.data
     training_collector.resetData()
     for (i, buffer) in collectedData.enumerated() {
-      guard let lastObservation = buffer.lastObservation else { continue }
-      let obs = graph.variable(Tensor<Float>(from: lastObservation).toGPU(0))
+      guard !buffer.terminated else { continue }
+      let obs = graph.variable(Tensor<Float>(from: buffer.lastObservation).toGPU(0))
       let variable = obsRms.norm(obs)
       variable.clamp(-10...10)
       obsRms.update([obs])
