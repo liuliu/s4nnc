@@ -2,11 +2,10 @@ import Algorithms
 import Foundation
 import Gym
 import NNC
-import NNCPythonConversion
 import Numerics
-import PythonKit
+import TensorBoard
 
-typealias TargetEnv = Walker2D
+typealias TargetEnv = InvertedPendulum
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
@@ -34,6 +33,7 @@ func NetC() -> Model {
 
 let graph = DynamicGraph()
 var sfmt = SFMT(seed: 10)
+let summary = SummaryWriter(logDirectory: "/tmp/sac")
 
 let buffer_size = 1_000_000
 let actor_lr: Float = 1e-3
@@ -54,7 +54,6 @@ let testing_num = 10
 let actor = NetA()
 let critic1 = NetC()
 let critic2 = NetC()
-let actorOld = actor.copied()
 let critic1Old = critic1.copied()
 let critic2Old = critic2.copied()
 
@@ -80,6 +79,7 @@ enum SAC {
 
 struct Replay {
   var reward: Float32  // Rewards for 0..<n_step - 1
+  var terminated: Bool  // Whether this is terminated already.
   var observation: Tensor<Float32>  // The state before action.
   var action: Tensor<Float32>  // The act taken in the episode.
   var nextObservation: Tensor<Float32>  // The state after the action.
@@ -119,12 +119,12 @@ var training_collector = Collector<Float, SAC.ContinuousState, TimeLimit<TargetE
   let ret = actor(inputs: variable)
   let act = ret[0].as(of: Float32.self)
   let sigma = ret[1].as(of: Float32.self)
-  let n = graph.variable(Tensor<Float32>(.GPU(0), .C(output_dim)))
+  let n = graph.constant(Tensor<Float32>(.GPU(0), .C(output_dim)))
   n.randn(std: 1, mean: 0)
   let act_f = n .* Functional.exp(sigma) + act
-  let action = act_f.rawValue.toCPU()
-  // This is clamp + action scaling
+  // This is tanh + action scaling
   act_f.tanh()
+  let action = act_f.rawValue.toCPU()
   let map_action = (action_range * act_f).rawValue.toCPU()
   let act_mu = act.rawValue.toCPU()
   return (
@@ -134,6 +134,11 @@ var training_collector = Collector<Float, SAC.ContinuousState, TimeLimit<TargetE
 }
 
 var replays = [Replay]()
+let total_discount = Array(repeating: gamma, count: n_step).reduce(1, *)
+var logSqrt2Pi = graph.constant(.GPU(0), .C(1), of: Float32.self)
+logSqrt2Pi.full(.log((2 * .pi).squareRoot()))
+var one = graph.constant(.GPU(0), .NC(batch_size, output_dim), of: Float32.self)
+one.full(1 + .ulpOfOne)
 
 for epoch in 0..<max_epoch {
   var step_in_epoch = 0
@@ -163,7 +168,8 @@ for epoch in 0..<max_epoch {
         }
         let state = data.states[i]
         let replay = Replay(
-          reward: rew, observation: state.observation, action: state.action,
+          reward: rew, terminated: (i == data.states.count - 1), observation: state.observation,
+          action: state.action,
           nextObservation: i < data.states.count - 1
             ? data.states[i + 1].observation : data.lastObservation)
         replays.append(replay)
@@ -183,46 +189,53 @@ for epoch in 0..<max_epoch {
     var obs_next = Tensor<Float32>(.CPU, .NC(batch_size, input_dim))
     var act = Tensor<Float32>(.CPU, .NC(batch_size, output_dim))
     var r = Tensor<Float32>(.CPU, .NC(batch_size, 1))
-    /*
+    var d = Tensor<Float32>(.CPU, .NC(batch_size, 1))
     for i in 0..<batch_size {
       let replay = batch[i % batch.count]
-      obs[i, ...] = replay.observations[0]
-      obs_next[i, ...] = replay.observations[1]
-      act[i, ...] = replay.actions[0]
+      obs[i, ...] = replay.observation
+      obs_next[i, ...] = replay.nextObservation
+      act[i, ...] = replay.action
       r[i, 0] = replay.reward
+      d[i, 0] = replay.terminated ? 0 : total_discount
     }
     // Compute the q.
     let obs_next_v = graph.constant(obs_next.toGPU(0))
-    if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
-      // Firs time use actorOld, copy its parameters from actor.
-      actorOld.parameters.copy(from: actor.parameters)
-    }
-    var act_next_v = DynamicGraph.Tensor<Float32>(actorOld(inputs: obs_next_v)[0])
-    let policy_noise_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 1))
-    policy_noise_v.randn(std: policy_noise)
-    policy_noise_v.clamp(-noise_clip...noise_clip)
-    act_next_v = act_next_v + policy_noise_v
-    act_next_v.clamp(actionLow...actionHigh)
-    var obs_act_next_v: DynamicGraph.Tensor<Float32> = graph.constant(.GPU(0), .NC(batch_size, 4))
-    obs_act_next_v[0..<batch_size, 0..<3] = obs_next_v
-    obs_act_next_v[0..<batch_size, 3..<4] = act_next_v
-    let target1_q = DynamicGraph.Tensor<Float32>(critic1Old(inputs: obs_act_next_v)[0])
-    let target2_q = DynamicGraph.Tensor<Float32>(critic2Old(inputs: obs_act_next_v)[0])
-    let target_q = Functional.min(target1_q, target2_q)
+    let obs_next_result = actor(inputs: obs_next_v)
+    var obs_act_next_v = graph.constant(
+      .GPU(0), .NC(batch_size, input_dim + output_dim), of: Float32.self)
+    let act_next = obs_next_result[0].as(of: Float32.self)
+    let sigma_next = obs_next_result[1].as(of: Float32.self)
+    let n = graph.constant(Tensor<Float32>(.GPU(0), .C(output_dim)))
+    n.randn(std: 1, mean: 0)
+    let act_next_v = n .* Functional.exp(sigma_next) + act_next
+    let squashed_act_next_v = Functional.tanh(act_next_v)
+    obs_act_next_v[0..<batch_size, 0..<input_dim] = obs_next_v
+    obs_act_next_v[0..<batch_size, input_dim..<(input_dim + output_dim)] = squashed_act_next_v
+    let target1_q = critic1Old(inputs: obs_act_next_v)[0].as(of: Float32.self)
+    let target2_q = critic2Old(inputs: obs_act_next_v)[0].as(of: Float32.self)
+    let exp_sigma_next = Functional.exp(sigma_next)
+    let var2_next = 1 / (2 * (exp_sigma_next .* exp_sigma_next))
+    let log_prob_next =
+      (act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next + logSqrt2Pi
+      + Functional.log(one - squashed_act_next_v * squashed_act_next_v).reduced(.sum, axis: [1])
+    let target_q = Functional.min(target1_q, target2_q) + alpha * log_prob_next
     let r_q = graph.constant(r.toGPU(0)) .+ graph.constant(d.toGPU(0)) .* target_q
+
     let obs_v = graph.variable(obs.toGPU(0))
     let act_v = graph.constant(act.toGPU(0))
-    var obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 4))
-    obs_act_v[0..<batch_size, 0..<3] = obs_v
-    obs_act_v[0..<batch_size, 3..<4] = act_v
-    if update_step == 0 && epoch == 0 && step_in_epoch == 0 {
+    var obs_act_v = graph.variable(
+      .GPU(0), .NC(batch_size, input_dim + output_dim), of: Float32.self)
+    obs_act_v[0..<batch_size, 0..<input_dim] = obs_v
+    obs_act_v[0..<batch_size, input_dim..<(input_dim + output_dim)] = act_v
+    if epoch == 0 && step_in_epoch == 0 {
       // First time use critic, copy its parameters from criticOld.
       critic1.parameters.copy(from: critic1Old.parameters)
       critic2.parameters.copy(from: critic2Old.parameters)
     }
 
-    let pred1_q = DynamicGraph.Tensor<Float32>(critic1(inputs: obs_act_v)[0])
-    let loss1 = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred1_q, target: r_q)[0])
+    // Need to weight this. (priority buffer).
+    let pred1_q = critic1(inputs: obs_act_v)[0].as(of: Float32.self)
+    let loss1 = MSELoss()(pred1_q, target: r_q)[0].as(of: Float32.self)
     let cpuLoss1 = loss1.toCPU()
     for i in 0..<batch_size {
       critic1Loss += cpuLoss1[i, 0]
@@ -230,8 +243,8 @@ for epoch in 0..<max_epoch {
     loss1.backward(to: obs_act_v)
     critic1Optim.step()
 
-    let pred2_q = DynamicGraph.Tensor<Float32>(critic2(inputs: obs_act_v)[0])
-    let loss2 = DynamicGraph.Tensor<Float32>(SmoothL1Loss()(pred2_q, target: r_q)[0])
+    let pred2_q = critic2(inputs: obs_act_v)[0].as(of: Float32.self)
+    let loss2 = MSELoss()(pred2_q, target: r_q)[0].as(of: Float32.self)
     let cpuLoss2 = loss2.toCPU()
     for i in 0..<batch_size {
       critic2Loss += cpuLoss2[i, 0]
@@ -239,71 +252,104 @@ for epoch in 0..<max_epoch {
     loss2.backward(to: obs_act_v)
     critic2Optim.step()
 
+    let obs_result = actor(inputs: obs_v)
+    let new_act = obs_result[0].as(of: Float32.self)
+    let new_sigma = obs_result[1].as(of: Float32.self)
+    let new_n = graph.constant(Tensor<Float32>(.GPU(0), .C(output_dim)))
+    new_n.randn(std: 1, mean: 0)
+    let new_act_v = new_n .* Functional.exp(new_sigma) + new_act
+    let squashed_new_act_v = Functional.tanh(new_act_v)
+    var new_obs_act_v = graph.variable(
+      .GPU(0), .NC(batch_size, input_dim + output_dim), of: Float32.self)
+    new_obs_act_v[0..<batch_size, 0..<input_dim] = obs_v
+    new_obs_act_v[0..<batch_size, input_dim..<(input_dim + output_dim)] = squashed_new_act_v
+    let exp_new_sigma = Functional.exp(new_sigma)
+    let new_var2 = 1 / (2 * (exp_new_sigma .* exp_new_sigma))
+    let new_log_prob =
+      (new_act - new_act_v) .* (new_act - new_act_v) .* new_var2 + new_sigma
+      + Functional.log(one - squashed_new_act_v * squashed_new_act_v).reduced(.sum, axis: [1])
+    let current_q1a = critic1(inputs: new_obs_act_v)[0].as(of: Float32.self)
+    let current_q2a = critic2(inputs: new_obs_act_v)[0].as(of: Float32.self)
+    let actor_loss = (alpha * new_log_prob + Functional.min(current_q1a, current_q2a)).reduced(
+      .mean, axis: [1])
+    let cpuActorLoss = actor_loss.toCPU()
+    for i in 0..<batch_size {
+      actorLoss += cpuActorLoss[i, 0]
+    }
+    let grad = graph.variable(.GPU(0), .NC(batch_size, 1), of: Float32.self)
+    grad.full(-1.0 / Float(batch_size))
+    actor_loss.grad = grad
+    actor_loss.backward(to: obs_v)
+    actorOptim.step()
+
     critic1Old.parameters.lerp(tau, to: critic1.parameters)
     critic2Old.parameters.lerp(tau, to: critic2.parameters)
 
-    if step_count % update_actor_freq == 0 {
-      let new_act_v = DynamicGraph.Tensor<Float32>(actor(inputs: obs_v)[0])
-      new_act_v.clamp(actionLow...actionHigh)
-      var new_obs_act_v: DynamicGraph.Tensor<Float32> = graph.variable(
-        .GPU(0), .NC(batch_size, 4))
-      new_obs_act_v[0..<batch_size, 0..<3] = obs_v
-      new_obs_act_v[0..<batch_size, 3..<4] = new_act_v
-      let actor_loss = DynamicGraph.Tensor<Float32>(critic1(inputs: new_obs_act_v)[0])
-      let cpuActorLoss = actor_loss.toCPU()
-      for i in 0..<batch_size {
-        actorLoss += cpuActorLoss[i, 0]
-      }
-      let grad: DynamicGraph.Tensor<Float32> = graph.variable(.GPU(0), .NC(batch_size, 1))
-      // Run gradient ascent, therefore, the negative sign for the gradient. It is the same as:
-      // actor_loss = -critic(inputs: new_obs_act_v)[0]
-      grad.full(-1.0 / Float(batch_size))
-      actor_loss.grad = grad
-      actor_loss.backward(to: obs_v)
-      actorOptim.step()
-      actorOld.parameters.lerp(tau, to: actor.parameters)
-    }
+    env_step += env_step_count
+    step_in_epoch += env_step_count
 
-    step_count += 1
-    step_in_epoch += 1
-
-    critic1Loss = critic1Loss / Float(batch_size * update_steps)
-    critic2Loss = critic2Loss / Float(batch_size * update_steps)
-    actorLoss = -actorLoss / Float(batch_size * update_steps)
-    */
+    critic1Loss = critic1Loss / Float(batch_size)
+    critic2Loss = critic2Loss / Float(batch_size)
+    actorLoss = -actorLoss / Float(batch_size)
     print(
-      "Epoch \(epoch), step \(step_in_epoch), critic1 loss \(critic1Loss), critic2 loss \(critic2Loss), actor loss \(actorLoss)"
+      "Epoch \(epoch), step \(step_in_epoch), critic1 loss \(critic1Loss), critic2 loss \(critic2Loss), actor loss \(actorLoss), reward \(stats.episodeReward.mean) (±\(stats.episodeReward.std)), length \(stats.episodeLength.mean) (±\(stats.episodeLength.std))"
     )
+    summary.addGraph("actor", actor)
+    summary.addGraph("critic1", critic1)
+    summary.addGraph("critic2", critic2)
+    summary.addScalar("critic1_loss", critic1Loss, step: epoch)
+    summary.addScalar("critic2_loss", critic2Loss, step: epoch)
+    summary.addScalar("actor_loss", actorLoss, step: epoch)
+    summary.addScalar("avg_reward", stats.episodeReward.mean, step: epoch)
+    summary.addScalar("avg_length", stats.episodeLength.mean, step: epoch)
   }
   // Running test and print how many steps we can perform in an episode before it fails.
-  var testing_rewards: Float = 0
-  /*
+  let (obs, _) = testEnv.reset()
+  var last_obs = Tensor<Float>(from: obs)
+  var testing_rewards = [Float]()
   for _ in 0..<testing_num {
+    var rewards: Float = 0
     while true {
-      let variable = graph.variable(last_obs.toGPU(0))
-      let act = DynamicGraph.Tensor<Float32>(actor(inputs: variable)[0])
-      act.clamp(-1...1)
-      let act_v = act.rawValue.toCPU()
-      let (obs, reward, done, _) = env.step(act_v).tuple4
-      last_obs = try! Tensor<Float32>(numpy: obs)
-      testing_rewards += Float(reward)!
-      if Bool(done)! {
-        let obs = env.reset()
-        last_obs = try! Tensor<Float32>(numpy: obs)
+      let lastObs = graph.variable(last_obs.toGPU(0))
+      let variable = obsRms.norm(lastObs)
+      variable.clamp(-10...10)
+      let act = actor(inputs: variable)[0].as(of: Float32.self)
+      act.tanh()
+      let act_v = (action_range * act).rawValue.toCPU()
+      let (obs, reward, done, _) = testEnv.step(action: Tensor(from: act_v))
+      last_obs = Tensor(from: obs)
+      rewards += reward
+      if done {
+        testing_rewards.append(rewards)
+        let (obs, _) = testEnv.reset()
+        last_obs = Tensor(from: obs)
         break
       }
     }
   }
-  let avg_testing_rewards = testing_rewards / Float(testing_num)
-  print("Epoch \(epoch), testing reward \(avg_testing_rewards)")
-  if avg_testing_rewards >= Float(env.spec.reward_threshold)! {
-    print("Stop criteria met. Saving mode to \(name).ckpt.")
-    graph.openStore("\(name).ckpt") { store in
-      store.write("ddpg_actor", model: actor)
-      store.write("ddpg_critic1", model: critic1)
-      store.write("ddpg_critic2", model: critic2)
-    }
+  let avg_testing_rewards = NumericalStatistics(testing_rewards)
+  print("Epoch \(epoch), testing reward \(avg_testing_rewards.mean) (±\(avg_testing_rewards.std))")
+  summary.addScalar("testing_reward", avg_testing_rewards.mean, step: epoch)
+  if avg_testing_rewards.mean > TargetEnv.rewardThreshold {
     break
   }
-  */
+}
+
+let (obs, _) = testEnv.reset()
+var last_obs = Tensor<Float>(from: obs)
+while episodes < 10 {
+  let lastObs = graph.variable(last_obs.toGPU(0))
+  let variable = obsRms.norm(lastObs)
+  variable.clamp(-10...10)
+  let act = actor(inputs: variable)[0].as(of: Float32.self)
+  act.tanh()
+  let act_v = (action_range * act).rawValue.toCPU()
+  let (obs, _, done, _) = testEnv.step(action: Tensor(from: act_v))
+  last_obs = Tensor(from: obs)
+  if done {
+    let (obs, _) = testEnv.reset()
+    last_obs = Tensor(from: obs)
+    episodes += 1
+  }
+  viewer.render()
 }
