@@ -49,6 +49,7 @@ public struct CollectedData<Element: TensorNumeric, StateType> {
       states.removeAll()
       return
     }
+    guard keepLastN < rewards.count else { return }
     rewards.removeFirst(rewards.count - keepLastN)
     states.removeFirst(states.count - keepLastN)
   }

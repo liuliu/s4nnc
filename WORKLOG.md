@@ -1,3 +1,14 @@
+2022-08-26
+----------
+Write down some more implementation details about PPO:
+
+ 1. Handle termination properly. If terminated, shouldn't use critic to estimate value. Just assign 0;
+ 2. action should be clipped to -1...1 and then scaled to the action range;
+ 3. Should use the pre-clipped action for probabilistic distribution computation, otherwise it is more likely to get into nan / inf;
+ 4. observations, if normalized, better clipped to a range, the magic value is -10...10;
+ 5. reward normalization after each batch or after all steps seems have minimal impact on training.
+
+
 2022-08-24
 ----------
 One thing interesting in Swift compiler now I discovered is how unstable tuple is. Besides it is not an existential type, `withUnsafePointer(to: &atuple.0)` will have different pointer than `withUnsafePointer(to: &atuple)`. It is not an issue if you only ever use Swift, but because static arrays in C is interoperated as tuple, the former one will give you the correct type but incorrect pointer while the later will have the correct pointer but incorrect type.
