@@ -5,7 +5,7 @@ import NNC
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = InvertedPendulum
+typealias TargetEnv = Ant
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
@@ -46,7 +46,7 @@ let max_epoch = 200
 let step_per_epoch = 5_000
 let start_timestamps = 10_000
 let step_per_collect = 1
-let n_step = 3
+let n_step = 1
 let batch_size = 256
 let training_num = 1
 let testing_num = 10
@@ -133,7 +133,6 @@ for epoch in 0..<max_epoch {
     let env_step_count = stats.stepCount
     let collectedData = training_collector.data
     training_collector.resetData(keepLastN: n_step)
-    env_step += env_step_count
     for data in collectedData {
       // Ignore the last one if it is not terminated yet (thus, we always have obs / obs_next pair).
       let count = data.rewards.count - (data.terminated ? 0 : 1)
@@ -197,9 +196,10 @@ for epoch in 0..<max_epoch {
     let target2_q = critic2Old(inputs: obs_act_next_v)[0].as(of: Float32.self)
     let var2_next = 1 / (2 * (exp_sigma_next .* exp_sigma_next))
     let log_prob_next =
-      (act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next
+      (act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next + logSqrt2Pi
       + Functional.log(one - squashed_act_next_v .* squashed_act_next_v).reduced(.sum, axis: [1])
-    let target_q = Functional.min(target1_q, target2_q) + alpha * log_prob_next
+    let target_q =
+      Functional.min(target1_q, target2_q) + alpha * log_prob_next.reduced(.mean, axis: [1])
     let r_q = graph.constant(r.toGPU(0)) .+ graph.constant(d.toGPU(0)) .* target_q
 
     let obs_v = graph.variable(obs.toGPU(0))
@@ -276,8 +276,12 @@ for epoch in 0..<max_epoch {
     summary.addScalar("critic1_loss", critic1Loss, step: env_step)
     summary.addScalar("critic2_loss", critic2Loss, step: env_step)
     summary.addScalar("actor_loss", actorLoss, step: env_step)
-    summary.addScalar("avg_reward", stats.episodeReward.mean, step: env_step)
-    summary.addScalar("avg_length", stats.episodeLength.mean, step: env_step)
+    if stats.episodeReward.mean != 0 || stats.episodeReward.std != 0 {
+      summary.addScalar("avg_reward", stats.episodeReward.mean, step: env_step)
+    }
+    if stats.episodeLength.mean != 0 || stats.episodeLength.std != 0 {
+      summary.addScalar("avg_length", stats.episodeLength.mean, step: env_step)
+    }
   }
   summary.addGraph("actor", actor)
   summary.addGraph("critic1", critic1)
