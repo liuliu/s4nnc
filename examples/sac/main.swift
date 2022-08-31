@@ -5,7 +5,7 @@ import NNC
 import Numerics
 import TensorBoard
 
-typealias TargetEnv = Ant
+typealias TargetEnv = Humanoid
 
 let input_dim = TargetEnv.stateSize
 let output_dim = TargetEnv.actionSpace.count
@@ -50,9 +50,8 @@ let n_step = 1
 let batch_size = 256
 let training_num = 1
 let testing_num = 10
-let SIGMA_MIN: Float = -2
+let SIGMA_MIN: Float = -20
 let SIGMA_MAX: Float = 2
-let LOG_TANH_MIN: Float = -100
 
 let actor = NetA()
 let critic1 = NetC()
@@ -124,6 +123,8 @@ var replays = [Replay]()
 let total_discount = Array(repeating: gamma, count: n_step).reduce(1, *)
 var one = graph.constant(.GPU(0), .NC(batch_size, output_dim), of: Float32.self)
 one.full(Float(1).nextUp)
+var logSqrt2Pi = graph.constant(.GPU(0), .NC(batch_size, output_dim), of: Float32.self)
+logSqrt2Pi.full(.log((2 * .pi).squareRoot()))
 let _ = training_collector.collect(nStep: start_timestamps)
 for epoch in 0..<max_epoch {
   var step_in_epoch = 0
@@ -174,7 +175,7 @@ for epoch in 0..<max_epoch {
       obs[i, ...] = replay.observation
       obs_next[i, ...] = replay.nextObservation
       act[i, ...] = replay.action
-      r[i, 0] = replay.reward
+      r[i, 0] = replay.reward * 10
       d[i, 0] = replay.terminated ? 0 : total_discount
     }
     // Compute the q.
@@ -196,11 +197,11 @@ for epoch in 0..<max_epoch {
     let target2_q = critic2Old(inputs: obs_act_next_v)[0].as(of: Float32.self)
     let var2_next = 1 / (2 * (exp_sigma_next .* exp_sigma_next))
     let log_prob_next =
-      (act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next
+      ((act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next + logSqrt2Pi)
+      .reduced(.sum, axis: [1])
       + Functional.log(one - squashed_act_next_v .* squashed_act_next_v).reduced(.sum, axis: [1])
-      .clamped(LOG_TANH_MIN...)
     let target_q =
-      Functional.min(target1_q, target2_q) + alpha * log_prob_next.reduced(.mean, axis: [1])
+      Functional.min(target1_q, target2_q) + alpha * log_prob_next
     let r_q = graph.constant(r.toGPU(0)) .+ graph.constant(d.toGPU(0)) .* target_q
 
     let obs_v = graph.variable(obs.toGPU(0))
@@ -249,13 +250,13 @@ for epoch in 0..<max_epoch {
     new_obs_act_v[0..<batch_size, input_dim..<(input_dim + output_dim)] = squashed_new_act_v
     let new_var2 = 1 / (2 * (exp_new_sigma .* exp_new_sigma))
     let new_log_prob =
-      (new_act - new_act_v) .* (new_act - new_act_v) .* new_var2 + new_sigma
+      ((new_act - new_act_v) .* (new_act - new_act_v) .* new_var2 + new_sigma).reduced(
+        .sum, axis: [1])
       + Functional.log(one - squashed_new_act_v .* squashed_new_act_v).reduced(.sum, axis: [1])
-      .clamped(LOG_TANH_MIN...)
     let current_q1a = critic1(inputs: new_obs_act_v)[0].as(of: Float32.self)
     let current_q2a = critic2(inputs: new_obs_act_v)[0].as(of: Float32.self)
     let actor_loss =
-      Functional.min(current_q1a, current_q2a) + alpha * new_log_prob.reduced(.mean, axis: [1])
+      Functional.min(current_q1a, current_q2a) + alpha * new_log_prob
     let cpuActorLoss = actor_loss.toCPU()
     for i in 0..<batch_size {
       actorLoss += cpuActorLoss[i, 0]
