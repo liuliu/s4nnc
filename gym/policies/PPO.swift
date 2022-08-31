@@ -102,7 +102,7 @@ extension PPO {
         let value = critic(state.observation)
         values.append(value[0])
       }
-      if !data.terminated {
+      if data.envState != .terminated {
         let value = critic(data.lastObservation)
         values.append(value[0])
       } else {

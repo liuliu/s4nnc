@@ -27,6 +27,11 @@ where EnvType.ObsType == Tensor<EnvElement>, EnvType.ActType == Tensor<EnvElemen
 }
 
 public struct CollectedData<Element: TensorNumeric, StateType> {
+  public enum EnvState {
+    case ready
+    case terminated
+    case truncated
+  }
   public typealias ObsType = Tensor<Element>
   public typealias ActType = Tensor<Element>
   public var lastObservation: ObsType
@@ -34,14 +39,14 @@ public struct CollectedData<Element: TensorNumeric, StateType> {
   public var states: [StateType]
   public var episodeReward: Float
   public var episodeLength: Int
-  public var terminated: Bool
+  public var envState: EnvState
   public init(lastObservation: ObsType) {
     self.lastObservation = lastObservation
     rewards = []
     states = []
     episodeReward = 0
     episodeLength = 0
-    terminated = false
+    envState = .ready
   }
   mutating func reset(keepLastN: Int = 0) {
     guard keepLastN > 0 else {
@@ -86,7 +91,7 @@ extension Collector {
       batch[i].lastObservation = ObsType(from: newObs)
       batch[i].episodeReward = 0
       batch[i].episodeLength = 0
-      batch[i].terminated = false
+      batch[i].envState = .ready
     }
   }
 
@@ -113,7 +118,9 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
         batch[i].episodeLength += 1
         if done {
           if info["TimeLimit.truncated"] as? Bool? != true {
-            batch[i].terminated = true
+            batch[i].envState = .terminated
+          } else {
+            batch[i].envState = .truncated
           }
           episodeRewards.append(batch[i].episodeReward)
           episodeLengths.append(Float(batch[i].episodeLength))
@@ -123,7 +130,7 @@ extension Collector where EnvType.TerminatedType == Bool, EnvType.RewardType == 
           batch[i].lastObservation = ObsType(from: newObs)
           batch[i].episodeReward = 0
           batch[i].episodeLength = 0
-          batch[i].terminated = false
+          batch[i].envState = .ready
           episodeCount += 1
         }
       }

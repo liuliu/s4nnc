@@ -52,6 +52,7 @@ let training_num = 1
 let testing_num = 10
 let SIGMA_MIN: Float = -2
 let SIGMA_MAX: Float = 2
+let LOG_TANH_MIN: Float = -100
 
 let actor = NetA()
 let critic1 = NetC()
@@ -122,9 +123,7 @@ var training_collector = Collector<Float, SAC.ContinuousState, TimeLimit<TargetE
 var replays = [Replay]()
 let total_discount = Array(repeating: gamma, count: n_step).reduce(1, *)
 var one = graph.constant(.GPU(0), .NC(batch_size, output_dim), of: Float32.self)
-one.full(1 + .ulpOfOne)
-var logSqrt2Pi = graph.constant(.GPU(0), .NC(batch_size, output_dim), of: Float32.self)
-logSqrt2Pi.full(.log((2 * .pi).squareRoot()))
+one.full(Float(1).nextUp)
 let _ = training_collector.collect(nStep: start_timestamps)
 for epoch in 0..<max_epoch {
   var step_in_epoch = 0
@@ -135,7 +134,7 @@ for epoch in 0..<max_epoch {
     training_collector.resetData(keepLastN: n_step)
     for data in collectedData {
       // Ignore the last one if it is not terminated yet (thus, we always have obs / obs_next pair).
-      let count = data.rewards.count - (data.terminated ? 0 : 1)
+      let count = data.rewards.count - (data.envState != .ready ? 0 : n_step)
       for i in 0..<count {
         var discount: Float = 1
         var rew: Float = 0
@@ -146,10 +145,11 @@ for epoch in 0..<max_epoch {
         }
         let state = data.states[i]
         let replay = Replay(
-          reward: rew, terminated: (i >= data.states.count - n_step),
+          reward: rew,
+          terminated: (data.envState == .terminated && i >= data.states.count - n_step),
           observation: state.observation,
           action: state.action,
-          nextObservation: i + n_step < data.states.count - 1
+          nextObservation: i + n_step < data.states.count
             ? data.states[i + n_step].observation : data.lastObservation)
         replays.append(replay)
       }
@@ -196,8 +196,9 @@ for epoch in 0..<max_epoch {
     let target2_q = critic2Old(inputs: obs_act_next_v)[0].as(of: Float32.self)
     let var2_next = 1 / (2 * (exp_sigma_next .* exp_sigma_next))
     let log_prob_next =
-      (act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next + logSqrt2Pi
+      (act_next - act_next_v) .* (act_next - act_next_v) .* var2_next + sigma_next
       + Functional.log(one - squashed_act_next_v .* squashed_act_next_v).reduced(.sum, axis: [1])
+      .clamped(LOG_TANH_MIN...)
     let target_q =
       Functional.min(target1_q, target2_q) + alpha * log_prob_next.reduced(.mean, axis: [1])
     let r_q = graph.constant(r.toGPU(0)) .+ graph.constant(d.toGPU(0)) .* target_q
@@ -250,6 +251,7 @@ for epoch in 0..<max_epoch {
     let new_log_prob =
       (new_act - new_act_v) .* (new_act - new_act_v) .* new_var2 + new_sigma
       + Functional.log(one - squashed_new_act_v .* squashed_new_act_v).reduced(.sum, axis: [1])
+      .clamped(LOG_TANH_MIN...)
     let current_q1a = critic1(inputs: new_obs_act_v)[0].as(of: Float32.self)
     let current_q2a = critic2(inputs: new_obs_act_v)[0].as(of: Float32.self)
     let actor_loss =
