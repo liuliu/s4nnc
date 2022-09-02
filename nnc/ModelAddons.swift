@@ -272,6 +272,40 @@ extension Model.IO {
   }
 }
 
+/// A GELU activation model.
+public final class GELU: Model {
+  public enum Approximate {
+    case none
+    case tanh
+  }
+
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(approximate: Approximate = .none, name: String = "") {
+    super.init(ccv_cnnp_gelu(approximate == .tanh ? 1 : 0, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+private typealias _GELU = GELU
+
+extension Model.IO {
+  /**
+   * Apply GELU activation to the said IO.
+   */
+  public func GELU(approximate: GELU.Approximate = .none) -> Model.IO {
+    return _GELU(approximate: approximate)(self)
+  }
+}
+
 public final class Transpose: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
@@ -376,6 +410,24 @@ public final class LayerNorm: Model {
   public init(epsilon: Float, axis: [Int], name: String = "") {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(ccv_cnnp_layer_norm(epsilon, axis32, Int32(axis.count), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// Group normalization model.
+public final class GroupNorm: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: Int, groups: Int, epsilon: Float, name: String = "") {
+    super.init(ccv_cnnp_group_norm(Int32(axis), Int32(groups), epsilon, name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
