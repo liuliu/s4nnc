@@ -426,8 +426,11 @@ public final class GroupNorm: Model {
     super.init(model)
   }
 
-  public init(axis: Int, groups: Int, epsilon: Float, name: String = "") {
-    super.init(ccv_cnnp_group_norm(Int32(axis), Int32(groups), epsilon, name))
+  public init(axis: Int, groups: Int, epsilon: Float, reduce: [Int], name: String = "") {
+    let axis32: [Int32] = reduce.map { Int32($0) }
+    super.init(
+      ccv_cnnp_group_norm(
+        Int32(axis), Int32(groups), epsilon, axis32, Int32(axis32.count), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
