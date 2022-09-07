@@ -521,6 +521,37 @@ public final class AveragePool: Model {
   }
 }
 
+/// upsample model.
+public final class Upsample: Model {
+  public enum Mode {
+    case nearest
+    case bilinear
+    var rawValue: Int32 {
+      switch self {
+      case .nearest:
+        return Int32(CCV_NNC_UPSAMPLE_NEAREST)
+      case .bilinear:
+        return Int32(CCV_NNC_UPSAMPLE_BILINEAR)
+      }
+    }
+  }
+
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(_ mode: Mode, widthScale: Float, heightScale: Float, name: String = "") {
+    super.init(ccv_cnnp_upsample(mode.rawValue, widthScale, heightScale, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 /// reduce sum model.
 public final class ReduceSum: Model {
   required init(_ model: OpaquePointer) {
