@@ -143,17 +143,6 @@ extension Model {
   }
 }
 
-extension Model {
-  public var workspaceSize: Int {
-    get {
-      ccv_cnnp_model_workspace_size(cModel)
-    }
-    set {
-      ccv_cnnp_model_set_workspace_size(cModel, newValue)
-    }
-  }
-}
-
 /// MARK - Functional and Sequential Models
 
 extension Model {

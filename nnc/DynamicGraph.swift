@@ -170,6 +170,12 @@ public final class DynamicGraph {
   public let cGraph: OpaquePointer
   var streamContext: StreamContext? = nil
 
+  /**
+   * The workspace size for executions. This is helpful when execute models, which will use this
+   * to tune the optimal kernel.
+   */
+  public var workspaceSize: Int = 0
+
   struct WeakAnyTensor {
     weak var value: AnyTensor?
   }

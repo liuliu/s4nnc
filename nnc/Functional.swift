@@ -105,6 +105,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     precondition(inputs.count > 0)
     let firstTensor = inputs.first(where: { $0 != nil })!!
     let graph = firstTensor.graph
+    ccv_cnnp_model_set_workspace_size(model, graph.workspaceSize)
     for input in inputs {
       guard let input = input else { continue }
       precondition(input.graph === graph)
@@ -246,6 +247,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
     precondition(inputs.count > 0)
     let firstTensor = inputs.first(where: { $0 != nil })!!
     let graph = firstTensor.graph
+    ccv_cnnp_model_set_workspace_size(model, graph.workspaceSize)
     let parallel = firstTensor.untyped.count
     let inputSize = inputs.count
     var _inputs = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * inputSize)
