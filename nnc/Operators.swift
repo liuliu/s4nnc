@@ -53,7 +53,7 @@ public func * (left: Model.IO, right: Model.IO) -> Model.IO {
 }
 
 // Scalar division
-public func ./ <T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
+public func / <T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
   if left == 1 {
     return Functional.reciprocal(right)
   } else {
@@ -61,11 +61,11 @@ public func ./ <T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
   }
 }
 
-public func / <T: DynamicGraph.TensorGroup>(left: Float, right: T) -> T {
-  if left == 1 {
-    return Functional.reciprocal(right)
+public func / <T: DynamicGraph.TensorGroup>(left: T, right: Float) -> T {
+  if right == 1 {
+    return left
   } else {
-    return Functional.scalmul(left: left, right: Functional.reciprocal(right))
+    return Functional.scalmul(left: 1.0 / right, right: left)
   }
 }
 
