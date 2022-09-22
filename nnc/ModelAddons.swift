@@ -100,17 +100,20 @@ public final class Reshape: Model {
     super.init(model)
   }
 
-  public init(dimensions: [Int], offset: [Int]? = nil, stride: [Int]? = nil, name: String = "") {
-    var dimensions = toCDimensions(dimensions)
-    var offset = toCDimensions(offset)
-    var stride = toCDimensions(stride)
+  public init(
+    dimensions: TensorShape, offset: TensorShape? = nil, strides: TensorShape? = nil,
+    name: String = ""
+  ) {
+    var dimensions = dimensions.dims
+    var offset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    var strides = strides?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let _model = withUnsafePointer(to: &dimensions) { dimensions -> OpaquePointer in
       let dimensions = UnsafeRawPointer(dimensions).assumingMemoryBound(to: Int32.self)
       return withUnsafePointer(to: &offset) { offset -> OpaquePointer in
         let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
-        return withUnsafePointer(to: &stride) { stride -> OpaquePointer in
-          let stride = UnsafeRawPointer(stride).assumingMemoryBound(to: Int32.self)
-          return ccv_cnnp_reshape(dimensions, offset, stride, name)!
+        return withUnsafePointer(to: &strides) { strides -> OpaquePointer in
+          let strides = UnsafeRawPointer(strides).assumingMemoryBound(to: Int32.self)
+          return ccv_cnnp_reshape(dimensions, offset, strides, name)!
         }
       }
     }
@@ -125,12 +128,44 @@ extension Model.IO {
    * - Parameters:
    *   - dimensions: The new dimensions for the input.
    *   - offset: Whether apply certain offset for each dimension.
-   *   - stride: What's the stride for each dimension.
+   *   - strides: What's the stride for each dimension.
    */
-  public func reshaped(_ dimensions: [Int], offset: [Int]? = nil, stride: [Int]? = nil)
+  public func reshaped(
+    _ dimensions: TensorShape, offset: TensorShape? = nil, strides: TensorShape? = nil
+  )
     -> Model.IO
   {
-    return Reshape(dimensions: dimensions, offset: offset, stride: stride)(self)
+    return Reshape(dimensions: dimensions, offset: offset, strides: strides)(self)
+  }
+}
+
+/// A permute model.
+public final class Permute: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(indices: [Int], name: String = "") {
+    var indices = toCDimensions(indices)
+    let _model = withUnsafePointer(to: &indices) { indices -> OpaquePointer in
+      let indices = UnsafeRawPointer(indices).assumingMemoryBound(to: Int32.self)
+      return ccv_cnnp_permute(indices, name)!
+    }
+    super.init(_model)
+  }
+}
+
+extension Model.IO {
+  /**
+   * Permute an IO according to the indices.
+   *
+   * - Parameters:
+   *   - indices: The dimensions to pick from the input.
+   */
+  public func permuted(_ indices: Int...)
+    -> Model.IO
+  {
+    return Permute(indices: indices)(self)
   }
 }
 

@@ -249,7 +249,7 @@ extension Functional {
     from: T, to: T, streamContext: StreamContext? = nil
   ) {
     let params = CmdParamsFactory.factory.newParams()
-    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
     exec(cmd: cmd, hint: ccv_nnc_no_hint, inputs: from, outputs: [to], streamContext: streamContext)
   }
 
@@ -1260,6 +1260,32 @@ extension DynamicGraph.Group {
     -> DynamicGraph.Group<Element>
   {
     return clamped(min: nil, max: range.upperBound, streamContext: streamContext)
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Make a copy of the existing tensor.
+  public func copied(streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Tensor<Element>(outputs[0])
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Reduce along a given dimension.
+  public func copied(streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Group<Element>(outputs[0])
   }
 }
 

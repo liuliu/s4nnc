@@ -335,6 +335,18 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(b0.rawValue[3], 4, accuracy: 1e-5)
   }
 
+  func testPermute() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(
+      Tensor<Float32>(
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], .CPU,
+        .HWC(2, 3, 4)))
+    let a1 = a0.permuted(2, 0, 1)
+    XCTAssertEqual(a1[2, 0, 0], a0[0, 0, 2])
+    XCTAssertEqual(a1[1, 0, 0], a0[0, 0, 1])
+    XCTAssertEqual(a1[2, 1, 2], a0[1, 2, 2])
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -356,5 +368,6 @@ final class GraphTests: XCTestCase {
     ("testSwish", testSwish),
     ("testArgmax", testArgmax),
     ("testMaskedFill", testMaskedFill),
+    ("testPermute", testPermute),
   ]
 }

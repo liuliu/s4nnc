@@ -84,6 +84,8 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext?) -> Self
   /// Clamp the given tensor with an upper bound.
   func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext?) -> Self
+  /// Make a copy of the given tensor.
+  func copied(streamContext: StreamContext?) -> Self
   /// Reduce along a given dimension.
   func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext?) -> Self
   /// Scale the given tensor with a constant inplace.
@@ -289,6 +291,11 @@ extension DynamicGraph_TensorGroup {
     -> Self
   {
     clamped(range, streamContext: streamContext)
+  }
+  /// Make a copy of the given tensor.
+  @inlinable
+  public func copied(streamContext: StreamContext? = nil) -> Self {
+    copied(streamContext: streamContext)
   }
   /// Reduce along a given dimension.
   @inlinable

@@ -409,7 +409,7 @@ public final class AnyTensorStorage {
     var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
     var output = ccv_nnc_tensor_new(nil, cTensor.pointee.info, 0)
     ccv_nnc_cmd_exec(
-      ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
+      ccv_nnc_cmd(CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
       ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
     return AnyTensorStorage(output!)
   }

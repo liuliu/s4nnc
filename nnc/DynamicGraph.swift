@@ -315,6 +315,60 @@ extension DynamicGraph.WeakAnyTensor: Hashable {
 
 extension DynamicGraph.AnyTensor {
 
+  public func permuted(_ indices: Int...) -> Self {
+    let _graph = graph.cGraph
+    let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
+    let device = DeviceKind.from(cTensorParams: cTensorParams)
+    let dataType = DataType.from(cTensorParams: cTensorParams)
+    let shape = self.shape
+    var cOffset:
+      (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32) = (
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      )
+    var cStrides:
+      (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32) = (
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      )
+    let isAlias =
+      (withUnsafeMutablePointer(to: &cOffset) { offset -> Int32 in
+        let offset = UnsafeMutableRawPointer(offset).assumingMemoryBound(to: Int32.self)
+        return withUnsafeMutablePointer(to: &cStrides) { strides -> Int32 in
+          let strides = UnsafeMutableRawPointer(strides).assumingMemoryBound(to: Int32.self)
+          return ccv_nnc_tensor_variable_alias_params(_graph, _tensor, offset, strides)
+        }
+      }) == 0
+    let offset = TensorShape(dims: cOffset)
+    var strides = TensorShape(dims: cStrides)
+    if !isAlias || strides.count == 0 {
+      var stride = 1
+      for i in (0..<shape.count).reversed() {
+        strides[i] = stride
+        stride *= shape[i]
+      }
+    }
+    var newOffset = offset
+    var newShape = shape
+    var newStrides = strides
+    for (i, index) in indices.enumerated() {
+      newShape[i] = shape[index]
+      newOffset[i] = offset[index]
+      newStrides[i] = strides[index]
+    }
+    cOffset = newOffset.dims
+    cStrides = newStrides.dims
+    let _alias = withUnsafePointer(to: &cOffset) { offset -> ccv_nnc_tensor_variable_t in
+      let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
+      return withUnsafePointer(to: &cStrides) { strides -> ccv_nnc_tensor_variable_t in
+        let strides = UnsafeRawPointer(strides).assumingMemoryBound(to: Int32.self)
+        return ccv_nnc_tensor_variable_alias_new(
+          _graph, _tensor, offset, strides,
+          toCTensorParams(
+            device, dataType: dataType, format: format, shape: newShape))!
+      }
+    }
+    return Self(graph: underlying.graph, tensor: _alias, original: self)
+  }
+
   public func reshaped(
     format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
     strides: TensorShape? = nil
@@ -325,6 +379,23 @@ extension DynamicGraph.AnyTensor {
     let dataType = DataType.from(cTensorParams: cTensorParams)
     var offset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     var strides = strides?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    var oldStrides:
+      (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32) = (
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      )
+    let isAlias =
+      (withUnsafeMutablePointer(to: &oldStrides) { strides -> Int32 in
+        let strides = UnsafeMutableRawPointer(strides).assumingMemoryBound(to: Int32.self)
+        return ccv_nnc_tensor_variable_alias_params(_graph, _tensor, nil, strides)
+      }) == 0
+    if isAlias {
+      // Check if strides not permuted. If it is permuted, we need to first make a copy and then reshape again.
+      let oldStrides = TensorShape(dims: oldStrides)
+      for i in 1..<oldStrides.count {
+        // Otherwise we cannot reshape, need to first make a copy and then reshape.
+        precondition(oldStrides[i - 1] >= oldStrides[i])
+      }
+    }
     let _alias = withUnsafePointer(to: &offset) { offset -> ccv_nnc_tensor_variable_t in
       let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
       return withUnsafePointer(to: &strides) { strides -> ccv_nnc_tensor_variable_t in
