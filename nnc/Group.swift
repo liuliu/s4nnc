@@ -9,7 +9,7 @@ public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var kind: DeviceKind { get }
   var shape: TensorShape { get }
   var format: TensorFormat { get }
-  var step: TensorShape { get }
+  var strides: TensorShape { get }
   var isConstant: Bool { get }
   var requiresGrad: Bool { get set }
 }
@@ -90,12 +90,12 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
     }
     return format
   }
-  public var step: TensorShape {
-    let step = underlyingArray[0].step
+  public var strides: TensorShape {
+    let strides = underlyingArray[0].strides
     for tensor in underlyingArray {
-      assert(step == tensor.step)
+      assert(strides == tensor.strides)
     }
-    return step
+    return strides
   }
   public var isConstant: Bool {
     let isConstant = underlyingArray[0].isConstant
@@ -122,18 +122,19 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
 
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
   public func reshaped(
-    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
+    strides: TensorShape? = nil
   ) -> Self {
     return DynamicGraph.Group(
       underlyingArray.map {
-        $0.reshaped(format: format, shape: shape, offset: offset, step: step)
+        $0.reshaped(format: format, shape: shape, offset: offset, strides: strides)
       })
   }
   public func reshaped(
-    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, strides: TensorShape? = nil
   ) -> Self {
     return reshaped(
       format: shapeFormat.format, shape: shapeFormat.shape, offset: offset,
-      step: step)
+      strides: strides)
   }
 }

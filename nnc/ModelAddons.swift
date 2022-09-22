@@ -100,18 +100,17 @@ public final class Reshape: Model {
     super.init(model)
   }
 
-  public init(dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil, name: String = "")
-  {
+  public init(dimensions: [Int], offset: [Int]? = nil, stride: [Int]? = nil, name: String = "") {
     var dimensions = toCDimensions(dimensions)
     var offset = toCDimensions(offset)
-    var increments = toCDimensions(increments)
+    var stride = toCDimensions(stride)
     let _model = withUnsafePointer(to: &dimensions) { dimensions -> OpaquePointer in
       let dimensions = UnsafeRawPointer(dimensions).assumingMemoryBound(to: Int32.self)
       return withUnsafePointer(to: &offset) { offset -> OpaquePointer in
         let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
-        return withUnsafePointer(to: &increments) { increments -> OpaquePointer in
-          let increments = UnsafeRawPointer(increments).assumingMemoryBound(to: Int32.self)
-          return ccv_cnnp_reshape(dimensions, offset, increments, name)!
+        return withUnsafePointer(to: &stride) { stride -> OpaquePointer in
+          let stride = UnsafeRawPointer(stride).assumingMemoryBound(to: Int32.self)
+          return ccv_cnnp_reshape(dimensions, offset, stride, name)!
         }
       }
     }
@@ -126,12 +125,12 @@ extension Model.IO {
    * - Parameters:
    *   - dimensions: The new dimensions for the input.
    *   - offset: Whether apply certain offset for each dimension.
-   *   - increments: What's the step size for each dimension.
+   *   - stride: What's the stride for each dimension.
    */
-  public func reshaped(_ dimensions: [Int], offset: [Int]? = nil, increments: [Int]? = nil)
+  public func reshaped(_ dimensions: [Int], offset: [Int]? = nil, stride: [Int]? = nil)
     -> Model.IO
   {
-    return Reshape(dimensions: dimensions, offset: offset, increments: increments)(self)
+    return Reshape(dimensions: dimensions, offset: offset, stride: stride)(self)
   }
 }
 

@@ -94,18 +94,25 @@ public final class DynamicGraph {
       return TensorFormat.from(cTensorParams: info)
     }
 
-    public var step: TensorShape {
+    public var strides: TensorShape {
       let _graph = graph.cGraph
       let _streamContext = graph.streamContext?._stream
       let cTensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
       let type = Int(cTensor.pointee.type)
       guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
-        return TensorShape(dims: cTensor.pointee.info.dim)
+        var strides = TensorShape(dims: cTensor.pointee.info.dim)
+        var stride = 1
+        for i in (0..<strides.count).reversed() {
+          let oldStride = strides[i]
+          strides[i] = stride
+          stride *= oldStride
+        }
+        return strides
       }
       return TensorShape(
         dims: UnsafeMutableRawPointer(cTensor).bindMemory(
           to: ccv_nnc_tensor_view_t.self, capacity: 1
-        ).pointee.inc)
+        ).pointee.stride)
     }
 
     /**
@@ -269,6 +276,13 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /// Set whether to enable profiler or not.
+  public static func setProfiler(_ on: Bool) {
+    ccv_nnc_set_profiler(on ? 1 : 0)
+  }
+}
+
+extension DynamicGraph {
   /// Statistics about the graph.
   public struct Statistics {
     /// How many variables (including constants) in this graph.
@@ -302,20 +316,21 @@ extension DynamicGraph.WeakAnyTensor: Hashable {
 extension DynamicGraph.AnyTensor {
 
   public func reshaped(
-    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil, step: TensorShape? = nil
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
+    strides: TensorShape? = nil
   ) -> Self {
     let _graph = graph.cGraph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     let device = DeviceKind.from(cTensorParams: cTensorParams)
     let dataType = DataType.from(cTensorParams: cTensorParams)
     var offset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    var step = step?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    var strides = strides?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let _alias = withUnsafePointer(to: &offset) { offset -> ccv_nnc_tensor_variable_t in
       let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
-      return withUnsafePointer(to: &step) { step -> ccv_nnc_tensor_variable_t in
-        let step = UnsafeRawPointer(step).assumingMemoryBound(to: Int32.self)
+      return withUnsafePointer(to: &strides) { strides -> ccv_nnc_tensor_variable_t in
+        let strides = UnsafeRawPointer(strides).assumingMemoryBound(to: Int32.self)
         return ccv_nnc_tensor_variable_alias_new(
-          _graph, _tensor, offset, step,
+          _graph, _tensor, offset, strides,
           toCTensorParams(
             device, dataType: dataType, format: format, shape: shape))!
       }
@@ -329,15 +344,15 @@ extension DynamicGraph.AnyTensor {
    * - Parameters:
    *   - shapeFormat: New format and shape for the tensor.
    *   - offset: Whether offset on each shape.
-   *   - step: The step on each shape.
+   *   - strides: The stride on each shape.
    * - Returns: The new tensor with different format but the same underlying variable.
    */
   public func reshaped(
-    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, step: TensorShape? = nil
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, strides: TensorShape? = nil
   ) -> Self {
     return reshaped(
       format: shapeFormat.format, shape: shapeFormat.shape, offset: offset,
-      step: step)
+      strides: strides)
   }
 
 }
