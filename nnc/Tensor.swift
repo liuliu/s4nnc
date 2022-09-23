@@ -1083,16 +1083,27 @@ extension Tensor {
     format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
     strides: TensorShape? = nil
   ) -> Self {
-    let cTensorParams = cTensor.pointee.info
-    let device = DeviceKind.from(cTensorParams: cTensorParams)
-    guard let offset = offset, let strides = strides else {
+    let deviceKind = self.kind
+    if isTensorView
+      && (shape.count != self.shape.count || (strides != nil && strides != self.strides))
+    {
+      // Check if this is permuted, if it is, we cannot reshape. Need to copied first.
+      let strides = self.strides
+      for i in 1..<strides.count {
+        precondition(
+          strides[i - 1] >= strides[i],
+          "The tensor is permuted, cannot reshape to \(shape), try .copied() before reshape.")
+      }
+    }
+    guard let strides = strides else {
+      precondition(offset == nil)  // Cannot have no strides but offset.
       let newt = ccv_nnc_tensor_new(
         cTensor.pointee.data.ptr,
-        toCTensorParams(device, dataType: Element.dataType, format: format, shape: shape),
+        toCTensorParams(deviceKind, dataType: Element.dataType, format: format, shape: shape),
         0)!
       return Self(AnyTensorStorage(newt, original: _storage))
     }
-    var cOffset = offset.dims
+    var cOffset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     var cStrides = strides.dims
     let newt = withUnsafePointer(to: &cOffset) {
       cOffset -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
@@ -1103,7 +1114,7 @@ extension Tensor {
         return ccv_nnc_tensor_view_new(
           cTensor,
           toCTensorParams(
-            device, dataType: Element.dataType, format: format, shape: shape), cOffset,
+            deviceKind, dataType: Element.dataType, format: format, shape: shape), cOffset,
           cStrides)!
       }
     }
@@ -1130,6 +1141,50 @@ extension Tensor {
       strides: strides)
   }
 
+}
+
+extension Tensor {
+
+  /**
+   * Create a new tensor with dimensions permuted.
+   *
+   * - Parameters:
+   *   - indices: The indices for dimensions from the original tensor. For example, a [2, 3, 4] tensor with [2, 0, 1] indices will permute to a [4, 2, 3] tensor.
+   * - Returns: The new tensor with dimensions permuted.
+   */
+  public func permuted(_ indices: Int...) -> Self {
+    let deviceKind = self.kind
+    let shape = self.shape
+    let strides = self.strides
+    var newShape = shape
+    var newStrides = strides
+    for (i, index) in indices.enumerated() {
+      newShape[i] = shape[index]
+      newStrides[i] = strides[index]
+    }
+    var cOffset:
+      (Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32) = (
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+      )
+    var cStrides = newStrides.dims
+    let newt = withUnsafePointer(to: &cOffset) {
+      cOffset -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
+      let cOffset = UnsafeRawPointer(cOffset).assumingMemoryBound(to: Int32.self)
+      return withUnsafePointer(to: &cStrides) {
+        cStrides -> UnsafeMutablePointer<ccv_nnc_tensor_view_t> in
+        let cStrides = UnsafeRawPointer(cStrides).assumingMemoryBound(to: Int32.self)
+        return ccv_nnc_tensor_view_new(
+          cTensor,
+          toCTensorParams(
+            deviceKind, dataType: Element.dataType, format: format, shape: newShape), cOffset,
+          cStrides)!
+      }
+    }
+    let anyTensor = newt.withMemoryRebound(to: ccv_nnc_tensor_t.self, capacity: 1) {
+      AnyTensorStorage($0, original: _storage)
+    }
+    return Self(anyTensor)
+  }
 }
 
 extension Collection where Element == Tensor<Float64> {

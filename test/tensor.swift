@@ -141,6 +141,42 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual(newTensorShape[5], 0)
   }
 
+  func testPermute() throws {
+    let a0 = Tensor<Float32>(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], .CPU,
+      .HWC(2, 3, 4))
+    let a1 = a0.permuted(2, 0, 1)
+    XCTAssertEqual(a1[2, 0, 0], a0[0, 0, 2])
+    XCTAssertEqual(a1[1, 0, 0], a0[0, 0, 1])
+    XCTAssertEqual(a1[2, 1, 2], a0[1, 2, 2])
+  }
+
+  func testPermuteAndGetASubset() throws {
+    let a0 = Tensor<Float32>(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], .CPU,
+      .HWC(2, 3, 4))
+    let a1 = a0.permuted(2, 0, 1)
+    let sa0 = a0[0..<2, 0..<2, 0..<2]
+    let sa1 = a1[0..<2, 0..<2, 0..<2]
+    XCTAssertEqual(sa1[1, 0, 0], sa0[0, 0, 1])
+    XCTAssertEqual(sa1[1, 1, 0], sa0[1, 0, 1])
+    XCTAssertEqual(sa1[1, 1, 1], sa0[1, 1, 1])
+    XCTAssertEqual(sa1[1, 0, 1], sa0[0, 1, 1])
+    XCTAssertEqual(sa1[0, 0, 1], sa0[0, 1, 0])
+  }
+
+  func testPermuteAndReshape() throws {
+    let a0 = Tensor<Float32>(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], .CPU,
+      .HWC(2, 3, 4))
+    let a1 = a0.permuted(2, 0, 1)
+    let b0 = a1.copied().reshaped(.C(4))
+    XCTAssertEqual(b0[0], a1[0, 0, 0])
+    XCTAssertEqual(b0[1], a1[0, 0, 1])
+    XCTAssertEqual(b0[2], a1[0, 0, 2])
+    XCTAssertEqual(b0[3], a1[0, 1, 0])
+  }
+
   static let allTests = [
     ("testGetSetPartTensor", testGetSetPartTensor),
     ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
@@ -149,5 +185,8 @@ final class TensorTests: XCTestCase {
     ("testNoneMatchTensorAssignments", testNoneMatchTensorAssignments),
     ("testNoneMatchTensorAssignmentsWithGPU", testNoneMatchTensorAssignmentsWithGPU),
     ("testTensorShapeAccessors", testTensorShapeAccessors),
+    ("testPermute", testPermute),
+    ("testPermuteAndGetASubset", testPermuteAndGetASubset),
+    ("testPermuteAndReshape", testPermuteAndReshape),
   ]
 }
