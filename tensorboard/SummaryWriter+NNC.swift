@@ -139,9 +139,10 @@ extension SummaryWriter {
     image.height = Int32(height)
     var fTensor: Tensor<Float> = Tensor(.CPU, format: .NHWC, shape: [height, width, channel])
     if vTensor.format == .NCHW {  // Need to convert to .NHWC format.
-      fTensor[...] = vTensor.reshaped(.CHW(channel, height, width))
+      fTensor[0..<height, 0..<width, 0..<channel] = vTensor.reshaped(
+        .HWC(height, width, channel), strides: [width, 1, height * width])
     } else {
-      fTensor[...] = vTensor.reshaped(.HWC(height, width, channel))
+      fTensor[0..<height, 0..<width, 0..<channel] = vTensor.reshaped(.HWC(height, width, channel))
     }
     var output: UnsafeMutableRawPointer? = nil
     withExtendedLifetime(fTensor) {
