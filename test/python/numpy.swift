@@ -21,13 +21,27 @@ final class NumpyTests: XCTestCase {
   func testReadNumpyArray() throws {
     let np = Python.import("numpy")
     let array = np.ones(PythonObject(tupleOf: 2, 3))
-    let tensor = Tensor<Float64>(numpy: array)!
+    let tensor = try Tensor<Float64>(numpy: array)
     XCTAssertEqual(1.0, tensor[0, 0])
     XCTAssertEqual(1.0, tensor[1, 2])
+  }
+
+  func testReadNumpyArrayTransposed() throws {
+    let torch = Python.import("torch")
+    let array = torch.randn(768, 768).type(torch.float).numpy()
+    let np = Python.import("numpy")
+    let nparray = np.transpose(array)
+    let tensor = try Tensor<Float>(numpy: nparray)
+    for i in 0..<768 {
+      for j in 0..<768 {
+        XCTAssertEqual(Float(nparray[i, j])!, tensor[i, j])
+      }
+    }
   }
 
   static let allTests = [
     ("testMakeNumpyArray", testMakeNumpyArray),
     ("testReadNumpyArray", testReadNumpyArray),
+    ("testReadNumpyArrayTransposed", testReadNumpyArrayTransposed),
   ]
 }

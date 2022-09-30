@@ -17,16 +17,16 @@ def s4nnc_deps():
         git_repository,
         name = "ccv",
         remote = "https://github.com/liuliu/ccv.git",
-        commit = "5a684f92eb8daf12af5c2227e1cd2c5af705bc64",
-        shallow_since = "1664495289 -0400",
+        commit = "c4d6f59d71cc3dc1835191d1be0c3ec334f800d1",
+        shallow_since = "1664546549 -0400",
     )
 
     _maybe(
         new_git_repository,
         name = "PythonKit",
         remote = "https://github.com/liuliu/PythonKit.git",
-        commit = "99a298f0413b0ac278ac58b7ac9045da920c347d",
-        shallow_since = "1642703957 -0500",
+        commit = "fbf22756c91d89b0f2e39a89b690aaa538cf9b03",
+        shallow_since = "1664547636 -0400",
         build_file = "@s4nnc//:external/PythonKit.BUILD",
     )
 

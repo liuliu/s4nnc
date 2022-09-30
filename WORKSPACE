@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "ccv",
-    commit = "5a684f92eb8daf12af5c2227e1cd2c5af705bc64",
+    commit = "c4d6f59d71cc3dc1835191d1be0c3ec334f800d1",
     remote = "https://github.com/liuliu/ccv.git",
-    shallow_since = "1664495289 -0400",
+    shallow_since = "1664546549 -0400",
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")
@@ -71,9 +71,9 @@ git_repository(
 new_git_repository(
     name = "PythonKit",
     build_file = "PythonKit.BUILD",
-    commit = "99a298f0413b0ac278ac58b7ac9045da920c347d",
+    commit = "fbf22756c91d89b0f2e39a89b690aaa538cf9b03",
     remote = "https://github.com/liuliu/PythonKit.git",
-    shallow_since = "1642703957 -0500",
+    shallow_since = "1664547636 -0400",
 )
 
 new_git_repository(
