@@ -1573,6 +1573,20 @@ extension DynamicGraph.Group {
   }
 }
 
+extension DynamicGraph.Tensor {
+  /// Explicitly do conversion between types.
+  public convenience init(from input: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil) {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATATYPE_CONVERSION_FORWARD, nil, params, 0)
+    let output = input.graph.variable(
+      input.kind, format: input.format, shape: input.shape, of: Element.self)
+    Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, outputs: [output],
+      streamContext: streamContext)
+    self.init(output)
+  }
+}
+
 extension DynamicGraph.AnyTensor {
   /// Explicitly cast the underlying storage to a specific type. It is a helper function than
   /// doing DynamicGraph.Tensor<SomeType>(something). Less code change required if we change this
