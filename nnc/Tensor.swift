@@ -374,9 +374,9 @@ extension Int32: TensorNumeric {
 }
 
 #if !(os(macOS) && (arch(i386) || arch(x86_64)))
-extension Float16: TensorNumeric {
-  public static var dataType: DataType { .Float16 }
-}
+  extension Float16: TensorNumeric {
+    public static var dataType: DataType { .Float16 }
+  }
 #endif
 
 extension UInt8: TensorNumeric {
@@ -1290,16 +1290,16 @@ extension Collection where Element == Tensor<Int32> {
 }
 
 #if !(os(macOS) && (arch(i386) || arch(x86_64)))
-extension Collection where Element == Tensor<Float16> {
-  public func reshaped(
-    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
-    strides: TensorShape? = nil
-  ) -> [Element] {
-    return map {
-      $0.reshaped(format: format, shape: shape, offset: offset, strides: strides)
+  extension Collection where Element == Tensor<Float16> {
+    public func reshaped(
+      format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
+      strides: TensorShape? = nil
+    ) -> [Element] {
+      return map {
+        $0.reshaped(format: format, shape: shape, offset: offset, strides: strides)
+      }
     }
-  }
-  /**
+    /**
    * Create new tensors pointing to the same memory region but with different sizes.
    *
    * - Parameters:
@@ -1308,12 +1308,12 @@ extension Collection where Element == Tensor<Float16> {
    *   - strides: The strides on each shape.
    * - Returns: The new tensors with different format but the same memory content.
    */
-  public func reshaped(
-    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, strides: TensorShape? = nil
-  ) -> [Element] {
-    return map { $0.reshaped(shapeFormat, offset: offset, strides: strides) }
+    public func reshaped(
+      _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, strides: TensorShape? = nil
+    ) -> [Element] {
+      return map { $0.reshaped(shapeFormat, offset: offset, strides: strides) }
+    }
   }
-}
 #endif
 
 extension Collection where Element == Tensor<UInt8> {
@@ -1343,75 +1343,75 @@ extension Collection where Element == Tensor<UInt8> {
 
 extension AnyTensorStorage {
 
-#if (os(macOS) && (arch(i386) || arch(x86_64)))
-  func toAnyTensor() -> AnyTensor {
-    switch dataType {
-    case .Float64:
-      return Tensor<Float64>(self)
-    case .Int64:
-      return Tensor<Int64>(self)
-    case .Float32:
-      return Tensor<Float32>(self)
-    case .Int32:
-      return Tensor<Int32>(self)
-    case .Float16:
-      fatalError()
-    case .UInt8:
-      return Tensor<UInt8>(self)
+  #if (os(macOS) && (arch(i386) || arch(x86_64)))
+    func toAnyTensor() -> AnyTensor {
+      switch dataType {
+      case .Float64:
+        return Tensor<Float64>(self)
+      case .Int64:
+        return Tensor<Int64>(self)
+      case .Float32:
+        return Tensor<Float32>(self)
+      case .Int32:
+        return Tensor<Int32>(self)
+      case .Float16:
+        fatalError()
+      case .UInt8:
+        return Tensor<UInt8>(self)
+      }
     }
-  }
 
-  func toTensor<Element>(_ type: Element.Type) -> Element {
-    switch dataType {
-    case .Float64:
-      return unsafeBitCast(Tensor<Float64>(self), to: Element.self)
-    case .Int64:
-      return unsafeBitCast(Tensor<Int64>(self), to: Element.self)
-    case .Float32:
-      return unsafeBitCast(Tensor<Float32>(self), to: Element.self)
-    case .Int32:
-      return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
-    case .Float16:
-      fatalError()
-    case .UInt8:
-      return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
+    func toTensor<Element>(_ type: Element.Type) -> Element {
+      switch dataType {
+      case .Float64:
+        return unsafeBitCast(Tensor<Float64>(self), to: Element.self)
+      case .Int64:
+        return unsafeBitCast(Tensor<Int64>(self), to: Element.self)
+      case .Float32:
+        return unsafeBitCast(Tensor<Float32>(self), to: Element.self)
+      case .Int32:
+        return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
+      case .Float16:
+        fatalError()
+      case .UInt8:
+        return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
+      }
     }
-  }
-#else
-  func toAnyTensor() -> AnyTensor {
-    switch dataType {
-    case .Float64:
-      return Tensor<Float64>(self)
-    case .Int64:
-      return Tensor<Int64>(self)
-    case .Float32:
-      return Tensor<Float32>(self)
-    case .Int32:
-      return Tensor<Int32>(self)
-    case .Float16:
-      return Tensor<Float16>(self)
-    case .UInt8:
-      return Tensor<UInt8>(self)
+  #else
+    func toAnyTensor() -> AnyTensor {
+      switch dataType {
+      case .Float64:
+        return Tensor<Float64>(self)
+      case .Int64:
+        return Tensor<Int64>(self)
+      case .Float32:
+        return Tensor<Float32>(self)
+      case .Int32:
+        return Tensor<Int32>(self)
+      case .Float16:
+        return Tensor<Float16>(self)
+      case .UInt8:
+        return Tensor<UInt8>(self)
+      }
     }
-  }
 
-  func toTensor<Element>(_ type: Element.Type) -> Element {
-    switch dataType {
-    case .Float64:
-      return unsafeBitCast(Tensor<Float64>(self), to: Element.self)
-    case .Int64:
-      return unsafeBitCast(Tensor<Int64>(self), to: Element.self)
-    case .Float32:
-      return unsafeBitCast(Tensor<Float32>(self), to: Element.self)
-    case .Int32:
-      return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
-    case .Float16:
-      return unsafeBitCast(Tensor<Float16>(self), to: Element.self)
-    case .UInt8:
-      return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
+    func toTensor<Element>(_ type: Element.Type) -> Element {
+      switch dataType {
+      case .Float64:
+        return unsafeBitCast(Tensor<Float64>(self), to: Element.self)
+      case .Int64:
+        return unsafeBitCast(Tensor<Int64>(self), to: Element.self)
+      case .Float32:
+        return unsafeBitCast(Tensor<Float32>(self), to: Element.self)
+      case .Int32:
+        return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
+      case .Float16:
+        return unsafeBitCast(Tensor<Float16>(self), to: Element.self)
+      case .UInt8:
+        return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
+      }
     }
-  }
-#endif
+  #endif
 
 }
 
@@ -1644,4 +1644,16 @@ func toCTensorParams(
   params.format = format.toC
   params.dim = shape.dims
   return params
+}
+
+extension Tensor: CustomDebugStringConvertible {
+  public var debugDescription: String {
+    let tensor = kind == .CPU ? self : self.toCPU()
+    guard let cString = ccv_nnc_tensor_format_new(tensor.cTensor) else {
+      return description
+    }
+    let debugDescription = description + " " + String(cString: cString)
+    free(cString)
+    return debugDescription
+  }
 }

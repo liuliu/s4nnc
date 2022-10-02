@@ -460,6 +460,40 @@ extension DynamicGraph.AnyTensor: CustomStringConvertible {
   }
 }
 
+extension DynamicGraph.AnyTensor: CustomDebugStringConvertible {
+  public var debugDescription: String {
+    let _graph = graph.cGraph
+    let _streamContext = graph.streamContext?._stream
+    guard var tensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext) else {
+      return description
+    }
+    let cTensorParams = tensor.pointee.info
+    var _output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
+    if DeviceKind.from(cTensorParams: cTensorParams) != .CPU {
+      var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = tensor
+      tensor = ccv_nnc_tensor_new(
+        nil,
+        toCTensorParams(.CPU, dataType: dataType, format: format, shape: shape),
+        0)
+      _output = tensor
+      let cmd = ccv_nnc_cmd(
+        CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
+      ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
+    }
+    defer {
+      if _output != nil {
+        ccv_nnc_tensor_free(_output)
+      }
+    }
+    guard let cString = ccv_nnc_tensor_format_new(tensor) else {
+      return description
+    }
+    let debugDescription = description + " " + String(cString: cString)
+    free(cString)
+    return debugDescription
+  }
+}
+
 extension DynamicGraph {
 
   /**
