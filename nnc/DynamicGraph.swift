@@ -115,6 +115,12 @@ public final class DynamicGraph {
         ).pointee.stride)
     }
 
+    var dataType: DataType {
+      let _graph = graph.cGraph
+      let info = ccv_nnc_tensor_variable_params(_graph, _tensor)
+      return DataType.from(cTensorParams: info)
+    }
+
     /**
      * A constant tensor can only be used as input, you cannot compute gradients
      * for a constant tensor.

@@ -1592,7 +1592,9 @@ extension DynamicGraph.AnyTensor {
   /// doing DynamicGraph.Tensor<SomeType>(something). Less code change required if we change this
   /// from tensor to group.
   public func `as`<Element: TensorNumeric>(of: Element.Type) -> DynamicGraph.Tensor<Element> {
-    return DynamicGraph.Tensor(self)
+    let result = DynamicGraph.Tensor<Element>(self)
+    assert(result.dataType == Element.dataType)
+    return result
   }
 }
 
@@ -1601,6 +1603,8 @@ extension DynamicGraph.Group where Element == DynamicGraph.AnyTensor {
   /// doing DynamicGraph.Group<DynamicGraph.Tensor<SomeType>>(something). Less code change required
   /// if we change this from group to tensor.
   public func `as`<T: TensorNumeric>(of: T.Type) -> DynamicGraph.Group<DynamicGraph.Tensor<T>> {
-    return DynamicGraph.Group(self)
+    let result = DynamicGraph.Group<DynamicGraph.Tensor<T>>(self)
+    assert(result.dataType == T.dataType)
+    return result
   }
 }

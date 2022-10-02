@@ -97,6 +97,13 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
     }
     return strides
   }
+  var dataType: DataType {
+    let dataType = underlyingArray[0].dataType
+    for tensor in underlyingArray {
+      assert(dataType == tensor.dataType)
+    }
+    return dataType
+  }
   public var isConstant: Bool {
     let isConstant = underlyingArray[0].isConstant
     for tensor in underlyingArray {
