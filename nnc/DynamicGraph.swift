@@ -282,6 +282,12 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /// Set whether to enable memory efficient mode or not.
+  public static var memoryEfficient: Bool = false {
+    didSet {
+      ccv_nnc_set_memory_efficient(memoryEfficient ? 1 : 0)
+    }
+  }
   /// Set whether to enable profiler or not.
   public static func setProfiler(_ on: Bool) {
     ccv_nnc_set_profiler(on ? 1 : 0)
