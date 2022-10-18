@@ -501,12 +501,13 @@ public final class Convolution: Model {
 
   public init(
     groups: Int, filters: Int, filterSize: [Int], noBias: Bool = false, hint: Hint = Hint(),
-    name: String = ""
+    format: TensorFormat? = nil, name: String = ""
   ) {
     let kdim = toCDimensionsArray(filterSize)
     super.init(
       ccv_cnnp_convolution(
-        Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), name))
+        Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), format?.toC ?? 0, name)
+    )
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
