@@ -70,21 +70,7 @@ public class AnyModelBuilder {
 
   private func compileModel() {
     let inputs = self.inputs!
-    assert(inputs.count > 0)
-    let params = CmdParamsFactory.factory.newParams()
-    let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
-    let parallel = inputs[0].untyped.count
-    if let dataParallel = model!.dataParallel {
-      // You cannot run a model previously parallel and then not.
-      assert(dataParallel == parallel)
-    } else if parallel > 1 {
-      ccv_cnnp_model_set_data_parallel(model!.cModel, Int32(parallel))
-    }
-    let inputParams: [ccv_nnc_tensor_param_t] = inputs.map {
-      let tensor = $0.untyped[0]
-      return ccv_nnc_tensor_variable_params(tensor.graph.cGraph, tensor._tensor)
-    }
-    ccv_cnnp_model_compile(model!.cModel, inputParams, Int32(inputParams.count), noop, noop)
+    model!.compile(inputs: inputs)
     // If we have store / key, try to load parameters now after it is compiled.
     if let store = _store, let key = _key {
       ccv_cnnp_model_read(store.sqlite, key, model!.cModel)

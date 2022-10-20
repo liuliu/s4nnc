@@ -143,6 +143,33 @@ extension Model {
   }
 }
 
+extension Model {
+  func compile(inputs: [DynamicGraph_Any]) {
+    assert(inputs.count > 0)
+    let params = CmdParamsFactory.factory.newParams()
+    let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
+    let parallel = inputs[0].untyped.count
+    if let dataParallel = dataParallel {
+      // You cannot run a model previously parallel and then not.
+      assert(dataParallel == parallel)
+    } else if parallel > 1 {
+      ccv_cnnp_model_set_data_parallel(cModel, Int32(parallel))
+    }
+    let inputParams: [ccv_nnc_tensor_param_t] = inputs.map {
+      let tensor = $0.untyped[0]
+      return ccv_nnc_tensor_variable_params(tensor.graph.cGraph, tensor._tensor)
+    }
+    ccv_cnnp_model_compile(cModel, inputParams, Int32(inputParams.count), noop, noop)
+  }
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(inputs: DynamicGraph_Any...) {
+    compile(inputs: inputs)
+  }
+}
+
 /// MARK - Functional and Sequential Models
 
 extension Model {
