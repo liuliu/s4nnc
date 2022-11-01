@@ -5,13 +5,17 @@ extension DynamicGraph {
 
   final class _Store {
     let sqlite: UnsafeMutableRawPointer
-    init(sqlite: OpaquePointer) {
+    let flags: Store.OpenFlag
+    init(sqlite: OpaquePointer, flags: Store.OpenFlag) {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
+      self.flags = flags
     }
     deinit {
       // If the database is opened with WAL mode, this makes sure everything write back to the main
       // database, much easier to operate without worrying the data left in the wal log.
-      sqlite3_wal_checkpoint_v2(OpaquePointer(sqlite), nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil)
+      if flags.contains(.truncateWhenClose) {
+        sqlite3_wal_checkpoint_v2(OpaquePointer(sqlite), nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil)
+      }
       sqlite3_close(OpaquePointer(sqlite))
     }
   }
@@ -20,6 +24,13 @@ extension DynamicGraph {
    * A key-value based parameter store.
    */
   public struct Store {
+    public struct OpenFlag: OptionSet {
+      public let rawValue: Int
+      public init(rawValue: Int) {
+        self.rawValue = rawValue
+      }
+      public static let truncateWhenClose = OpenFlag(rawValue: 1 << 0)
+    }
     private let graph: DynamicGraph
     private let store: _Store
 
@@ -170,15 +181,19 @@ extension DynamicGraph {
    *
    * - Parameters:
    *   - filePath: The file path for the store.
+   *   - flags: The flags for the opening store. Default to truncateWhenClose.
    *   - procedure: When the store is open, you can access it from this closure.
    * - Returns: Wether this store can be successfully open or not.
    */
   @discardableResult
-  public func openStore(_ filePath: String, procedure: (_ store: Store) -> Void) -> Bool {
+  public func openStore(
+    _ filePath: String, flags: Store.OpenFlag = .truncateWhenClose,
+    procedure: (_ store: Store) -> Void
+  ) -> Bool {
     var _sqlite: OpaquePointer? = nil
     sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
     guard let sqlite = _sqlite else { return false }
-    let store = Store(_Store(sqlite: sqlite), graph: self)
+    let store = Store(_Store(sqlite: sqlite, flags: flags), graph: self)
     procedure(store)
     return true
   }
