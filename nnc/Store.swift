@@ -193,6 +193,7 @@ extension DynamicGraph {
     var _sqlite: OpaquePointer? = nil
     sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
     guard let sqlite = _sqlite else { return false }
+    sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
     let store = Store(_Store(sqlite: sqlite, flags: flags), graph: self)
     procedure(store)
     return true
