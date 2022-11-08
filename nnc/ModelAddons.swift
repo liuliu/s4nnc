@@ -499,11 +499,24 @@ public final class Convolution: Model {
     super.init(model)
   }
 
+  public enum Format {  // These are more understandable names than reuse TensorFormat. We will translate to TensorFormat.
+    case OIHW
+    case OHWI
+  }
+
   public init(
     groups: Int, filters: Int, filterSize: [Int], noBias: Bool = false, hint: Hint = Hint(),
-    format: TensorFormat? = nil, name: String = ""
+    format: Format? = nil, name: String = ""
   ) {
     let kdim = toCDimensionsArray(filterSize)
+    let format: TensorFormat? = format.map {
+      switch $0 {
+      case .OIHW:
+        return TensorFormat.NCHW
+      case .OHWI:
+        return TensorFormat.NHWC
+      }
+    }
     super.init(
       ccv_cnnp_convolution(
         Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), format?.toC ?? 0, name)
