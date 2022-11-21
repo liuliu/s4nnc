@@ -68,6 +68,11 @@ public class Model {
     return apply(inputs)
   }
 
+  @inlinable
+  public func callAsFunction(_ inputs: [IO]) -> IO {
+    return apply(inputs)
+  }
+
   deinit {
     if owner == nil {
       ccv_cnnp_model_free(cModel)
@@ -211,5 +216,20 @@ public final class Input: Model.IO {
   public init() {
     let _io = ccv_cnnp_input()!
     super.init(_io)
+  }
+}
+
+extension Model.IO {
+  /**
+   * Add non-functional dependencies between IOs. Normally, dependencies are inferred by usage.
+   * However, in some cases you want to hack the dependency such that two unrelated ops can establish
+   * a dependency. This is useful to enforce system to share memory for example.
+   *
+   * - Parameters:
+   *   - dependencies: The IOs which will be the dependencies of the current IO.
+   */
+  public func add(dependencies: [Model.IO]) {
+    let _dependencies: [ccv_cnnp_model_io_t?] = dependencies.map { $0._io }
+    ccv_cnnp_model_add_dependencies(_io, _dependencies, Int32(dependencies.count))
   }
 }
