@@ -697,3 +697,40 @@ extension DynamicGraph {
     ccv_nnc_dynamic_graph_gc(cGraph)
   }
 }
+
+extension DynamicGraph {
+  public struct EnableBits: OptionSet, CaseIterable {
+    public let rawValue: UInt64
+    public init(rawValue: UInt64) {
+      self.rawValue = rawValue
+    }
+    /**
+     * Disable mixing MPSMatrixMultiplication with MPSGraph.matrixMultiplication.
+     */
+    public static let disableMixedMPSGEMM = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_MIXED_MPS_GEMM))
+    /**
+     * Disable mixing MPSMatrixSoftMax with MPSGraph.softMax.
+     */
+    public static let disableMixedMPSSoftMax = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_MIXED_MPS_SOFTMAX))
+    public static let allCases: [EnableBits] = [.disableMixedMPSGEMM, .disableMixedMPSSoftMax]
+  }
+
+  /**
+   * Set system-wide flag.
+   */
+  public static var flags: EnableBits {
+    get { EnableBits(rawValue: ccv_nnc_flags()) }
+    set {
+      let oldValue = EnableBits(rawValue: ccv_nnc_flags())
+      for flag in EnableBits.allCases {
+        if oldValue.contains(flag) && !newValue.contains(flag) {
+          ccv_nnc_disable_flag(flag.rawValue)
+        } else if !oldValue.contains(flag) && newValue.contains(flag) {
+          ccv_nnc_enable_flag(flag.rawValue)
+        }
+      }
+    }
+  }
+}
