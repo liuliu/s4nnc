@@ -174,6 +174,22 @@ extension DynamicGraph {
       self.graph = graph
     }
 
+    /**
+     * Retrieve a list of all tensors in this file. This reads from the disk
+     * and could take some time to finish.
+     */
+    public var keys: [String] {
+      var stmt: OpaquePointer? = nil
+      sqlite3_prepare_v2(OpaquePointer(store.sqlite), "SELECT name FROM tensors", -1, &stmt, nil)
+      guard let stmt = stmt else { return [] }
+      var keys = [String]()
+      while SQLITE_ROW == sqlite3_step(stmt) {
+        guard let cString = sqlite3_column_text(stmt, 0) else { continue }
+        keys.append(String(cString: cString))
+      }
+      return keys
+    }
+
   }
 
   /**

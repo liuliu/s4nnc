@@ -95,6 +95,21 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(4.4, varf[1])
   }
 
+  func testWriteTensorsAndRetrieveKeys() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    tensor[0] = 2.2
+    tensor[1] = 1.1
+    var keys: [String]? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor)
+      store.write("b", tensor: tensor)
+      keys = store.keys
+    }
+    XCTAssertEqual(keys![0], "a")
+    XCTAssertEqual(keys![1], "b")
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -103,5 +118,6 @@ final class StoreTests: XCTestCase {
     ("testReadExistTensorGroupWithoutShape", testReadExistTensorGroupWithoutShape),
     ("testWriteTensorAndReadBack", testWriteTensorAndReadBack),
     ("testWriteTensorConstantAndReadBack", testWriteTensorConstantAndReadBack),
+    ("testWriteTensorsAndRetrieveKeys", testWriteTensorsAndRetrieveKeys),
   ]
 }
