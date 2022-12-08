@@ -834,3 +834,50 @@ public final class IndexSelect: Model {
     return T(outputs[0])
   }
 }
+
+/// DatatypeConversion model.
+public final class DatatypeConversion: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(_ dataType: DataType?, sameAsLast: Bool = false, name: String = "") {
+    super.init(ccv_cnnp_datatype_conversion(dataType?.toC ?? 0, sameAsLast ? 1 : 0, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: T, sameAs: U, streamContext: StreamContext? = nil
+  ) -> U where T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, sameAs, streamContext: streamContext)
+    return U(outputs[0])
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: T, of type: U.ElementNumeric.Type, sameAs: U.Type = U.self,
+    streamContext: StreamContext? = nil
+  ) -> U where T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, streamContext: streamContext)
+    return U(outputs[0])
+  }
+}
+
+extension Model.IO {
+  /**
+   * Convert an IO to a new datatype.
+   *
+   * - Parameters:
+   *   - datatype: The new datatype for the input.
+   */
+  public func to(_ dataType: DataType) -> Model.IO {
+    return DatatypeConversion(dataType)(self)
+  }
+  /**
+   * Convert an IO to a new datatype.
+   *
+   * - Parameters:
+   *   - of: The other ModelIO which will share the same input.
+   */
+  public func to(of other: Model.IO) -> Model.IO {
+    return DatatypeConversion(nil, sameAsLast: true)(self, other)
+  }
+}
