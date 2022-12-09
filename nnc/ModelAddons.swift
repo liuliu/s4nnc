@@ -887,15 +887,7 @@ extension Model.IO {
     min: Float?, max: Float?
   ) -> Model.IO {
     precondition(min != nil || max != nil)
-    var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    params.clamp.min = min ?? Float.nan
-    params.clamp.max = max ?? Float.nan
-    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
-    var output: Int32 = Int32(CCV_CNNP_IO)
-    var io = ccv_cnnp_cmd_exec_io_t()
-    io.type = Int32(CCV_CNNP_IO)
-    return Model(ccv_cnnp_cmd_exec(cmd, ccv_nnc_no_hint, 0, &io, 1, &output, 1, nil))(self)
+    return Model(ccv_cnnp_clamp(min ?? Float.nan, max ?? Float.nan, nil))(self)
   }
 
   /// Clamp the given model IO between two values.
