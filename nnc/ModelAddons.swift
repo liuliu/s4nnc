@@ -881,3 +881,41 @@ extension Model.IO {
     return DatatypeConversion(nil, sameAsLast: true)(self, other)
   }
 }
+
+extension Model.IO {
+  func clamped(
+    min: Float?, max: Float?
+  ) -> Model.IO {
+    precondition(min != nil || max != nil)
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.clamp.min = min ?? Float.nan
+    params.clamp.max = max ?? Float.nan
+    let cmd = ccv_nnc_cmd(CCV_NNC_CLAMP_FORWARD, nil, params, 0)
+    var output: Int32 = Int32(CCV_CNNP_IO)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    return Model(ccv_cnnp_cmd_exec(cmd, ccv_nnc_no_hint, 0, &io, 1, &output, 1, nil))(self)
+  }
+
+  /// Clamp the given model IO between two values.
+  public func clamped(_ range: ClosedRange<Float>)
+    -> Model.IO
+  {
+    return clamped(min: range.lowerBound, max: range.upperBound)
+  }
+
+  /// Clamp the given model IO with a lower bound.
+  public func clamped(_ range: PartialRangeFrom<Float>)
+    -> Model.IO
+  {
+    return clamped(min: range.lowerBound, max: nil)
+  }
+
+  /// Clamp the given model IO with an upper bound.
+  public func clamped(_ range: PartialRangeThrough<Float>)
+    -> Model.IO
+  {
+    return clamped(min: nil, max: range.upperBound)
+  }
+}
