@@ -187,6 +187,7 @@ extension DynamicGraph {
         guard let cString = sqlite3_column_text(stmt, 0) else { continue }
         keys.append(String(cString: cString))
       }
+      sqlite3_finalize(stmt)
       return keys
     }
 
