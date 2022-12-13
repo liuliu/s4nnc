@@ -198,6 +198,33 @@ extension Model.IO {
   }
 }
 
+/// A leaky ReLU activation model.
+public final class LeakyReLU: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(negativeSlope: Float, name: String = "") {
+    super.init(ccv_cnnp_leaky_relu(negativeSlope, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  /**
+   * Apply leaky ReLU activation to the said IO.
+   */
+  public func leakyReLU(negativeSlope: Float) -> Model.IO {
+    return LeakyReLU(negativeSlope: negativeSlope)(self)
+  }
+}
+
 /// A softmax activation model.
 public final class Softmax: Model {
   required init(_ model: OpaquePointer) {
