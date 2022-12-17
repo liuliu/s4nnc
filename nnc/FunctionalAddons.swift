@@ -183,6 +183,38 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Average pool
+  public static func averagePool<T: DynamicGraph.TensorGroup>(
+    _ one: T, filterSize: [Int], hint: Hint = Hint(), streamContext: StreamContext? = nil
+  )
+    -> T
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim.0 = Int32(filterSize[0])
+    params.size.dim.1 = Int32(filterSize[1])
+    params.size.dim.2 = 1
+    let cmd = ccv_nnc_cmd(CCV_NNC_AVERAGE_POOL_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: hint.toCHint(), inputs: one, outputSize: 1, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  /// Max pool
+  public static func maxPool<T: DynamicGraph.TensorGroup>(
+    _ one: T, filterSize: [Int], hint: Hint = Hint(), streamContext: StreamContext? = nil
+  )
+    -> T
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim.0 = Int32(filterSize[0])
+    params.size.dim.1 = Int32(filterSize[1])
+    params.size.dim.2 = 1
+    let cmd = ccv_nnc_cmd(CCV_NNC_MAX_POOL_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: hint.toCHint(), inputs: one, outputSize: 1, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Argmax
   public static func argmax(
     _ one: DynamicGraph.AnyTensor, axis: Int, streamContext: StreamContext? = nil
@@ -1547,7 +1579,6 @@ extension DynamicGraph.Tensor {
     ccv_nnc_dynamic_graph_exec(
       _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
   }
-
 }
 
 extension DynamicGraph.Group {
