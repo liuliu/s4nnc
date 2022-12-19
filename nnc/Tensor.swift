@@ -685,6 +685,13 @@ extension Tensor {
     let count = strides[0] * shape[0] * MemoryLayout<Element>.size
     return try body(UnsafeRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
   }
+  @inlinable
+  public mutating func withUnsafeMutableBytes<R>(
+    _ body: (UnsafeMutableRawBufferPointer) throws -> R
+  ) rethrows -> R {
+    let count = strides[0] * shape[0] * MemoryLayout<Element>.size
+    return try body(UnsafeMutableRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
+  }
 }
 
 /// Basic tensor type.
