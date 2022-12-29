@@ -41,7 +41,7 @@ extension DynamicGraph {
      */
     public func read(_ key: String) -> NNC.AnyTensor? {
       var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
-      let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
+      let result = ccv_nnc_tensor_read(store.sqlite, key, nil, &underlying)
       guard result == CCV_IO_FINAL else { return nil }
       let anyTensor = AnyTensorStorage(underlying!)
       return anyTensor.toAnyTensor()
@@ -65,14 +65,14 @@ extension DynamicGraph {
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)
         if raw != nil {
           var underlying = raw
-          let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
+          let result = ccv_nnc_tensor_read(store.sqlite, key, nil, &underlying)
           if result == CCV_IO_FINAL {
             assert(underlying == raw)
           }
           return result == CCV_IO_FINAL
         }
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
-        let result = ccv_nnc_tensor_read(store.sqlite, key, &underlying)
+        let result = ccv_nnc_tensor_read(store.sqlite, key, nil, &underlying)
         guard result == CCV_IO_FINAL else { return false }
         let anyTensor = AnyTensorStorage(underlying!)
         ccv_nnc_tensor_variable_set(_graph, _tensor, underlying)

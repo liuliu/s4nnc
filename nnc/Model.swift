@@ -99,6 +99,15 @@ public class Model {
     return Parameters(_parameters, model: self)
   }
 
+  /**
+   * Setting the directory for parameters to be backed by files.
+   */
+  public var directoryForFileBackedParameters: String? = nil {
+    didSet {
+      ccv_cnnp_model_set_file_backed_parameters(cModel, directoryForFileBackedParameters)
+    }
+  }
+
   public enum ParametersType {
     case weight
     case bias
