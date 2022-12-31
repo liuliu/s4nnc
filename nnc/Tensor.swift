@@ -373,7 +373,7 @@ extension Int32: TensorNumeric {
   public static var dataType: DataType { .Int32 }
 }
 
-#if !((os(macOS) || os(iOS)) && (arch(i386) || arch(x86_64)))
+#if !((os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))) && (arch(i386) || arch(x86_64)))
   extension Float16: TensorNumeric {
     public static var dataType: DataType { .Float16 }
   }
@@ -1296,7 +1296,7 @@ extension Collection where Element == Tensor<Int32> {
   }
 }
 
-#if !((os(macOS) || os(iOS)) && (arch(i386) || arch(x86_64)))
+#if !((os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))) && (arch(i386) || arch(x86_64)))
   extension Collection where Element == Tensor<Float16> {
     public func reshaped(
       format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
@@ -1350,7 +1350,7 @@ extension Collection where Element == Tensor<UInt8> {
 
 extension AnyTensorStorage {
 
-  #if ((os(macOS) || os(iOS)) && (arch(i386) || arch(x86_64)))
+  #if ((os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))) && (arch(i386) || arch(x86_64)))
     func toAnyTensor() -> AnyTensor {
       switch dataType {
       case .Float64:
