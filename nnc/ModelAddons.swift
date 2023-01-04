@@ -842,6 +842,13 @@ public final class Embedding: Model {
     let outputs = self(inputs: x, streamContext: streamContext)
     return T(outputs[0])
   }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Float32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, streamContext: streamContext)
+    return T(outputs[0])
+  }
 }
 
 /// IndexSelect model.
@@ -857,6 +864,13 @@ public final class IndexSelect: Model {
   public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
     _ x: T, index: U, streamContext: StreamContext? = nil
   ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: x, index, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ x: T, index: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Float32, T.AnyTensor == U.AnyTensor {
     let outputs = self(inputs: x, index, streamContext: streamContext)
     return T(outputs[0])
   }

@@ -298,6 +298,19 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Select input tensor with another index tensor.
+  public static func indexSelect<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    input: T, index: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Float32, T.AnyTensor == U.AnyTensor {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_INDEX_SELECT_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, index, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Masked fill a tensor based on other tensor's content equal to another.
   public static func maskedFill<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
     input: T, mask: U, equalTo: Float, fillWith: Float, streamContext: StreamContext? = nil
