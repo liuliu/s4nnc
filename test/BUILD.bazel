@@ -32,3 +32,14 @@ swift_test(
         "//nnc:nnc_python",
     ],
 )
+
+swift_test(
+    name = "nnc_coreml",
+    srcs = [
+        "coreml/main.swift",
+        "coreml/mlshapedarray.swift",
+    ],
+    deps = [
+        "//nnc:nnc_coreml",
+    ],
+)
