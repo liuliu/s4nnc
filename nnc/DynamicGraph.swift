@@ -714,7 +714,14 @@ extension DynamicGraph {
      */
     public static let disableMixedMPSSoftMax = EnableBits(
       rawValue: UInt64(CCV_NNC_DISABLE_MIXED_MPS_SOFTMAX))
-    public static let allCases: [EnableBits] = [.disableMixedMPSGEMM, .disableMixedMPSSoftMax]
+    /**
+     * Disable memory-mapped MTLBuffer.
+     */
+    public static let disableMmapMTLBuffer = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_MMAP_MTL_BUFFER))
+    public static let allCases: [EnableBits] = [
+      .disableMixedMPSGEMM, .disableMixedMPSSoftMax, .disableMmapMTLBuffer,
+    ]
   }
 
   /**
