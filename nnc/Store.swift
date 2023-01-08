@@ -191,6 +191,14 @@ extension DynamicGraph {
       return keys
     }
 
+    /**
+     * Remove all tensors from the store. This also vacuums the store to minimize its size.
+     */
+    public func removeAll() {
+      sqlite3_exec(OpaquePointer(store.sqlite), "DELETE FROM tensors", nil, nil, nil)
+      sqlite3_exec(OpaquePointer(store.sqlite), "VACUUM", nil, nil, nil)
+    }
+
   }
 
   /**
