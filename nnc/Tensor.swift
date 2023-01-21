@@ -840,9 +840,6 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       return Tensor<Element>(_storage[ranges, Element.self])
     }
     set(v) {
-      guard case .CPU = kind else {
-        fatalError("cannot modify non-CPU tensor")
-      }
       if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
         _storage = _storage.copy()
@@ -857,9 +854,6 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
       return Tensor<Element>(_storage[indices, range, Element.self])
     }
     set(v) {
-      guard case .CPU = kind else {
-        fatalError("cannot modify non-CPU tensor")
-      }
       if !isKnownUniquelyReferenced(&_storage) {
         // Make a copy (copy-on-write).
         _storage = _storage.copy()
