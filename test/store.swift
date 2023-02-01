@@ -110,6 +110,25 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(keys![1], "b")
   }
 
+  func testWriteTensorReadBackAndDelete() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    tensor[0] = 2.2
+    tensor[1] = 1.1
+    var readout1: AnyTensor? = nil
+    var readout2: AnyTensor? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor)
+      readout1 = store.read("a")
+      store.remove("a")
+      readout2 = store.read("a")
+    }
+    let varf = Tensor<Float32>(readout1!)
+    XCTAssertEqual(varf[0], 2.2)
+    XCTAssertEqual(varf[1], 1.1)
+    XCTAssertNil(readout2)
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -119,5 +138,6 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBack", testWriteTensorAndReadBack),
     ("testWriteTensorConstantAndReadBack", testWriteTensorConstantAndReadBack),
     ("testWriteTensorsAndRetrieveKeys", testWriteTensorsAndRetrieveKeys),
+    ("testWriteTensorReadBackAndDelete", testWriteTensorReadBackAndDelete),
   ]
 }

@@ -192,6 +192,20 @@ extension DynamicGraph {
     }
 
     /**
+     * Remove one tensor by its key.
+     */
+    public func remove(_ key: String) {
+      var deletion: OpaquePointer? = nil
+      sqlite3_prepare_v2(
+        OpaquePointer(store.sqlite), "DELETE FROM tensors WHERE name=?1", -1, &deletion, nil)
+      let SQLITE_TRANSIENT = unsafeBitCast(
+        OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+      sqlite3_bind_text(deletion, 1, key, -1, SQLITE_TRANSIENT)
+      sqlite3_step(deletion)
+      sqlite3_finalize(deletion)
+    }
+
+    /**
      * Remove all tensors from the store. This also vacuums the store to minimize its size.
      */
     public func removeAll() {
