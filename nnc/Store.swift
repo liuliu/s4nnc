@@ -94,15 +94,57 @@ extension DynamicGraph {
       }
       return true
     }
+    public enum ModelReaderResult {
+      case `continue`(String)
+      /// Continue to load parameter with the given name.
+      case final/// The parameter is loaded, no futher operation need.
+    }
+    class ModelReaderHelper {
+      let reader: (String, String, inout NNC.AnyTensor) -> ModelReaderResult
+      let sqlite: UnsafeMutableRawPointer
+      init(
+        reader: @escaping (String, String, inout NNC.AnyTensor) -> ModelReaderResult,
+        sqlite: UnsafeMutableRawPointer
+      ) {
+        self.reader = reader
+        self.sqlite = sqlite
+      }
+    }
     /**
      * Read parameters into a given model.
      *
      * - Parameters:
      *   - key: The key corresponding to a particular model.
      *   - model: The model to be initialized with parameters from a given key.
+     *   - reader: You can customize your reader to load parameter with a different name etc.
      */
-    public func read(_ key: String, model: Model) {
-      ccv_cnnp_model_read(store.sqlite, key, model.cModel)
+    public func read(
+      _ key: String, model: Model,
+      reader: ((String, String, inout NNC.AnyTensor) -> ModelReaderResult)? = nil
+    ) {
+      guard let reader = reader else {
+        ccv_cnnp_model_read(store.sqlite, key, model.cModel)
+        return
+      }
+      let readerHelper = ModelReaderHelper(reader: reader, sqlite: store.sqlite)
+      ccv_cnnp_model_set_io(
+        model.cModel,
+        { (handle, name, dir, tensorOut) -> Int32 in
+          let readerHelper = Unmanaged<ModelReaderHelper>.fromOpaque(handle!).takeUnretainedValue()
+          var tensor = AnyTensorStorage(tensorOut!.pointee!, selfOwned: false).toAnyTensor()
+          let result = readerHelper.reader(
+            name.map { String(cString: $0) } ?? "", dir.map { String(cString: $0) } ?? "", &tensor)
+          switch result {
+          case .final:
+            return Int32(CCV_IO_FINAL)
+          case .continue(let name):
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+          }
+        }, nil)
+      let unmanaged = Unmanaged.passRetained(readerHelper)
+      ccv_cnnp_model_read(unmanaged.toOpaque(), key, model.cModel)
+      ccv_cnnp_model_set_io(model.cModel, nil, nil)
+      unmanaged.release()
     }
     /**
      * Read parameters into a given model builder.

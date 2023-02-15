@@ -129,6 +129,42 @@ final class StoreTests: XCTestCase {
     XCTAssertNil(readout2)
   }
 
+  func testWriteModelAndReadWithDifferentName() throws {
+    let graph = DynamicGraph()
+    let linear0 = Dense(count: 1, noBias: true, name: "linear")
+    let tv0 = graph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = linear0(inputs: tv0)[0].as(of: Float32.self)
+    let linear1 = Dense(count: 1, noBias: true)
+    linear1.compile(inputs: tv0)
+    graph.openStore("test/model.db") { store in
+      store.write("a", model: linear0)
+      store.read("a", model: linear1) { name, _, _ in
+        return .continue("__a__[t-linear-0-0]")
+      }
+    }
+    let tv2 = linear1(inputs: tv0)[0].as(of: Float32.self)
+    XCTAssertEqual(tv1[0], tv2[0])
+  }
+
+  func testWriteModelAndLoadFromNothing() throws {
+    let graph = DynamicGraph()
+    let linear0 = Dense(count: 1, noBias: true, name: "linear")
+    let tv0 = graph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let _ = linear0(inputs: tv0)[0].as(of: Float32.self)
+    let linear1 = Dense(count: 1, noBias: true)
+    linear1.compile(inputs: tv0)
+    graph.openStore("test/model.db") { store in
+      store.write("a", model: linear0)
+      store.read("a", model: linear1) { name, _, tensor in
+        let a = graph.variable(Tensor<Float32>(tensor))
+        a[0, 0] = 2
+        return .final
+      }
+    }
+    let tv2 = linear1(inputs: tv0)[0].as(of: Float32.self)
+    XCTAssertEqual(tv2[0], 2.2)
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -139,5 +175,7 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorConstantAndReadBack", testWriteTensorConstantAndReadBack),
     ("testWriteTensorsAndRetrieveKeys", testWriteTensorsAndRetrieveKeys),
     ("testWriteTensorReadBackAndDelete", testWriteTensorReadBackAndDelete),
+    ("testWriteModelAndReadWithDifferentName", testWriteModelAndReadWithDifferentName),
+    ("testWriteModelAndLoadFromNothing", testWriteModelAndLoadFromNothing),
   ]
 }

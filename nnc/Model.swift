@@ -83,6 +83,9 @@ public class Model {
   }
 
   public final class Parameters: IO {
+    var name: String {
+      return String(cString: ccv_cnnp_model_parameter_name(model?.cModel, _io))
+    }
   }
 
   var _parameters: ccv_cnnp_model_io_t? = nil
