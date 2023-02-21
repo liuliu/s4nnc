@@ -161,7 +161,7 @@ extension Model {
 }
 
 extension Model {
-  func compile(inputs: [DynamicGraph_Any]) {
+  public func compile(inputs: [DynamicGraph_Any]) {
     assert(inputs.count > 0)
     let params = CmdParamsFactory.factory.newParams()
     let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
