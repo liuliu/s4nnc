@@ -68,7 +68,7 @@ public class AnyModelBuilder {
     _key = key
   }
 
-  private func compileModel() {
+  fileprivate func compileModel() {
     let inputs = self.inputs!
     model!.compile(inputs: inputs)
     // If we have store / key, try to load parameters now after it is compiled.
@@ -77,24 +77,6 @@ public class AnyModelBuilder {
       _store = nil
       _key = nil
     }
-  }
-
-  /**
-   * Compile a model with the given inputs without executing it. After this, you can load
-   * parameters from the store.
-   */
-  public func compile(inputs: [DynamicGraph_Any]) {
-    self.inputs = inputs
-    compileModel()
-    self.inputs = nil
-  }
-
-  /**
-   * Compile a model with the given inputs without executing it. After this, you can load
-   * parameters from the store.
-   */
-  public func compile(inputs: DynamicGraph_Any...) {
-    compile(inputs: inputs)
   }
 
 }
@@ -118,6 +100,26 @@ public final class ModelBuilder<T>: AnyModelBuilder {
         return builder(t as! T, inputs)
       }, name: name)
   }
+
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(_ t: T, inputs: [DynamicGraph_Any]) {
+    self.t = t
+    self.inputs = inputs
+    compileModel()
+    self.inputs = nil
+    self.t = nil
+  }
+
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(_ t: T, inputs: DynamicGraph_Any...) {
+    compile(t, inputs: inputs)
+  }
 }
 
 extension ModelBuilder where T == Void {
@@ -127,5 +129,25 @@ extension ModelBuilder where T == Void {
       { t, inputs in
         return builder(inputs)
       }, name: name)
+  }
+
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(inputs: [DynamicGraph_Any]) {
+    self.t = Void()
+    self.inputs = inputs
+    compileModel()
+    self.inputs = nil
+    self.t = nil
+  }
+
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(inputs: DynamicGraph_Any...) {
+    compile(inputs: inputs)
   }
 }

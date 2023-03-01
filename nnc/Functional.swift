@@ -392,6 +392,7 @@ extension AnyModelBuilder {
       model: model!.cModel, isTest: isTest, dataParallel: &model!.dataParallel, inputs: inputs,
       outputSize: Int32(outputSize), streamContext: streamContext)
     self.inputs = nil
+    self.t = nil
     return outputs
   }
 }
