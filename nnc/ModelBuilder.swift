@@ -79,6 +79,24 @@ public class AnyModelBuilder {
     }
   }
 
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(inputs: [DynamicGraph_Any]) {
+    self.inputs = inputs
+    compileModel()
+    self.inputs = nil
+  }
+
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
+  public func compile(inputs: DynamicGraph_Any...) {
+    compile(inputs: inputs)
+  }
+
 }
 
 /// A model builder is a more generic type of model. A model can be quite static,

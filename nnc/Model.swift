@@ -161,6 +161,10 @@ extension Model {
 }
 
 extension Model {
+  /**
+   * Compile a model with the given inputs without executing it. After this, you can load
+   * parameters from the store.
+   */
   public func compile(inputs: [DynamicGraph_Any]) {
     assert(inputs.count > 0)
     let params = CmdParamsFactory.factory.newParams()
