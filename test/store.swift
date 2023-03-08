@@ -138,7 +138,7 @@ final class StoreTests: XCTestCase {
     linear1.compile(inputs: tv0)
     graph.openStore("test/model.db") { store in
       store.write("a", model: linear0)
-      store.read("a", model: linear1) { name, _, _ in
+      store.read("a", model: linear1) { name, _, _, _ in
         return .continue("__a__[t-linear-0-0]")
       }
     }
@@ -155,10 +155,10 @@ final class StoreTests: XCTestCase {
     linear1.compile(inputs: tv0)
     graph.openStore("test/model.db") { store in
       store.write("a", model: linear0)
-      store.read("a", model: linear1) { name, _, tensor in
-        let a = graph.variable(Tensor<Float32>(tensor))
+      store.read("a", model: linear1) { name, _, format, shape in
+        var a = Tensor<Float32>(.CPU, format: format, shape: shape)
         a[0, 0] = 2
-        return .final
+        return .final(a)
       }
     }
     let tv2 = linear1(inputs: tv0)[0].as(of: Float32.self)

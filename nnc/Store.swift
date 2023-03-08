@@ -95,15 +95,18 @@ extension DynamicGraph {
       return true
     }
     public enum ModelReaderResult {
-      case `continue`(String)
       /// Continue to load parameter with the given name.
-      case final/// The parameter is loaded, no futher operation need.
+      case `continue`(String)
+      /// The parameter is loaded, no futher operation need.
+      case final(NNC.AnyTensor)
+      /// Nothing is loaded.
+      case fail
     }
     class ModelReaderHelper {
-      let reader: (String, String, inout NNC.AnyTensor) -> ModelReaderResult
+      let reader: (String, DataType, TensorFormat, TensorShape) -> ModelReaderResult
       let sqlite: UnsafeMutableRawPointer
       init(
-        reader: @escaping (String, String, inout NNC.AnyTensor) -> ModelReaderResult,
+        reader: @escaping (String, DataType, TensorFormat, TensorShape) -> ModelReaderResult,
         sqlite: UnsafeMutableRawPointer
       ) {
         self.reader = reader
@@ -120,7 +123,7 @@ extension DynamicGraph {
      */
     public func read(
       _ key: String, model: Model,
-      reader: ((String, String, inout NNC.AnyTensor) -> ModelReaderResult)? = nil
+      reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
       guard let reader = reader else {
         ccv_cnnp_model_read(store.sqlite, key, model.cModel)
@@ -131,14 +134,21 @@ extension DynamicGraph {
         model.cModel,
         { (handle, name, dir, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<ModelReaderHelper>.fromOpaque(handle!).takeUnretainedValue()
-          var tensor = AnyTensorStorage(tensorOut!.pointee!, selfOwned: false).toAnyTensor()
+          let cTensorOut = tensorOut!.pointee
+          let params = cTensorOut!.pointee.info
           let result = readerHelper.reader(
-            name.map { String(cString: $0) } ?? "", dir.map { String(cString: $0) } ?? "", &tensor)
+            name.map { String(cString: $0) } ?? "", DataType.from(cTensorParams: params),
+            TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
           switch result {
-          case .final:
+          case .final(let tensor):
+            let cTensor = tensor.cTensor
+            let dataSize = ccv_nnc_tensor_data_size(cTensor.pointee.info)
+            ccv_nnc_tensor_swap(cTensorOut, name, dir, cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
             return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+          case .fail:
+            return Int32(CCV_IO_ERROR)
           }
         }, nil)
       let unmanaged = Unmanaged.passRetained(readerHelper)

@@ -665,9 +665,11 @@ extension DynamicGraph {
    * make more aggressive optimizations if the gradient tracking is off.
    */
   public func withNoGrad<Result>(_ closure: () throws -> Result) rethrows -> Result {
-    ccv_nnc_dynamic_graph_set_no_grad(cGraph, 1)
+    let noGrad = ccv_nnc_dynamic_graph_set_no_grad(cGraph, 1)
     let result = try closure()
-    ccv_nnc_dynamic_graph_set_no_grad(cGraph, 0)
+    if noGrad == 0 {  // Only set it back if we previously set it ourselves.
+      ccv_nnc_dynamic_graph_set_no_grad(cGraph, 0)
+    }
     return result
   }
 }
