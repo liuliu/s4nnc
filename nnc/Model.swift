@@ -83,7 +83,10 @@ public class Model {
   }
 
   public final class Parameters: IO {
-    var name: String {
+    /**
+     * The internal name for this parameter.
+     */
+    public var name: String {
       return String(cString: ccv_cnnp_model_parameter_name(model?.cModel, _io))
     }
   }
