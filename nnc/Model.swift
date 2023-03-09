@@ -87,7 +87,8 @@ public class Model {
      * The internal name for this parameter.
      */
     public var name: String {
-      return String(cString: ccv_cnnp_model_parameter_name(model?.cModel, _io))
+      return String(
+        cString: ccv_cnnp_model_parameter_name(model?.owner?.cModel ?? model?.cModel, _io))
     }
   }
 
