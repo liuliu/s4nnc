@@ -24,7 +24,7 @@ public class AnyModelBuilder {
     model = Model(_model)
   }
 
-  private var _outputSize: Int? = nil
+  fileprivate var _outputSize: Int? = nil
   var outputSize: Int {
     if let outputSize = _outputSize {
       return outputSize
@@ -98,6 +98,7 @@ public class AnyModelBuilder {
       ccv_cnnp_model_set_io(model!.cModel, nil, nil)
       unmanaged.release()
     }
+    _reader = reader
     _store = store
     _key = key
   }
@@ -175,6 +176,7 @@ public final class ModelBuilder<T>: AnyModelBuilder {
     self.t = t
     self.inputs = inputs
     compileModel()
+    _outputSize = Int(ccv_cnnp_model_output_size(model!.cModel))
     self.inputs = nil
     self.t = nil
   }
@@ -205,6 +207,7 @@ extension ModelBuilder where T == Void {
     self.t = Void()
     self.inputs = inputs
     compileModel()
+    _outputSize = Int(ccv_cnnp_model_output_size(model!.cModel))
     self.inputs = nil
     self.t = nil
   }
