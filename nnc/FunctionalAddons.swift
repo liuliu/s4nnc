@@ -1016,6 +1016,7 @@ extension DynamicGraph.Tensor {
   public func toGPU(_ ordinal: Int, streamContext: StreamContext?)
     -> DynamicGraph.Tensor<Element>
   {
+    guard kind != .GPU(ordinal) else { return self }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
@@ -1033,6 +1034,7 @@ extension DynamicGraph.Tensor {
 
   /// Copy the given tensor to CPU.
   public func toCPU(streamContext: StreamContext?) -> DynamicGraph.Tensor<Element> {
+    guard kind != .CPU else { return self }
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)

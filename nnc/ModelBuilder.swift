@@ -57,12 +57,46 @@ public class AnyModelBuilder {
 
   private var _store: DynamicGraph._Store? = nil
   private var _key: String? = nil
+  private var _reader:
+    ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)? = nil
 
-  func read(_ key: String, from store: DynamicGraph._Store) {
+  func read(
+    _ key: String, from store: DynamicGraph._Store,
+    reader: ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)?
+  ) {
     // If the model is compiled (signifies by _outputSize is set)
     if _outputSize != nil {
-      ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
-      return
+      guard let reader = reader else {
+        ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
+        return
+      }
+      let readerHelper = DynamicGraph.Store.ModelReaderHelper(reader: reader, sqlite: store.sqlite)
+      ccv_cnnp_model_set_io(
+        model!.cModel,
+        { (handle, name, dir, tensorOut) -> Int32 in
+          let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
+            .takeUnretainedValue()
+          let cTensorOut = tensorOut!.pointee
+          let params = cTensorOut!.pointee.info
+          let result = readerHelper.reader(
+            name.map { String(cString: $0) } ?? "", DataType.from(cTensorParams: params),
+            TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
+          switch result {
+          case .final(let tensor):
+            let cTensor = tensor.cTensor
+            let dataSize = ccv_nnc_tensor_data_size(cTensor.pointee.info)
+            ccv_nnc_tensor_swap(cTensorOut, name, dir, cTensor.pointee.data.ptr, dataSize)
+            return Int32(CCV_IO_FINAL)
+          case .continue(let name):
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+          case .fail:
+            return Int32(CCV_IO_ERROR)
+          }
+        }, nil)
+      let unmanaged = Unmanaged.passRetained(readerHelper)
+      ccv_cnnp_model_read(unmanaged.toOpaque(), key, model!.cModel)
+      ccv_cnnp_model_set_io(model!.cModel, nil, nil)
+      unmanaged.release()
     }
     _store = store
     _key = key
@@ -73,7 +107,39 @@ public class AnyModelBuilder {
     model!.compile(inputs: inputs)
     // If we have store / key, try to load parameters now after it is compiled.
     if let store = _store, let key = _key {
-      ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
+      if let reader = _reader {
+        let readerHelper = DynamicGraph.Store.ModelReaderHelper(
+          reader: reader, sqlite: store.sqlite)
+        ccv_cnnp_model_set_io(
+          model!.cModel,
+          { (handle, name, dir, tensorOut) -> Int32 in
+            let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
+              .takeUnretainedValue()
+            let cTensorOut = tensorOut!.pointee
+            let params = cTensorOut!.pointee.info
+            let result = readerHelper.reader(
+              name.map { String(cString: $0) } ?? "", DataType.from(cTensorParams: params),
+              TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
+            switch result {
+            case .final(let tensor):
+              let cTensor = tensor.cTensor
+              let dataSize = ccv_nnc_tensor_data_size(cTensor.pointee.info)
+              ccv_nnc_tensor_swap(cTensorOut, name, dir, cTensor.pointee.data.ptr, dataSize)
+              return Int32(CCV_IO_FINAL)
+            case .continue(let name):
+              return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+            case .fail:
+              return Int32(CCV_IO_ERROR)
+            }
+          }, nil)
+        let unmanaged = Unmanaged.passRetained(readerHelper)
+        ccv_cnnp_model_read(unmanaged.toOpaque(), key, model!.cModel)
+        ccv_cnnp_model_set_io(model!.cModel, nil, nil)
+        unmanaged.release()
+      } else {
+        ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
+      }
+      _reader = nil
       _store = nil
       _key = nil
     }

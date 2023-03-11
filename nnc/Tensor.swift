@@ -1029,6 +1029,7 @@ extension Tensor {
    * - Returns: A new tensor on GPU.
    */
   public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
+    guard kind != .GPU(ordinal) else { return self }
     var _output = ccv_nnc_tensor_new(
       nil,
       toCTensorParams(.GPU(ordinal), dataType: dataType, format: format, shape: shape),
@@ -1049,6 +1050,7 @@ extension Tensor {
    * - Returns: A new tensor on CPU.
    */
   public func toCPU(streamContext: StreamContext? = nil) -> Self {
+    guard kind != .CPU else { return self }
     var _output = ccv_nnc_tensor_new(
       nil,
       toCTensorParams(.CPU, dataType: dataType, format: format, shape: shape),

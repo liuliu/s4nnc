@@ -162,9 +162,13 @@ extension DynamicGraph {
      * - Parameters:
      *   - key: The key corresponding to a particular model.
      *   - model: The model builder to be initialized with parameters from a given key.
+     *   - reader: You can customize your reader to load parameter with a different name etc.
      */
-    public func read(_ key: String, model: AnyModelBuilder) {
-      model.read(key, from: store)
+    public func read(
+      _ key: String, model: AnyModelBuilder,
+      reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
+    ) {
+      model.read(key, from: store, reader: reader)
     }
 
     /**
