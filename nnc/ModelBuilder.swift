@@ -83,9 +83,9 @@ public class AnyModelBuilder {
             TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
           switch result {
           case .final(let tensor):
-            let cTensor = tensor.cTensor
-            let dataSize = ccv_nnc_tensor_data_size(cTensor.pointee.info)
-            ccv_nnc_tensor_swap(cTensorOut, name, dir, cTensor.pointee.data.ptr, dataSize)
+            precondition(tensor.kind == .CPU)
+            let dataSize = ccv_nnc_tensor_data_size(tensor.cTensor.pointee.info)
+            ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
             return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
@@ -123,9 +123,9 @@ public class AnyModelBuilder {
               TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
             switch result {
             case .final(let tensor):
-              let cTensor = tensor.cTensor
-              let dataSize = ccv_nnc_tensor_data_size(cTensor.pointee.info)
-              ccv_nnc_tensor_swap(cTensorOut, name, dir, cTensor.pointee.data.ptr, dataSize)
+              precondition(tensor.kind == .CPU)
+              let dataSize = ccv_nnc_tensor_data_size(tensor.cTensor.pointee.info)
+              ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
               return Int32(CCV_IO_FINAL)
             case .continue(let name):
               return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
