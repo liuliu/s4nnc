@@ -30,6 +30,7 @@ extension DynamicGraph {
         self.rawValue = rawValue
       }
       public static let truncateWhenClose = OpenFlag(rawValue: 1 << 0)
+      public static let readOnly = OpenFlag(rawValue: 1 << 1)
     }
     private let graph: DynamicGraph
     private let store: _Store
@@ -286,7 +287,15 @@ extension DynamicGraph {
     procedure: (_ store: Store) throws -> Void
   ) rethrows -> Bool {
     var _sqlite: OpaquePointer? = nil
-    sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
+    if flags.contains(.readOnly) {
+      if sqlite3_libversion_number() >= 3_022_000 {
+        sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READONLY, nil)
+      } else {  // At least if it is readOnly, we won't create the file.
+        sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE, nil)
+      }
+    } else {
+      sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
+    }
     guard let sqlite = _sqlite else { return false }
     sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
     let store = Store(_Store(sqlite: sqlite, flags: flags), graph: self)
