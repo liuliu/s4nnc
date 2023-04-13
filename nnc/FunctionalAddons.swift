@@ -4,6 +4,7 @@ public enum ReduceOp {
   case sum
   case mean
   case max
+  case min
   case norm2
 }
 
@@ -241,6 +242,37 @@ extension Functional {
     params.reduce.axis.0 = Int32(axis)
     params.reduce.count = 1
     let cmd = ccv_nnc_cmd(CCV_NNC_ARGMAX_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Group<DynamicGraph.Tensor<Int32>>(outputs[0])
+  }
+
+  /// Argmin
+  public static func argmin(
+    _ one: DynamicGraph.AnyTensor, axis: Int, streamContext: StreamContext? = nil
+  )
+    -> DynamicGraph.Tensor<Int32>
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.reduce.axis.0 = Int32(axis)
+    params.reduce.count = 1
+    let cmd = ccv_nnc_cmd(CCV_NNC_ARGMIN_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
+    return DynamicGraph.Tensor<Int32>(outputs[0])
+  }
+
+  /// Argmax
+  public static func argmin(
+    _ one: DynamicGraph.Group<DynamicGraph.AnyTensor>, axis: Int,
+    streamContext: StreamContext? = nil
+  )
+    -> DynamicGraph.Group<DynamicGraph.Tensor<Int32>>
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.reduce.axis.0 = Int32(axis)
+    params.reduce.count = 1
+    let cmd = ccv_nnc_cmd(CCV_NNC_ARGMIN_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Group<DynamicGraph.Tensor<Int32>>(outputs[0])
@@ -1353,6 +1385,8 @@ extension DynamicGraph.Tensor {
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MEAN_FORWARD, nil, params, 0)
     case .max:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
+    case .min:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MIN_FORWARD, nil, params, 0)
     case .norm2:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_NORM2_FORWARD, nil, params, 0)
     }
@@ -1379,6 +1413,8 @@ extension DynamicGraph.Group {
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MEAN_FORWARD, nil, params, 0)
     case .max:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MAX_FORWARD, nil, params, 0)
+    case .min:
+      cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_MIN_FORWARD, nil, params, 0)
     case .norm2:
       cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_NORM2_FORWARD, nil, params, 0)
     }

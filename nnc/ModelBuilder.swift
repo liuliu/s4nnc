@@ -45,6 +45,20 @@ public class AnyModelBuilder {
   }
 
   /**
+   * Shortcut for weight parameter.
+   */
+  public var weight: Model.Parameters {
+    parameters(for: .weight)
+  }
+
+  /**
+   * Shortcut for bias parameter.
+   */
+  public var bias: Model.Parameters {
+    parameters(for: .bias)
+  }
+
+  /**
    * Broadly speaking, you can have two types of parameters, weight and bias.
    * You can get them in abstract fashion with this method.
    *

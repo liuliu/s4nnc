@@ -107,6 +107,20 @@ public class Model {
   }
 
   /**
+   * Shortcut for weight parameter.
+   */
+  public var weight: Parameters {
+    parameters(for: .weight)
+  }
+
+  /**
+   * Shortcut for bias parameter.
+   */
+  public var bias: Parameters {
+    parameters(for: .bias)
+  }
+
+  /**
    * Setting the directory for parameters to be backed by files.
    */
   public var directoryForFileBackedParameters: String? = nil {
@@ -150,7 +164,6 @@ public class Model {
       return Parameters(_biasParameters, model: self)
     }
   }
-
 }
 
 extension Model {

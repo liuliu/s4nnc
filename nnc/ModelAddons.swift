@@ -684,6 +684,25 @@ public final class ReduceMax: Model {
   }
 }
 
+/// reduce min model.
+public final class ReduceMin: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: [Int], name: String = "") {
+    precondition(axis.count > 0)
+    super.init(ccv_cnnp_reduce_min(axis.map { Int32($0) }, Int32(axis.count), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 /// reduce norm2 model.
 public final class ReduceNorm2: Model {
   required init(_ model: OpaquePointer) {
@@ -712,6 +731,8 @@ extension Model.IO {
       return ReduceMean(axis: axis)(self)
     case .max:
       return ReduceMax(axis: axis)(self)
+    case .min:
+      return ReduceMin(axis: axis)(self)
     case .norm2:
       return ReduceNorm2(axis: axis)(self)
     }
@@ -763,6 +784,78 @@ public final class Max: Model {
 extension Functional {
   public static func max(_ left: Model.IO, _ right: Model.IO) -> Model.IO {
     return Max()(left, right)
+  }
+}
+
+/// Extract model.
+public final class Extract: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(_ index: Int, name: String = "") {
+    super.init(ccv_cnnp_extract(Int32(index), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  public subscript(index: Int) -> Model.IO {
+    return Extract(index)(self)
+  }
+}
+
+/// Argmax model.
+public final class Argmax: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: Int, name: String = "") {
+    super.init(ccv_cnnp_argmax(Int32(axis), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  public func argmax(axis: Int) -> Model.IO {
+    return Argmax(axis: axis)(self)
+  }
+}
+
+/// Argmin model.
+public final class Argmin: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: Int, name: String = "") {
+    super.init(ccv_cnnp_argmin(Int32(axis), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Model.IO {
+  public func argmin(axis: Int) -> Model.IO {
+    return Argmin(axis: axis)(self)
   }
 }
 
