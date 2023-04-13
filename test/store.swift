@@ -165,6 +165,21 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(tv2[0], 2.2)
   }
 
+  func testWriteTensorAndReadBackWithFPZIP() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    tensor[0] = 2.2
+    tensor[1] = 1.1
+    var readout: AnyTensor? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .fpzip)
+      readout = store.read("a", codec: .fpzip)
+    }
+    let varf = Tensor<Float32>(readout!)
+    XCTAssertEqual(varf[0], 2.2)
+    XCTAssertEqual(varf[1], 1.1)
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -177,5 +192,6 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorReadBackAndDelete", testWriteTensorReadBackAndDelete),
     ("testWriteModelAndReadWithDifferentName", testWriteModelAndReadWithDifferentName),
     ("testWriteModelAndLoadFromNothing", testWriteModelAndLoadFromNothing),
+    ("testWriteTensorAndReadBackWithFPZIP", testWriteTensorAndReadBackWithFPZIP),
   ]
 }

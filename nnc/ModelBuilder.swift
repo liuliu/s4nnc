@@ -67,7 +67,7 @@ public class AnyModelBuilder {
     // If the model is compiled (signifies by _outputSize is set)
     if _outputSize != nil {
       guard let reader = reader else {
-        ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
+        ccv_cnnp_model_read(store.sqlite, key, nil, model!.cModel)
         return
       }
       let readerHelper = DynamicGraph.Store.ModelReaderHelper(reader: reader, sqlite: store.sqlite)
@@ -88,13 +88,13 @@ public class AnyModelBuilder {
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, nil, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
         }, nil)
       let unmanaged = Unmanaged.passRetained(readerHelper)
-      ccv_cnnp_model_read(unmanaged.toOpaque(), key, model!.cModel)
+      ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model!.cModel)
       ccv_cnnp_model_set_io(model!.cModel, nil, nil)
       unmanaged.release()
     }
@@ -128,17 +128,17 @@ public class AnyModelBuilder {
               ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
               return Int32(CCV_IO_FINAL)
             case .continue(let name):
-              return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+              return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, nil, tensorOut)
             case .fail:
               return Int32(CCV_IO_ERROR)
             }
           }, nil)
         let unmanaged = Unmanaged.passRetained(readerHelper)
-        ccv_cnnp_model_read(unmanaged.toOpaque(), key, model!.cModel)
+        ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model!.cModel)
         ccv_cnnp_model_set_io(model!.cModel, nil, nil)
         unmanaged.release()
       } else {
-        ccv_cnnp_model_read(store.sqlite, key, model!.cModel)
+        ccv_cnnp_model_read(store.sqlite, key, nil, model!.cModel)
       }
       _reader = nil
       _store = nil

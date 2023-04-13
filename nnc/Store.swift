@@ -32,6 +32,14 @@ extension DynamicGraph {
       public static let truncateWhenClose = OpenFlag(rawValue: 1 << 0)
       public static let readOnly = OpenFlag(rawValue: 1 << 1)
     }
+    public struct Codec: OptionSet {
+      public let rawValue: Int
+      public init(rawValue: Int) {
+        self.rawValue = rawValue
+      }
+      public static let fpzip = Codec(rawValue: 1 << 0)
+      public static let zip = Codec(rawValue: 1 << 1)
+    }
     private let graph: DynamicGraph
     private let store: _Store
 
@@ -40,9 +48,14 @@ extension DynamicGraph {
      *
      * - Parameter key: The key corresponding to that particular tensor.
      */
-    public func read(_ key: String) -> NNC.AnyTensor? {
+    public func read(_ key: String, codec: Codec = []) -> NNC.AnyTensor? {
       var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
-      let result = ccv_nnc_tensor_read(store.sqlite, key, nil, &underlying)
+      let result: Int32
+      if codec.isEmpty {
+        result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+      } else {
+        result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+      }
       guard result == CCV_IO_FINAL else { return nil }
       let anyTensor = AnyTensorStorage(underlying!)
       return anyTensor.toAnyTensor()
@@ -57,7 +70,7 @@ extension DynamicGraph {
      * - Returns whether we successfully initialized the tensor variable.
      */
     @discardableResult
-    public func read(_ key: String, variable: DynamicGraph_Any) -> Bool {
+    public func read(_ key: String, variable: DynamicGraph_Any, codec: Codec = []) -> Bool {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
         assert(tensor.graph === graph)
@@ -66,14 +79,14 @@ extension DynamicGraph {
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)
         if raw != nil {
           var underlying = raw
-          let result = ccv_nnc_tensor_read(store.sqlite, key, nil, &underlying)
+          let result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
           if result == CCV_IO_FINAL {
             assert(underlying == raw)
           }
           return result == CCV_IO_FINAL
         }
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
-        let result = ccv_nnc_tensor_read(store.sqlite, key, nil, &underlying)
+        let result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
         guard result == CCV_IO_FINAL else { return false }
         let anyTensor = AnyTensorStorage(underlying!)
         ccv_nnc_tensor_variable_set(_graph, _tensor, underlying)
@@ -123,11 +136,11 @@ extension DynamicGraph {
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
     public func read(
-      _ key: String, model: Model,
+      _ key: String, model: Model, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
       guard let reader = reader else {
-        ccv_cnnp_model_read(store.sqlite, key, model.cModel)
+        ccv_cnnp_model_read(store.sqlite, key, nil, model.cModel)
         return
       }
       let readerHelper = ModelReaderHelper(reader: reader, sqlite: store.sqlite)
@@ -147,13 +160,13 @@ extension DynamicGraph {
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, tensorOut)
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, nil, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
         }, nil)
       let unmanaged = Unmanaged.passRetained(readerHelper)
-      ccv_cnnp_model_read(unmanaged.toOpaque(), key, model.cModel)
+      ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model.cModel)
       ccv_cnnp_model_set_io(model.cModel, nil, nil)
       unmanaged.release()
     }
@@ -166,7 +179,7 @@ extension DynamicGraph {
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
     public func read(
-      _ key: String, model: AnyModelBuilder,
+      _ key: String, model: AnyModelBuilder, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
       model.read(key, from: store, reader: reader)
@@ -179,8 +192,8 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular tensor.
      *   - tensor: The tensor to be persisted.
      */
-    public func write(_ key: String, tensor: NNC.AnyTensor) {
-      ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key)
+    public func write(_ key: String, tensor: NNC.AnyTensor, codec: Codec = []) {
+      ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, nil)
     }
     /**
      * Write a tensor variable to the store.
@@ -189,14 +202,14 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular tensor.
      *   - variable: The tensor variable to be persisted.
      */
-    public func write(_ key: String, variable: DynamicGraph_Any) {
+    public func write(_ key: String, variable: DynamicGraph_Any, codec: Codec = []) {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
         assert(tensor.graph === graph)
         let _graph = graph.cGraph
         let _tensor = tensor._tensor
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        ccv_nnc_tensor_write(raw, store.sqlite, key)
+        ccv_nnc_tensor_write(raw, store.sqlite, key, nil)
       case let group as DynamicGraph.AnyGroup:
         for (i, tensor) in group.untyped.enumerated() {
           write("\(key)(\(i))", variable: tensor)
@@ -212,8 +225,8 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular model.
      *   - model: The model where its parameters to be persisted.
      */
-    public func write(_ key: String, model: Model) {
-      ccv_cnnp_model_write(model.cModel, store.sqlite, key)
+    public func write(_ key: String, model: Model, codec: Codec = []) {
+      ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil)
     }
     /**
      * Write a model builder to the store.
@@ -222,7 +235,7 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular model builder.
      *   - model builder: The model where its parameters to be persisted.
      */
-    public func write(_ key: String, model: AnyModelBuilder) {
+    public func write(_ key: String, model: AnyModelBuilder, codec: Codec = []) {
       write(key, model: model.model!)
     }
 

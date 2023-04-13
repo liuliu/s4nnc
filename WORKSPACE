@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "ccv",
-    commit = "8c745f2a4b19a750a22cab093d9a6094456a4260",
+    commit = "077204465d27cbf063c9fda0ea3fb82cdd565f60",
     remote = "https://github.com/liuliu/ccv.git",
-    shallow_since = "1680021925 -0400",
+    shallow_since = "1681410223 -0400",
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")
@@ -77,6 +77,14 @@ new_git_repository(
 )
 
 new_git_repository(
+    name = "fpzip",
+    build_file = "fpzip.BUILD",
+    commit = "79aa1b1bd5a0b9497b8ad4352d8561ab17113cdf",
+    remote = "https://github.com/LLNL/fpzip.git",
+    shallow_since = "1591380432 -0700",
+)
+
+new_git_repository(
     name = "swift-atomics",
     build_file = "swift-atomics.BUILD",
     commit = "088df27f0683f2b458021ebf04873174b91ae597",
@@ -119,9 +127,9 @@ new_git_repository(
 new_git_repository(
     name = "SwiftToolsSupportCore",
     build_file = "swift-tools-support-core.BUILD",
-    commit = "4f07be3dc201f6e2ee85b6942d0c220a16926811",
+    commit = "286b48b1d73388e1d49b2bb33aabf995838104e3",
     remote = "https://github.com/apple/swift-tools-support-core.git",
-    shallow_since = "1659981427 -0700",
+    shallow_since = "1670947584 -0800",
 )
 
 new_git_repository(
