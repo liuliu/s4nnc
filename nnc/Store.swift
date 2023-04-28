@@ -179,8 +179,10 @@ private let fpzipDecode:
       stream.src_size = dataSize
       stream.dst_ptr = nextOut
       stream.dst_size = decodedSize[0]
-      status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
-      guard status != COMPRESSION_STATUS_ERROR else { return 0 }
+      repeat {
+        status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+        guard status != COMPRESSION_STATUS_ERROR else { return 0 }
+      } while status == COMPRESSION_STATUS_OK && stream.dst_size > 0
       decodedSize[0] = decodedSize[0] - stream.dst_size
       return 1
     }
