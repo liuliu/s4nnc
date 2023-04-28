@@ -143,6 +143,7 @@ private let zipEncode:
     guard let data = data, let dimensions = dimensions, let encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
+    guard dataSize <= UInt32.max && encodedSize[0] <= UInt32.max else { return 0 }
     var stream = z_stream()
     let streamSize = Int32(MemoryLayout<z_stream>.size)
     let result = deflateInit2_(
@@ -150,13 +151,33 @@ private let zipEncode:
       streamSize)
     defer { deflateEnd(&stream) }
     guard result == Z_OK else { return 0 }
-    stream.avail_in = UInt32(dataSize)
-    stream.next_in = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
-    stream.avail_out = UInt32(encodedSize[0])
-    stream.next_out = encoded.assumingMemoryBound(to: UInt8.self)
-    guard deflate(&stream, Z_FINISH) >= Z_OK else { return 0 }
+    let chunkSize = 0x8000_0000
+    var availableSize = dataSize
+    var outputSize = 0
+    var availableOutputSize = encodedSize[0]
+    var flush = Z_NO_FLUSH
+    var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+    var nextOut = encoded.assumingMemoryBound(to: UInt8.self)
+    repeat {
+      let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
+      stream.next_in = nextIn
+      stream.avail_in = UInt32(bufferInputSize)
+      flush = availableSize > chunkSize ? Z_NO_FLUSH : Z_FINISH
+      repeat {
+        stream.next_out = nextOut
+        let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
+        stream.avail_out = UInt32(bufferOutputSize)
+        guard deflate(&stream, flush) >= Z_OK else { return 0 }
+        let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
+        nextOut = nextOut.advanced(by: thisOutputSize)
+        outputSize += thisOutputSize
+        availableOutputSize -= thisOutputSize
+      } while stream.avail_out == 0
+      nextIn = nextIn.advanced(by: bufferInputSize)
+      availableSize -= bufferInputSize
+    } while flush != Z_FINISH
     identifier?[0] = 0x217
-    encodedSize[0] = encodedSize[0] - Int(stream.avail_out)
+    encodedSize[0] = outputSize
     return 1
   }
 
@@ -171,18 +192,38 @@ private let zipDecode:
     guard let data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
+    guard dataSize <= UInt32.max && decodedSize[0] <= UInt32.max else { return 0 }
     var stream = z_stream()
     let streamSize = Int32(MemoryLayout<z_stream>.size)
     var result = inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, streamSize)
     defer { inflateEnd(&stream) }
     guard result == Z_OK else { return 0 }
-    stream.avail_in = UInt32(dataSize)
-    stream.next_in = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
-    stream.avail_out = UInt32(decodedSize[0])
-    stream.next_out = decoded.assumingMemoryBound(to: UInt8.self)
-    result = inflate(&stream, Z_NO_FLUSH)
-    guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else { return 0 }
-    decodedSize[0] = decodedSize[0] - Int(stream.avail_out)
+    let chunkSize = 0x8000_0000
+    var availableSize = dataSize
+    var outputSize = 0
+    var availableOutputSize = decodedSize[0]
+    var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+    var nextOut = decoded.assumingMemoryBound(to: UInt8.self)
+    repeat {
+      let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
+      stream.next_in = nextIn
+      stream.avail_in = UInt32(bufferInputSize)
+      repeat {
+        stream.next_out = nextOut
+        let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
+        stream.avail_out = UInt32(bufferOutputSize)
+        result = inflate(&stream, Z_NO_FLUSH)
+        guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else {
+          return 0
+        }
+        let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
+        nextOut = nextOut.advanced(by: thisOutputSize)
+        outputSize += thisOutputSize
+        availableOutputSize -= thisOutputSize
+      } while stream.avail_out == 0 && availableOutputSize > 0
+      nextIn = nextIn.advanced(by: bufferInputSize)
+      availableSize -= bufferInputSize
+    } while result != Z_STREAM_END && availableOutputSize > 0
     return 1
   }
 

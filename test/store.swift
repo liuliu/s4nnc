@@ -229,17 +229,19 @@ final class StoreTests: XCTestCase {
 
   func testWriteTensorAndReadBackWithZIP() throws {
     let graph = DynamicGraph()
-    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
-    tensor[0] = 2.2
-    tensor[1] = 1.1
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(128))
+    for i in 0..<128 {
+      tensor[i] = 1.1 * Float(i)
+    }
     var readout: AnyTensor? = nil
     graph.openStore("test/tmp.db") { store in
       store.write("a", tensor: tensor, codec: .zip)
       readout = store.read("a", codec: .zip)
     }
     let varf = Tensor<Float32>(readout!)
-    XCTAssertEqual(varf[0], 2.2)
-    XCTAssertEqual(varf[1], 1.1)
+    for i in 0..<128 {
+      XCTAssertEqual(varf[i], tensor[i])
+    }
   }
 
   func testWriteTensorAndReadBackPartialWithZIP() throws {
