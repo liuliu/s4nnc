@@ -180,37 +180,45 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(varf[1], 1.1)
   }
 
-  func testWriteTensorAndReadBackWithFPZIPFloat16() throws {
-    let graph = DynamicGraph()
-    var tensor: Tensor<Float16> = Tensor(.CPU, .C(2))
-    tensor[0] = 2.2
-    tensor[1] = 1.1
-    var readout: AnyTensor? = nil
-    graph.openStore("test/tmp.db") { store in
-      store.write("a", tensor: tensor, codec: .fpzip)
-      readout = store.read("a", codec: .fpzip)
+  #if !((os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))) && (arch(i386) || arch(x86_64)))
+    func testWriteTensorAndReadBackWithFPZIPFloat16() throws {
+      let graph = DynamicGraph()
+      var tensor: Tensor<Float16> = Tensor(.CPU, .C(2))
+      tensor[0] = 2.2
+      tensor[1] = 1.1
+      var readout: AnyTensor? = nil
+      graph.openStore("test/tmp.db") { store in
+        store.write("a", tensor: tensor, codec: .fpzip)
+        readout = store.read("a", codec: .fpzip)
+      }
+      let varf = Tensor<Float16>(readout!)
+      XCTAssertEqual(varf[0], tensor[0])
+      XCTAssertEqual(varf[1], tensor[1])
     }
-    let varf = Tensor<Float16>(readout!)
-    XCTAssertEqual(varf[0], tensor[0])
-    XCTAssertEqual(varf[1], tensor[1])
-  }
 
-  func testWriteTensorAndReadBackWithLargerFPZIPFloat16() throws {
-    let graph = DynamicGraph()
-    var tensor: Tensor<Float16> = Tensor(.CPU, .C(128))
-    for i in 0..<128 {
-      tensor[i] = 1.1 * Float16(i)
+    func testWriteTensorAndReadBackWithLargerFPZIPFloat16() throws {
+      let graph = DynamicGraph()
+      var tensor: Tensor<Float16> = Tensor(.CPU, .C(128))
+      for i in 0..<128 {
+        tensor[i] = 1.1 * Float16(i)
+      }
+      var readout: AnyTensor? = nil
+      graph.openStore("test/tmp.db") { store in
+        store.write("a", tensor: tensor, codec: .fpzip)
+        readout = store.read("a", codec: .fpzip)
+      }
+      let varf = Tensor<Float16>(readout!)
+      for i in 0..<128 {
+        XCTAssertEqual(varf[i], tensor[i])
+      }
     }
-    var readout: AnyTensor? = nil
-    graph.openStore("test/tmp.db") { store in
-      store.write("a", tensor: tensor, codec: .fpzip)
-      readout = store.read("a", codec: .fpzip)
+  #else
+    func testWriteTensorAndReadBackWithFPZIPFloat16() throws {
     }
-    let varf = Tensor<Float16>(readout!)
-    for i in 0..<128 {
-      XCTAssertEqual(varf[i], tensor[i])
+
+    func testWriteTensorAndReadBackWithLargerFPZIPFloat16() throws {
     }
-  }
+  #endif
 
   func testWriteTensorAndReadBackWithFPZIPDouble() throws {
     let graph = DynamicGraph()

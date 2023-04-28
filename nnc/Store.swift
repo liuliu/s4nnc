@@ -101,8 +101,8 @@ private let fpzipDecode:
     case Int32(CCV_16F):
       guard fpz.pointee.type == Int32(FPZIP_TYPE_FLOAT) else { return 0 }
       elementSize = MemoryLayout<Float>.size
-      truncatedCount = decodedSize[0] / MemoryLayout<Float16>.size
-      truncatedLength = truncatedCount * MemoryLayout<Float16>.size
+      truncatedCount = decodedSize[0] / MemoryLayout<UInt16>.size
+      truncatedLength = truncatedCount * MemoryLayout<UInt16>.size
     default:
       return 0
     }
@@ -133,99 +133,152 @@ private let fpzipDecode:
     return 1
   }
 
-private let zipEncode:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
-    in
-    guard let data = data, let dimensions = dimensions, let encoded = encoded,
-      let encodedSize = encodedSize, dimensionCount > 0
-    else { return 0 }
-    guard dataSize <= UInt32.max && encodedSize[0] <= UInt32.max else { return 0 }
-    var stream = z_stream()
-    let streamSize = Int32(MemoryLayout<z_stream>.size)
-    let result = deflateInit2_(
-      &stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 9, Z_DEFAULT_STRATEGY, ZLIB_VERSION,
-      streamSize)
-    defer { deflateEnd(&stream) }
-    guard result == Z_OK else { return 0 }
-    let chunkSize = 0x8000_0000
-    var availableSize = dataSize
-    var outputSize = 0
-    var availableOutputSize = encodedSize[0]
-    var flush = Z_NO_FLUSH
-    var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
-    var nextOut = encoded.assumingMemoryBound(to: UInt8.self)
-    repeat {
-      let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
-      stream.next_in = nextIn
-      stream.avail_in = UInt32(bufferInputSize)
-      flush = availableSize > chunkSize ? Z_NO_FLUSH : Z_FINISH
-      repeat {
-        stream.next_out = nextOut
-        let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
-        stream.avail_out = UInt32(bufferOutputSize)
-        guard deflate(&stream, flush) >= Z_OK else { return 0 }
-        let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
-        nextOut = nextOut.advanced(by: thisOutputSize)
-        outputSize += thisOutputSize
-        availableOutputSize -= thisOutputSize
-      } while stream.avail_out == 0
-      nextIn = nextIn.advanced(by: bufferInputSize)
-      availableSize -= bufferInputSize
-    } while flush != Z_FINISH
-    identifier?[0] = 0x217
-    encodedSize[0] = outputSize
-    return 1
-  }
+#if canImport(Compression)
+  import Compression
 
-private let zipDecode:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
-    in
-    guard identifier == 0x217 else { return 0 }
-    guard let data = data, let dimensions = dimensions, let decoded = decoded,
-      let decodedSize = decodedSize, dimensionCount > 0
-    else { return 0 }
-    guard dataSize <= UInt32.max && decodedSize[0] <= UInt32.max else { return 0 }
-    var stream = z_stream()
-    let streamSize = Int32(MemoryLayout<z_stream>.size)
-    var result = inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, streamSize)
-    defer { inflateEnd(&stream) }
-    guard result == Z_OK else { return 0 }
-    let chunkSize = 0x8000_0000
-    var availableSize = dataSize
-    var outputSize = 0
-    var availableOutputSize = decodedSize[0]
-    var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
-    var nextOut = decoded.assumingMemoryBound(to: UInt8.self)
-    repeat {
-      let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
-      stream.next_in = nextIn
-      stream.avail_in = UInt32(bufferInputSize)
+  private let zipEncode:
+    @convention(c) (
+      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    ) -> Int32 = {
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier
+      in
+      guard let data = data, let dimensions = dimensions, let encoded = encoded,
+        let encodedSize = encodedSize, dimensionCount > 0
+      else { return 0 }
+      let outputSize = compression_encode_buffer(
+        encoded.assumingMemoryBound(to: UInt8.self), encodedSize[0],
+        data.assumingMemoryBound(to: UInt8.self), dataSize, nil, COMPRESSION_ZLIB)
+      guard outputSize > 0 else { return 0 }
+      identifier?[0] = 0x217
+      encodedSize[0] = outputSize
+      return 1
+    }
+
+  private let zipDecode:
+    @convention(c) (
+      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+    ) -> Int32 = {
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+      decodedSize
+      in
+      guard identifier == 0x217 else { return 0 }
+      guard let data = data, let dimensions = dimensions, let decoded = decoded,
+        let decodedSize = decodedSize, dimensionCount > 0
+      else { return 0 }
+      let nextIn = data.assumingMemoryBound(to: UInt8.self)
+      let nextOut = decoded.assumingMemoryBound(to: UInt8.self)
+      var stream = compression_stream(
+        dst_ptr: nextOut, dst_size: decodedSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
+      var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
+      guard status != COMPRESSION_STATUS_ERROR else { return 0 }
+      defer { compression_stream_destroy(&stream) }
+      stream.src_ptr = nextIn
+      stream.src_size = dataSize
+      stream.dst_ptr = nextOut
+      stream.dst_size = decodedSize[0]
+      status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+      guard status != COMPRESSION_STATUS_ERROR else { return 0 }
+      decodedSize[0] = decodedSize[0] - stream.dst_size
+      return 1
+    }
+#else
+  private let zipEncode:
+    @convention(c) (
+      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    ) -> Int32 = {
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier
+      in
+      guard let data = data, let dimensions = dimensions, let encoded = encoded,
+        let encodedSize = encodedSize, dimensionCount > 0
+      else { return 0 }
+      var stream = z_stream()
+      let streamSize = Int32(MemoryLayout<z_stream>.size)
+      let result = deflateInit2_(
+        &stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 9, Z_DEFAULT_STRATEGY, ZLIB_VERSION,
+        streamSize)
+      defer { deflateEnd(&stream) }
+      guard result == Z_OK else { return 0 }
+      let chunkSize = 0x8000_0000
+      var availableSize = dataSize
+      var outputSize = 0
+      var availableOutputSize = encodedSize[0]
+      var flush = Z_NO_FLUSH
+      var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+      var nextOut = encoded.assumingMemoryBound(to: UInt8.self)
       repeat {
-        stream.next_out = nextOut
-        let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
-        stream.avail_out = UInt32(bufferOutputSize)
-        result = inflate(&stream, Z_NO_FLUSH)
-        guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else {
-          return 0
-        }
-        let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
-        nextOut = nextOut.advanced(by: thisOutputSize)
-        outputSize += thisOutputSize
-        availableOutputSize -= thisOutputSize
-      } while stream.avail_out == 0 && availableOutputSize > 0
-      nextIn = nextIn.advanced(by: bufferInputSize)
-      availableSize -= bufferInputSize
-    } while result != Z_STREAM_END && availableOutputSize > 0
-    return 1
-  }
+        let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
+        stream.next_in = nextIn
+        stream.avail_in = UInt32(bufferInputSize)
+        flush = availableSize > chunkSize ? Z_NO_FLUSH : Z_FINISH
+        repeat {
+          stream.next_out = nextOut
+          let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
+          stream.avail_out = UInt32(bufferOutputSize)
+          guard deflate(&stream, flush) >= Z_OK else { return 0 }
+          let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
+          nextOut = nextOut.advanced(by: thisOutputSize)
+          outputSize += thisOutputSize
+          availableOutputSize -= thisOutputSize
+        } while stream.avail_out == 0
+        nextIn = nextIn.advanced(by: bufferInputSize)
+        availableSize -= bufferInputSize
+      } while flush != Z_FINISH
+      identifier?[0] = 0x217
+      encodedSize[0] = outputSize
+      return 1
+    }
+
+  private let zipDecode:
+    @convention(c) (
+      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+    ) -> Int32 = {
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+      decodedSize
+      in
+      guard identifier == 0x217 else { return 0 }
+      guard let data = data, let dimensions = dimensions, let decoded = decoded,
+        let decodedSize = decodedSize, dimensionCount > 0
+      else { return 0 }
+      var stream = z_stream()
+      let streamSize = Int32(MemoryLayout<z_stream>.size)
+      var result = inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, streamSize)
+      defer { inflateEnd(&stream) }
+      guard result == Z_OK else { return 0 }
+      let chunkSize = 0x8000_0000
+      var availableSize = dataSize
+      var outputSize = 0
+      var availableOutputSize = decodedSize[0]
+      var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+      var nextOut = decoded.assumingMemoryBound(to: UInt8.self)
+      repeat {
+        let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
+        stream.next_in = nextIn
+        stream.avail_in = UInt32(bufferInputSize)
+        repeat {
+          stream.next_out = nextOut
+          let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
+          stream.avail_out = UInt32(bufferOutputSize)
+          result = inflate(&stream, Z_NO_FLUSH)
+          guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else {
+            return 0
+          }
+          let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
+          nextOut = nextOut.advanced(by: thisOutputSize)
+          outputSize += thisOutputSize
+          availableOutputSize -= thisOutputSize
+        } while stream.avail_out == 0 && availableOutputSize > 0
+        nextIn = nextIn.advanced(by: bufferInputSize)
+        availableSize -= bufferInputSize
+      } while result != Z_STREAM_END && availableOutputSize > 0
+      return 1
+    }
+#endif
 
 private let fpzipAndZipEncode:
   @convention(c) (
