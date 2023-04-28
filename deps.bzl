@@ -30,7 +30,7 @@ def s4nnc_deps():
         build_file = "@s4nnc//:external/PythonKit.BUILD",
     )
 
-    _maybe{
+    _maybe(
         new_git_repository,
         name = "fpzip",
         commit = "79aa1b1bd5a0b9497b8ad4352d8561ab17113cdf",
