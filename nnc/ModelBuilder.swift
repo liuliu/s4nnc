@@ -75,19 +75,25 @@ public class AnyModelBuilder {
     ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)? = nil
 
   func read(
-    _ key: String, from store: DynamicGraph._Store,
+    _ key: String, from store: DynamicGraph._Store, codec: DynamicGraph.Store.Codec,
     reader: ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)?
   ) {
     // If the model is compiled (signifies by _outputSize is set)
     if _outputSize != nil {
       guard let reader = reader else {
-        ccv_cnnp_model_read(store.sqlite, key, nil, model!.cModel)
+        if codec.isEmpty {
+          ccv_cnnp_model_read(store.sqlite, key, nil, model!.cModel)
+        } else {
+          var option = ccv_nnc_tensor_io_option_t()
+          option.decode = codec.decode
+          ccv_cnnp_model_read(store.sqlite, key, &option, model!.cModel)
+        }
         return
       }
       let readerHelper = DynamicGraph.Store.ModelReaderHelper(reader: reader, sqlite: store.sqlite)
       ccv_cnnp_model_set_io(
         model!.cModel,
-        { (handle, name, dir, tensorOut) -> Int32 in
+        { (handle, name, dir, options, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
             .takeUnretainedValue()
           let cTensorOut = tensorOut!.pointee
@@ -102,13 +108,19 @@ public class AnyModelBuilder {
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, nil, tensorOut)
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
         }, nil)
       let unmanaged = Unmanaged.passRetained(readerHelper)
-      ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model!.cModel)
+      if codec.isEmpty {
+        ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model!.cModel)
+      } else {
+        var option = ccv_nnc_tensor_io_option_t()
+        option.decode = codec.decode
+        ccv_cnnp_model_read(unmanaged.toOpaque(), key, &option, model!.cModel)
+      }
       ccv_cnnp_model_set_io(model!.cModel, nil, nil)
       unmanaged.release()
     }
@@ -127,7 +139,7 @@ public class AnyModelBuilder {
           reader: reader, sqlite: store.sqlite)
         ccv_cnnp_model_set_io(
           model!.cModel,
-          { (handle, name, dir, tensorOut) -> Int32 in
+          { (handle, name, dir, options, tensorOut) -> Int32 in
             let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
               .takeUnretainedValue()
             let cTensorOut = tensorOut!.pointee
@@ -142,7 +154,7 @@ public class AnyModelBuilder {
               ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
               return Int32(CCV_IO_FINAL)
             case .continue(let name):
-              return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, nil, tensorOut)
+              return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, tensorOut)
             case .fail:
               return Int32(CCV_IO_ERROR)
             }

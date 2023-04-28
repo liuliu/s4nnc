@@ -17,8 +17,8 @@ def s4nnc_deps():
         git_repository,
         name = "ccv",
         remote = "https://github.com/liuliu/ccv.git",
-        commit = "f5a605ef54858f6bf72196576245fae16e2f22f4",
-        shallow_since = "1682029048 -0400",
+        commit = "05ccfc02b81bf9c1562a0902598d8f19b667fb42",
+        shallow_since = "1682628833 -0400",
     )
 
     _maybe(
@@ -28,6 +28,15 @@ def s4nnc_deps():
         commit = "fbf22756c91d89b0f2e39a89b690aaa538cf9b03",
         shallow_since = "1664547636 -0400",
         build_file = "@s4nnc//:external/PythonKit.BUILD",
+    )
+
+    _maybe{
+        new_git_repository,
+        name = "fpzip",
+        commit = "79aa1b1bd5a0b9497b8ad4352d8561ab17113cdf",
+        remote = "https://github.com/LLNL/fpzip.git",
+        shallow_since = "1591380432 -0700",
+        build_file = "@s4nnc//:external/fpzip.BUILD",
     )
 
 def s4nnc_extra_deps():

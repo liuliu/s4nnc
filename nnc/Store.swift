@@ -1,5 +1,229 @@
+import C_fpzip
 import C_nnc
+import C_zlib
 import SQLite3
+
+private let fpzipEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard let data = data, let dimensions = dimensions, let encoded = encoded,
+      let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    guard let fpz = fpzip_write_to_buffer(encoded, encodedSize[0]) else { return 0 }
+    defer { fpzip_write_close(fpz) }
+    fpz.pointee.type = Int32(FPZIP_TYPE_FLOAT)
+    switch dataType {
+    case Int32(CCV_64F):
+      fpz.pointee.type = Int32(FPZIP_TYPE_DOUBLE)
+      fpz.pointee.prec = 64
+    case Int32(CCV_32F):
+      fpz.pointee.type = Int32(FPZIP_TYPE_FLOAT)
+      fpz.pointee.prec = 32
+    case Int32(CCV_16F):
+      fpz.pointee.type = Int32(FPZIP_TYPE_FLOAT)
+      fpz.pointee.prec = 19  // Since we have to retain all exponetial components (i.e. 8, in Float16, that is 5), we need to specify a precision at least 19.
+    default:
+      return 0
+    }
+    fpz.pointee.nx = dimensions[0]
+    fpz.pointee.ny = dimensionCount >= 2 ? dimensions[1] : 1
+    fpz.pointee.nz = dimensionCount >= 3 ? dimensions[2] : 1
+    if dimensionCount == 4 {
+      fpz.pointee.nf = dimensions[3]
+    } else if dimensionCount > 4 {
+      var remainingCount = dimensions[3]
+      for i in 4..<Int(dimensionCount) {
+        remainingCount *= dimensions[i]
+      }
+      fpz.pointee.nf = remainingCount
+    }
+    fpzip_write_header(fpz)
+    var inputData = data
+    let f32: UnsafeMutablePointer<Float32>?
+    if dataType == Int32(CCV_16F) {
+      // Need to do the conversion
+      let len =
+        Int(fpz.pointee.nx) * Int(fpz.pointee.ny) * Int(fpz.pointee.nz) * Int(fpz.pointee.nf)
+      let f32p = UnsafeMutablePointer<Float32>.allocate(capacity: len)
+      ccv_half_precision_to_float(
+        UnsafeMutableRawPointer(mutating: data).assumingMemoryBound(to: UInt16.self), f32p, len)
+      inputData = UnsafeRawPointer(f32p)
+      f32 = f32p
+    } else {
+      f32 = nil
+    }
+    let outbytes = fpzip_write(fpz, inputData)
+    if let f32 = f32 {
+      f32.deallocate()
+    }
+    guard outbytes > 0 && outbytes <= dataSize else { return 0 }
+    identifier?[0] = 0xf7217
+    encodedSize[0] = outbytes
+    return 1
+  }
+
+private let fpzipDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    guard identifier == 0xf7217 else { return 0 }
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    guard let fpz = fpzip_read_from_buffer(data) else { return 0 }
+    defer { fpzip_read_close(fpz) }
+    guard fpzip_read_header(fpz) != 0 else { return 0 }
+    let truncatedCount: Int
+    let truncatedLength: Int
+    let elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      guard fpz.pointee.type == Int32(FPZIP_TYPE_DOUBLE) else { return 0 }
+      elementSize = MemoryLayout<Double>.size
+      truncatedCount = decodedSize[0] / MemoryLayout<Double>.size
+      truncatedLength = truncatedCount * MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      guard fpz.pointee.type == Int32(FPZIP_TYPE_FLOAT) else { return 0 }
+      elementSize = MemoryLayout<Float>.size
+      truncatedCount = decodedSize[0] / MemoryLayout<Float>.size
+      truncatedLength = truncatedCount * MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      guard fpz.pointee.type == Int32(FPZIP_TYPE_FLOAT) else { return 0 }
+      elementSize = MemoryLayout<Float>.size
+      truncatedCount = decodedSize[0] / MemoryLayout<Float16>.size
+      truncatedLength = truncatedCount * MemoryLayout<Float16>.size
+    default:
+      return 0
+    }
+    let len = Int(fpz.pointee.nx) * Int(fpz.pointee.ny) * Int(fpz.pointee.nz) * Int(fpz.pointee.nf)
+    if decodedSize[0] < elementSize * len {
+      let buffer = UnsafeMutableRawPointer.allocate(
+        byteCount: elementSize * len, alignment: elementSize)
+      defer { buffer.deallocate() }
+      guard fpzip_read(fpz, buffer) != 0 else { return 0 }
+      if dataType == Int32(CCV_16F) {
+        ccv_float_to_half_precision(
+          buffer.assumingMemoryBound(to: Float.self), buffer.assumingMemoryBound(to: UInt16.self),
+          truncatedCount)
+      }
+      memcpy(decoded, buffer, truncatedLength)
+      decodedSize[0] = truncatedLength
+      return 1
+    } else {
+      // Decode directly, and then we do conversion, if it is CCV_16F.
+      guard fpzip_read(fpz, decoded) != 0 else { return 0 }
+      if dataType == Int32(CCV_16F) {
+        ccv_float_to_half_precision(
+          decoded.assumingMemoryBound(to: Float.self), decoded.assumingMemoryBound(to: UInt16.self),
+          len)
+      }
+      decodedSize[0] = elementSize * len
+    }
+    return 1
+  }
+
+private let zipEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let data = data, let dimensions = dimensions, let encoded = encoded,
+      let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    var stream = z_stream()
+    let streamSize = Int32(MemoryLayout<z_stream>.size)
+    let result = deflateInit2_(
+      &stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 9, Z_DEFAULT_STRATEGY, ZLIB_VERSION,
+      streamSize)
+    defer { deflateEnd(&stream) }
+    guard result == Z_OK else { return 0 }
+    stream.avail_in = UInt32(dataSize)
+    stream.next_in = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+    stream.avail_out = UInt32(encodedSize[0])
+    stream.next_out = encoded.assumingMemoryBound(to: UInt8.self)
+    guard deflate(&stream, Z_FINISH) >= Z_OK else { return 0 }
+    identifier?[0] = 0x217
+    encodedSize[0] = encodedSize[0] - Int(stream.avail_out)
+    return 1
+  }
+
+private let zipDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    guard identifier == 0x217 else { return 0 }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    var stream = z_stream()
+    let streamSize = Int32(MemoryLayout<z_stream>.size)
+    var result = inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, streamSize)
+    defer { inflateEnd(&stream) }
+    guard result == Z_OK else { return 0 }
+    stream.avail_in = UInt32(dataSize)
+    stream.next_in = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+    stream.avail_out = UInt32(decodedSize[0])
+    stream.next_out = decoded.assumingMemoryBound(to: UInt8.self)
+    result = inflate(&stream, Z_NO_FLUSH)
+    guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else { return 0 }
+    decodedSize[0] = decodedSize[0] - Int(stream.avail_out)
+    return 1
+  }
+
+private let fpzipAndZipEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    // Floating point to use fpzip
+    if dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F) {
+      return fpzipEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier)
+    }
+    return zipEncode(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let fpzipAndZipDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    switch identifier {
+    case 0xf7217:
+      return fpzipDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        decodedSize)
+    case 0x217:
+      return zipDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        decodedSize)
+    default:
+      return 0
+    }
+  }
 
 extension DynamicGraph {
 
@@ -39,6 +263,40 @@ extension DynamicGraph {
       }
       public static let fpzip = Codec(rawValue: 1 << 0)
       public static let zip = Codec(rawValue: 1 << 1)
+      var encode:
+        (
+          @convention(c) (
+            UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+            UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+          ) -> Int32
+        )?
+      {
+        if contains(.fpzip) && contains(.zip) {
+          return fpzipAndZipEncode
+        } else if contains(.fpzip) {
+          return fpzipEncode
+        } else if contains(.zip) {
+          return zipEncode
+        }
+        return nil
+      }
+      var decode:
+        (
+          @convention(c) (
+            UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32,
+            UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+          ) -> Int32
+        )?
+      {
+        if contains(.fpzip) && contains(.zip) {
+          return fpzipAndZipDecode
+        } else if contains(.fpzip) {
+          return fpzipDecode
+        } else if contains(.zip) {
+          return zipDecode
+        }
+        return nil
+      }
     }
     private let graph: DynamicGraph
     private let store: _Store
@@ -54,7 +312,9 @@ extension DynamicGraph {
       if codec.isEmpty {
         result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
       } else {
-        result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+        var option = ccv_nnc_tensor_io_option_t()
+        option.decode = codec.decode
+        result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, &underlying)
       }
       guard result == CCV_IO_FINAL else { return nil }
       let anyTensor = AnyTensorStorage(underlying!)
@@ -79,14 +339,28 @@ extension DynamicGraph {
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)
         if raw != nil {
           var underlying = raw
-          let result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+          let result: Int32
+          if codec.isEmpty {
+            result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+          } else {
+            var option = ccv_nnc_tensor_io_option_t()
+            option.decode = codec.decode
+            result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, &underlying)
+          }
           if result == CCV_IO_FINAL {
             assert(underlying == raw)
           }
           return result == CCV_IO_FINAL
         }
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
-        let result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+        let result: Int32
+        if codec.isEmpty {
+          result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+        } else {
+          var option = ccv_nnc_tensor_io_option_t()
+          option.decode = codec.decode
+          result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, &underlying)
+        }
         guard result == CCV_IO_FINAL else { return false }
         let anyTensor = AnyTensorStorage(underlying!)
         ccv_nnc_tensor_variable_set(_graph, _tensor, underlying)
@@ -140,13 +414,19 @@ extension DynamicGraph {
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
       guard let reader = reader else {
-        ccv_cnnp_model_read(store.sqlite, key, nil, model.cModel)
+        if codec.isEmpty {
+          ccv_cnnp_model_read(store.sqlite, key, nil, model.cModel)
+        } else {
+          var option = ccv_nnc_tensor_io_option_t()
+          option.decode = codec.decode
+          ccv_cnnp_model_read(store.sqlite, key, &option, model.cModel)
+        }
         return
       }
       let readerHelper = ModelReaderHelper(reader: reader, sqlite: store.sqlite)
       ccv_cnnp_model_set_io(
         model.cModel,
-        { (handle, name, dir, tensorOut) -> Int32 in
+        { (handle, name, dir, options, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<ModelReaderHelper>.fromOpaque(handle!).takeUnretainedValue()
           let cTensorOut = tensorOut!.pointee
           let params = cTensorOut!.pointee.info
@@ -160,13 +440,19 @@ extension DynamicGraph {
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, nil, tensorOut)
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
         }, nil)
       let unmanaged = Unmanaged.passRetained(readerHelper)
-      ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model.cModel)
+      if codec.isEmpty {
+        ccv_cnnp_model_read(unmanaged.toOpaque(), key, nil, model.cModel)
+      } else {
+        var option = ccv_nnc_tensor_io_option_t()
+        option.decode = codec.decode
+        ccv_cnnp_model_read(unmanaged.toOpaque(), key, &option, model.cModel)
+      }
       ccv_cnnp_model_set_io(model.cModel, nil, nil)
       unmanaged.release()
     }
@@ -182,7 +468,7 @@ extension DynamicGraph {
       _ key: String, model: AnyModelBuilder, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
-      model.read(key, from: store, reader: reader)
+      model.read(key, from: store, codec: codec, reader: reader)
     }
 
     /**
@@ -193,7 +479,13 @@ extension DynamicGraph {
      *   - tensor: The tensor to be persisted.
      */
     public func write(_ key: String, tensor: NNC.AnyTensor, codec: Codec = []) {
-      ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, nil)
+      if codec.isEmpty {
+        ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, nil)
+      } else {
+        var option = ccv_nnc_tensor_io_option_t()
+        option.encode = codec.encode
+        ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, &option)
+      }
     }
     /**
      * Write a tensor variable to the store.
@@ -209,7 +501,13 @@ extension DynamicGraph {
         let _graph = graph.cGraph
         let _tensor = tensor._tensor
         let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        ccv_nnc_tensor_write(raw, store.sqlite, key, nil)
+        if codec.isEmpty {
+          ccv_nnc_tensor_write(raw, store.sqlite, key, nil)
+        } else {
+          var option = ccv_nnc_tensor_io_option_t()
+          option.encode = codec.encode
+          ccv_nnc_tensor_write(raw, store.sqlite, key, &option)
+        }
       case let group as DynamicGraph.AnyGroup:
         for (i, tensor) in group.untyped.enumerated() {
           write("\(key)(\(i))", variable: tensor)
@@ -226,7 +524,13 @@ extension DynamicGraph {
      *   - model: The model where its parameters to be persisted.
      */
     public func write(_ key: String, model: Model, codec: Codec = []) {
-      ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil)
+      if codec.isEmpty {
+        ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil)
+      } else {
+        var option = ccv_nnc_tensor_io_option_t()
+        option.encode = codec.encode
+        ccv_cnnp_model_write(model.cModel, store.sqlite, key, &option)
+      }
     }
     /**
      * Write a model builder to the store.

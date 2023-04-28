@@ -1,5 +1,13 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
+cc_library(
+    name = "C_zlib",
+    hdrs = ["C_zlib/shim.h"],
+    defines = ["_GNU_SOURCE"],
+    linkopts = ["-lz"],
+    tags = ["swift_module=C_zlib"],
+)
+
 swift_library(
     name = "nnc",
     srcs = [
@@ -30,7 +38,9 @@ swift_library(
     module_name = "NNC",
     visibility = ["//visibility:public"],
     deps = [
+        ":C_zlib",
         "@ccv//lib:nnc",
+        "@fpzip",
     ],
 )
 
