@@ -31,15 +31,15 @@ private let fpzipEncode:
     default:
       return 0
     }
-    fpz.pointee.nx = dimensions[0]
-    fpz.pointee.ny = dimensionCount >= 2 ? dimensions[1] : 1
-    fpz.pointee.nz = dimensionCount >= 3 ? dimensions[2] : 1
+    fpz.pointee.nx = dimensions[Int(dimensionCount) - 1]
+    fpz.pointee.ny = dimensionCount >= 2 ? dimensions[Int(dimensionCount) - 2] : 1
+    fpz.pointee.nz = dimensionCount >= 3 ? dimensions[Int(dimensionCount) - 3] : 1
     if dimensionCount == 4 {
-      fpz.pointee.nf = dimensions[3]
+      fpz.pointee.nf = dimensions[0]
     } else if dimensionCount > 4 {
-      var remainingCount = dimensions[3]
+      var remainingCount = dimensions[Int(dimensionCount) - 4]
       for i in 4..<Int(dimensionCount) {
-        remainingCount *= dimensions[i]
+        remainingCount *= dimensions[Int(dimensionCount) - i - 1]
       }
       fpz.pointee.nf = remainingCount
     }
