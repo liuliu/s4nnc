@@ -30,6 +30,48 @@ public func + <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.add(left: left, right: right)
 }
 
+public func + <Element: TensorNumeric>(left: Float, right: DynamicGraph.Tensor<Element>)
+  -> DynamicGraph.Tensor<Element>
+{
+  let graph = right.graph
+  let leftConstant = graph.constant(right.kind, .C(1), of: Element.self)
+  leftConstant.full(left)
+  return Functional.add(left: leftConstant, right: right)
+}
+
+public func + <Element: TensorNumeric>(left: DynamicGraph.Tensor<Element>, right: Float)
+  -> DynamicGraph.Tensor<Element>
+{
+  let graph = left.graph
+  let rightConstant = graph.constant(left.kind, .C(1), of: Element.self)
+  rightConstant.full(right)
+  return Functional.add(left: left, right: rightConstant)
+}
+
+public func + <Element: TensorNumeric>(
+  left: Float, right: DynamicGraph.Group<DynamicGraph.Tensor<Element>>
+) -> DynamicGraph.Group<DynamicGraph.Tensor<Element>> {
+  let graph = right.graph
+  let leftConstant = DynamicGraph.Group(
+    right.map {
+      graph.constant($0.kind, .C(1), of: Element.self)
+    })
+  leftConstant.full(left)
+  return Functional.add(left: leftConstant, right: right)
+}
+
+public func + <Element: TensorNumeric>(
+  left: DynamicGraph.Group<DynamicGraph.Tensor<Element>>, right: Float
+) -> DynamicGraph.Group<DynamicGraph.Tensor<Element>> {
+  let graph = left.graph
+  let rightConstant = DynamicGraph.Group(
+    left.map {
+      graph.constant($0.kind, .C(1), of: Element.self)
+    })
+  rightConstant.full(right)
+  return Functional.add(left: left, right: rightConstant)
+}
+
 public func + (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
   return Add()(left, right)
 }
@@ -45,6 +87,48 @@ public func + (left: ModelIOConvertible, right: Float) -> Model.IO {
 // Broadcast element-wise subtraction.
 public func - <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.add(left: left, right: right, rightScalar: -1)
+}
+
+public func - <Element: TensorNumeric>(left: Float, right: DynamicGraph.Tensor<Element>)
+  -> DynamicGraph.Tensor<Element>
+{
+  let graph = right.graph
+  let leftConstant = graph.constant(right.kind, .C(1), of: Element.self)
+  leftConstant.full(left)
+  return Functional.add(left: leftConstant, right: right, rightScalar: -1)
+}
+
+public func - <Element: TensorNumeric>(left: DynamicGraph.Tensor<Element>, right: Float)
+  -> DynamicGraph.Tensor<Element>
+{
+  let graph = left.graph
+  let rightConstant = graph.constant(left.kind, .C(1), of: Element.self)
+  rightConstant.full(-right)
+  return Functional.add(left: left, right: rightConstant)
+}
+
+public func - <Element: TensorNumeric>(
+  left: Float, right: DynamicGraph.Group<DynamicGraph.Tensor<Element>>
+) -> DynamicGraph.Group<DynamicGraph.Tensor<Element>> {
+  let graph = right.graph
+  let leftConstant = DynamicGraph.Group(
+    right.map {
+      graph.constant($0.kind, .C(1), of: Element.self)
+    })
+  leftConstant.full(left)
+  return Functional.add(left: leftConstant, right: right, rightScalar: -1)
+}
+
+public func - <Element: TensorNumeric>(
+  left: DynamicGraph.Group<DynamicGraph.Tensor<Element>>, right: Float
+) -> DynamicGraph.Group<DynamicGraph.Tensor<Element>> {
+  let graph = left.graph
+  let rightConstant = DynamicGraph.Group(
+    left.map {
+      graph.constant($0.kind, .C(1), of: Element.self)
+    })
+  rightConstant.full(-right)
+  return Functional.add(left: left, right: rightConstant)
 }
 
 public func - (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
