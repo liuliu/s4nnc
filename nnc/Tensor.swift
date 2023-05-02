@@ -39,6 +39,16 @@ public enum DeviceKind {
       Int(ccv_nnc_device_count(Int32(CCV_STREAM_CONTEXT_GPU)))
     }
   }
+
+  @usableFromInline
+  var toC: Int32 {
+    switch self {
+    case .CPU:
+      return Int32(CCV_TENSOR_CPU_MEMORY)
+    case .GPU(let ordinal):
+      return Int32(CCV_TENSOR_GPU_MEMORY | (ordinal << 8))
+    }
+  }
 }
 
 extension DeviceKind: Equatable {
@@ -1620,12 +1630,7 @@ func toCTensorParams(
   _ kind: DeviceKind, dataType: DataType, format: TensorFormat, dimensions: [Int]
 ) -> ccv_nnc_tensor_param_t {
   var params = ccv_nnc_tensor_param_t()
-  switch kind {
-  case .CPU:
-    params.type = Int32(CCV_TENSOR_CPU_MEMORY)
-  case .GPU(let ordinal):
-    params.type = Int32(CCV_TENSOR_GPU_MEMORY | (ordinal << 8))
-  }
+  params.type = kind.toC
   params.datatype = dataType.toC
   params.format = format.toC
   params.dim = toCDimensions(dimensions)
@@ -1637,12 +1642,7 @@ func toCTensorParams(
   _ kind: DeviceKind, dataType: DataType, format: TensorFormat, shape: TensorShape
 ) -> ccv_nnc_tensor_param_t {
   var params = ccv_nnc_tensor_param_t()
-  switch kind {
-  case .CPU:
-    params.type = Int32(CCV_TENSOR_CPU_MEMORY)
-  case .GPU(let ordinal):
-    params.type = Int32(CCV_TENSOR_GPU_MEMORY | (ordinal << 8))
-  }
+  params.type = kind.toC
   params.datatype = dataType.toC
   params.format = format.toC
   params.dim = shape.dims

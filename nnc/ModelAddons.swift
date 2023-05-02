@@ -121,7 +121,7 @@ public final class Reshape: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Reshape an IO to a new dimension. You cannot reshape data types.
    *
@@ -155,7 +155,7 @@ public final class Permute: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Permute an IO according to the indices.
    *
@@ -189,7 +189,7 @@ public final class ReLU: Model {
 
 private typealias _ReLU = ReLU
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply ReLU activation to the said IO.
    */
@@ -216,7 +216,7 @@ public final class LeakyReLU: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply leaky ReLU activation to the said IO.
    */
@@ -243,7 +243,7 @@ public final class Softmax: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply softmax activation to the said IO.
    */
@@ -270,7 +270,7 @@ public final class Sigmoid: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply sigmoid activation to the said IO.
    */
@@ -297,7 +297,7 @@ public final class Tanh: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply tanh activation to the said IO.
    */
@@ -324,7 +324,7 @@ public final class Swish: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply swish activation to the said IO.
    */
@@ -358,7 +358,7 @@ public final class GELU: Model {
 
 private typealias _GELU = GELU
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Apply GELU activation to the said IO.
    */
@@ -384,7 +384,7 @@ public final class Transpose: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   public func transposed(_ axisA: Int, _ axisB: Int) -> Model.IO {
     return Transpose(axisA, axisB)(self)
   }
@@ -722,7 +722,7 @@ public final class ReduceNorm2: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   public func reduced(_ op: ReduceOp, axis: [Int]) -> Model.IO {
     switch op {
     case .sum:
@@ -758,7 +758,7 @@ public final class Min: Model {
 }
 
 extension Functional {
-  public static func min(_ left: Model.IO, _ right: Model.IO) -> Model.IO {
+  public static func min(_ left: ModelIOConvertible, _ right: ModelIOConvertible) -> Model.IO {
     return Min()(left, right)
   }
 }
@@ -782,7 +782,7 @@ public final class Max: Model {
 }
 
 extension Functional {
-  public static func max(_ left: Model.IO, _ right: Model.IO) -> Model.IO {
+  public static func max(_ left: ModelIOConvertible, _ right: ModelIOConvertible) -> Model.IO {
     return Max()(left, right)
   }
 }
@@ -805,7 +805,7 @@ public final class Extract: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   public subscript(index: Int) -> Model.IO {
     return Extract(index)(self)
   }
@@ -829,7 +829,7 @@ public final class Argmax: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   public func argmax(axis: Int) -> Model.IO {
     return Argmax(axis: axis)(self)
   }
@@ -853,7 +853,7 @@ public final class Argmin: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   public func argmin(axis: Int) -> Model.IO {
     return Argmin(axis: axis)(self)
   }
@@ -880,7 +880,7 @@ public final class Concat: Model {
 }
 
 extension Functional {
-  public static func concat(axis: Int, _ inputs: Model.IO...) -> Model.IO {
+  public static func concat(axis: Int, _ inputs: ModelIOConvertible...) -> Model.IO {
     return Concat(axis: axis).apply(inputs)
   }
 }
@@ -995,7 +995,7 @@ public final class DatatypeConversion: Model {
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   /**
    * Convert an IO to a new datatype.
    *
@@ -1011,12 +1011,12 @@ extension Model.IO {
    * - Parameters:
    *   - of: The other ModelIO which will share the same input.
    */
-  public func to(of other: Model.IO) -> Model.IO {
+  public func to(of other: ModelIOConvertible) -> Model.IO {
     return DatatypeConversion(nil, sameAsLast: true)(self, other)
   }
 }
 
-extension Model.IO {
+extension ModelIOConvertible {
   func clamped(
     min: Float?, max: Float?
   ) -> Model.IO {
@@ -1043,5 +1043,57 @@ extension Model.IO {
     -> Model.IO
   {
     return clamped(min: nil, max: range.upperBound)
+  }
+}
+
+/// Parameter model.
+public final class Parameter<Element: TensorNumeric>: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    _ kind: DeviceKind, format: TensorFormat, shape: TensorShape, initBound: Float = 0,
+    name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_parameter(
+        toCTensorParams(kind, dataType: Element.dataType, format: format, shape: shape), initBound,
+        name))
+  }
+
+  public init(
+    _ kind: DeviceKind, _ dimensionFormat: TensorShapeFormat, initBound: Float = 0,
+    name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_parameter(
+        toCTensorParams(
+          kind, dataType: Element.dataType, format: dimensionFormat.format,
+          shape: dimensionFormat.shape), initBound, name))
+  }
+}
+
+extension Parameter: ModelIOConvertible {
+  public var io: Model.IO {
+    return apply([])
+  }
+}
+
+/// Scalar model.
+public final class Scalar: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init<Element: TensorNumeric>(
+    _ kind: DeviceKind, format: TensorFormat, value: Float, of: Element.Type = Element.self,
+    name: String = ""
+  ) {
+    super.init(ccv_cnnp_scalar(kind.toC, format.toC, Element.dataType.toC, value, name))
+  }
+
+  init(value: Float, name: String = "") {
+    super.init(ccv_cnnp_scalar(0, 0, 0, value, name))
   }
 }

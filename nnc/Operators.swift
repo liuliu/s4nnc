@@ -7,7 +7,7 @@ public func .+ <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.sum(left, right)
 }
 
-public func .+ (left: Model.IO, right: Model.IO) -> Model.IO {
+public func .+ (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
   return Sum()(left, right)
 }
 
@@ -21,7 +21,7 @@ public func .* <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.mul(left: left, right: right)
 }
 
-public func .* (left: Model.IO, right: Model.IO) -> Model.IO {
+public func .* (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
   return Mul()(left, right)
 }
 
@@ -30,8 +30,16 @@ public func + <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.add(left: left, right: right)
 }
 
-public func + (left: Model.IO, right: Model.IO) -> Model.IO {
+public func + (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
   return Add()(left, right)
+}
+
+public func + (left: Float, right: ModelIOConvertible) -> Model.IO {
+  return Add()(Scalar(value: left)(right), right)
+}
+
+public func + (left: ModelIOConvertible, right: Float) -> Model.IO {
+  return Add()(left, Scalar(value: right)(left))
 }
 
 // Broadcast element-wise subtraction.
@@ -39,8 +47,16 @@ public func - <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.add(left: left, right: right, rightScalar: -1)
 }
 
-public func - (left: Model.IO, right: Model.IO) -> Model.IO {
+public func - (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
   return Add(rightScalar: -1)(left, right)
+}
+
+public func - (left: Float, right: ModelIOConvertible) -> Model.IO {
+  return Add(rightScalar: -1)(Scalar(value: left)(right), right)
+}
+
+public func - (left: ModelIOConvertible, right: Float) -> Model.IO {
+  return Add()(left, Scalar(value: -right)(left))
 }
 
 // Matrix multiplication
@@ -48,7 +64,7 @@ public func * <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.matmul(left: left, right: right)
 }
 
-public func * (left: Model.IO, right: Model.IO) -> Model.IO {
+public func * (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
   return Matmul()(left, right)
 }
 
@@ -78,11 +94,11 @@ public func * <T: DynamicGraph.TensorGroup>(left: T, right: Float) -> T {
   return Functional.scalmul(left: right, right: left)
 }
 
-public func * (left: Float, right: Model.IO) -> Model.IO {
+public func * (left: Float, right: ModelIOConvertible) -> Model.IO {
   return Scalmul(left)(right)
 }
 
-public func * (left: Model.IO, right: Float) -> Model.IO {
+public func * (left: ModelIOConvertible, right: Float) -> Model.IO {
   return Scalmul(right)(left)
 }
 
@@ -90,6 +106,6 @@ public prefix func - <T: DynamicGraph.TensorGroup>(tensor: T) -> T {
   return Functional.scalmul(left: -1, right: tensor)
 }
 
-public prefix func - (tensor: Model.IO) -> Model.IO {
+public prefix func - (tensor: ModelIOConvertible) -> Model.IO {
   return Scalmul(-1)(tensor)
 }

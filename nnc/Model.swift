@@ -1,5 +1,9 @@
 import C_nnc
 
+public protocol ModelIOConvertible {
+  var io: Model.IO { get }
+}
+
 /// A model is a base class for stateful operations on a dynamic graph. It can be
 /// use to construct computations statically, thus, more efficient.
 public class Model {
@@ -8,8 +12,8 @@ public class Model {
    * A IO class represent the abstract input / output for a model. It can correspond
    * to one or more tensors when the model is materialized.
    */
-  public class IO {
-
+  public class IO: ModelIOConvertible {
+    public var io: IO { self }
     @usableFromInline
     let _io: ccv_cnnp_model_io_t
     let model: Model?
@@ -57,19 +61,20 @@ public class Model {
   }
 
   @inlinable
-  func apply(_ inputs: [IO]) -> IO {
-    let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
+  func apply(_ inputs: [ModelIOConvertible]) -> IO {
+    let inputIOs = inputs.map { $0.io }
+    let _inputs: [ccv_cnnp_model_io_t?] = inputIOs.map { $0._io }
     let _io = ccv_cnnp_model_apply(cModel, _inputs, Int32(inputs.count))!
-    return IO(_io, model: self, inputs: inputs)
+    return IO(_io, model: self, inputs: inputIOs)
   }
 
   @inlinable
-  public func callAsFunction(_ inputs: IO...) -> IO {
+  public func callAsFunction(_ inputs: ModelIOConvertible...) -> IO {
     return apply(inputs)
   }
 
   @inlinable
-  public func callAsFunction(_ inputs: [IO]) -> IO {
+  public func callAsFunction(_ inputs: [ModelIOConvertible]) -> IO {
     return apply(inputs)
   }
 

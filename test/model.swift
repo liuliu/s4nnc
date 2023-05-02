@@ -65,9 +65,83 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(tv3.rawValue[0], 0, accuracy: 1e-5)
   }
 
+  func testModelWithScalar() throws {
+    let dynamicGraph = DynamicGraph()
+
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+
+    func MulAdd1() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 .* i1
+      let i3 = i2 + 1.2
+      return Model([i0, i1], [i3])
+    }
+    let muladd1 = MulAdd1()
+    let tv31 = DynamicGraph.Tensor<Float32>(muladd1(inputs: tv0, tv1)[0])
+    XCTAssertEqual(tv31.rawValue[0], 1.1 * 2.2 + 1.2, accuracy: 1e-5)
+
+    func MulAdd2() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 .* i1
+      let i3 = i2 - 1.2
+      return Model([i0, i1], [i3])
+    }
+    let muladd2 = MulAdd2()
+    let tv32 = DynamicGraph.Tensor<Float32>(muladd2(inputs: tv0, tv1)[0])
+    XCTAssertEqual(tv32.rawValue[0], 1.1 * 2.2 - 1.2, accuracy: 1e-5)
+
+    func MulAdd3() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 .* i1
+      let i3 = 2.2 + i2
+      return Model([i0, i1], [i3])
+    }
+    let muladd3 = MulAdd3()
+    let tv33 = DynamicGraph.Tensor<Float32>(muladd3(inputs: tv0, tv1)[0])
+    XCTAssertEqual(tv33.rawValue[0], 1.1 * 2.2 + 2.2, accuracy: 1e-5)
+
+    func MulAdd4() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 .* i1
+      let i3 = 1.2 - i2
+      return Model([i0, i1], [i3])
+    }
+    let muladd4 = MulAdd4()
+    let tv34 = DynamicGraph.Tensor<Float32>(muladd4(inputs: tv0, tv1)[0])
+    XCTAssertEqual(tv34.rawValue[0], 1.2 - 1.1 * 2.2, accuracy: 1e-5)
+  }
+
+  func testModelWithParameter() throws {
+    let dynamicGraph = DynamicGraph()
+
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+
+    func MulAdd() -> (Model, Model) {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 .* i1
+      let param = Parameter<Float32>(.CPU, .C(1))
+      let i3 = i2 + param
+      return (param, Model([i0, i1], [i3]))
+    }
+    let (param, muladd) = MulAdd()
+    muladd.compile(inputs: tv0, tv1)
+    param.weight.copy(from: Tensor<Float32>([3.1], .CPU, .C(1)))
+    let tv3 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv0, tv1)[0])
+    XCTAssertEqual(tv3.rawValue[0], 1.1 * 2.2 + 3.1, accuracy: 1e-5)
+  }
+
   static let allTests = [
     ("testModel", testModel),
     ("testModelBuilder", testModelBuilder),
     ("testSequential", testSequential),
+    ("testModelWithScalar", testModelWithScalar),
+    ("testModelWithParameter", testModelWithParameter),
   ]
 }
