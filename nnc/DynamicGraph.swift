@@ -282,6 +282,13 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
+  /// Create a synchronization point with the underlying stream context.
+  public func joined() {
+    streamContext?.joined()
+  }
+}
+
+extension DynamicGraph {
   /// Set whether to enable memory efficient mode or not.
   public static var memoryEfficient: Bool = false {
     didSet {
