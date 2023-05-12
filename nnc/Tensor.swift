@@ -387,6 +387,11 @@ extension Int32: TensorNumeric {
   extension Float16: TensorNumeric {
     public static var dataType: DataType { .Float16 }
   }
+#else
+  private typealias Float16 = UInt16
+  extension Float16: TensorNumeric {
+    public static var dataType: DataType { .Float16 }
+  }
 #endif
 
 extension UInt8: TensorNumeric {
@@ -1368,7 +1373,7 @@ extension AnyTensorStorage {
       case .Int32:
         return Tensor<Int32>(self)
       case .Float16:
-        fatalError()
+        return Tensor<Float16>(self)
       case .UInt8:
         return Tensor<UInt8>(self)
       }
@@ -1385,7 +1390,7 @@ extension AnyTensorStorage {
       case .Int32:
         return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
       case .Float16:
-        fatalError()
+        return unsafeBitCast(Tensor<Float16>(self), to: Element.self)
       case .UInt8:
         return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
       }
