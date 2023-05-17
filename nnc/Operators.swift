@@ -34,7 +34,7 @@ public func + <Element: TensorNumeric>(left: Float, right: DynamicGraph.Tensor<E
   -> DynamicGraph.Tensor<Element>
 {
   let graph = right.graph
-  let leftConstant = graph.constant(right.kind, .C(1), of: Element.self)
+  let leftConstant = graph.constant(right.kind, format: right.format, shape: [1], of: Element.self)
   leftConstant.full(left)
   return Functional.add(left: leftConstant, right: right)
 }
@@ -43,7 +43,7 @@ public func + <Element: TensorNumeric>(left: DynamicGraph.Tensor<Element>, right
   -> DynamicGraph.Tensor<Element>
 {
   let graph = left.graph
-  let rightConstant = graph.constant(left.kind, .C(1), of: Element.self)
+  let rightConstant = graph.constant(left.kind, format: left.format, shape: [1], of: Element.self)
   rightConstant.full(right)
   return Functional.add(left: left, right: rightConstant)
 }
@@ -54,7 +54,7 @@ public func + <Element: TensorNumeric>(
   let graph = right.graph
   let leftConstant = DynamicGraph.Group(
     right.map {
-      graph.constant($0.kind, .C(1), of: Element.self)
+      graph.constant($0.kind, format: $0.format, shape: [1], of: Element.self)
     })
   leftConstant.full(left)
   return Functional.add(left: leftConstant, right: right)
@@ -66,7 +66,7 @@ public func + <Element: TensorNumeric>(
   let graph = left.graph
   let rightConstant = DynamicGraph.Group(
     left.map {
-      graph.constant($0.kind, .C(1), of: Element.self)
+      graph.constant($0.kind, format: $0.format, shape: [1], of: Element.self)
     })
   rightConstant.full(right)
   return Functional.add(left: left, right: rightConstant)
@@ -93,7 +93,7 @@ public func - <Element: TensorNumeric>(left: Float, right: DynamicGraph.Tensor<E
   -> DynamicGraph.Tensor<Element>
 {
   let graph = right.graph
-  let leftConstant = graph.constant(right.kind, .C(1), of: Element.self)
+  let leftConstant = graph.constant(right.kind, format: right.format, shape: [1], of: Element.self)
   leftConstant.full(left)
   return Functional.add(left: leftConstant, right: right, rightScalar: -1)
 }
@@ -102,7 +102,7 @@ public func - <Element: TensorNumeric>(left: DynamicGraph.Tensor<Element>, right
   -> DynamicGraph.Tensor<Element>
 {
   let graph = left.graph
-  let rightConstant = graph.constant(left.kind, .C(1), of: Element.self)
+  let rightConstant = graph.constant(left.kind, format: left.format, shape: [1], of: Element.self)
   rightConstant.full(-right)
   return Functional.add(left: left, right: rightConstant)
 }
@@ -113,7 +113,7 @@ public func - <Element: TensorNumeric>(
   let graph = right.graph
   let leftConstant = DynamicGraph.Group(
     right.map {
-      graph.constant($0.kind, .C(1), of: Element.self)
+      graph.constant($0.kind, format: $0.format, shape: [1], of: Element.self)
     })
   leftConstant.full(left)
   return Functional.add(left: leftConstant, right: right, rightScalar: -1)
@@ -125,7 +125,7 @@ public func - <Element: TensorNumeric>(
   let graph = left.graph
   let rightConstant = DynamicGraph.Group(
     left.map {
-      graph.constant($0.kind, .C(1), of: Element.self)
+      graph.constant($0.kind, format: $0.format, shape: [1], of: Element.self)
     })
   rightConstant.full(-right)
   return Functional.add(left: left, right: rightConstant)
