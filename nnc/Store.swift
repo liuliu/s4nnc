@@ -418,6 +418,40 @@ extension DynamicGraph {
     }
 
     /**
+     * Retrieve codec for a particular key. It must be a tensor to make sense of this.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular tensor.
+     * - Returns the codec, if the tensor doesn't exist, return nil.
+     */
+    public func codec(for key: String) -> Codec? {
+      var selectCodec: OpaquePointer? = nil
+      sqlite3_prepare_v2(
+        OpaquePointer(store.sqlite), "SELECT type FROM tensors WHERE name=?1", -1, &selectCodec, nil
+      )
+      let SQLITE_TRANSIENT = unsafeBitCast(
+        OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+      sqlite3_bind_text(selectCodec, 1, key, -1, SQLITE_TRANSIENT)
+      let codec: Codec?
+      if sqlite3_step(selectCodec) == SQLITE_ROW {
+        let type = sqlite3_column_int64(selectCodec, 0)
+        let identifier = (type >> 32) & 0xffff_ffff
+        switch identifier {
+        case 0x217:
+          codec = .zip
+        case 0xf7217:
+          codec = .fpzip
+        default:
+          codec = []
+        }
+      } else {
+        codec = nil
+      }
+      sqlite3_finalize(selectCodec)
+      return codec
+    }
+
+    /**
      * Read a tensor from the store into tensor variable from dynamic graph.
      *
      * - Parameters:

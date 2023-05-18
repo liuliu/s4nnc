@@ -268,6 +268,34 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testWriteTensorAndReadBackCodec() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    tensor[0] = 2.2
+    tensor[1] = 1.1
+    var intTensor: Tensor<Int32> = Tensor(.CPU, .C(2048))
+    for i in 0..<2048 {
+      intTensor[i] = Int32(i)
+    }
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    var readoutCodecNil: DynamicGraph.Store.Codec? = nil
+    var readoutCodecB: DynamicGraph.Store.Codec? = nil
+    var readoutCodecC: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmpcodec.db") { store in
+      store.write("a", tensor: tensor, codec: .fpzip)
+      readoutCodec = store.codec(for: "a")
+      readoutCodecNil = store.codec(for: "d")
+      store.write("b", tensor: intTensor, codec: .zip)
+      readoutCodecB = store.codec(for: "b")
+      store.write("c", tensor: intTensor)
+      readoutCodecC = store.codec(for: "c")
+    }
+    XCTAssertEqual(readoutCodec!, .fpzip)
+    XCTAssertNil(readoutCodecNil)
+    XCTAssertEqual(readoutCodecB!, .zip)
+    XCTAssertEqual(readoutCodecC!, [])
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -289,5 +317,6 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithFPZIPDouble", testWriteTensorAndReadBackWithFPZIPDouble),
     ("testWriteTensorAndReadBackWithZIP", testWriteTensorAndReadBackWithZIP),
     ("testWriteTensorAndReadBackPartialWithZIP", testWriteTensorAndReadBackPartialWithZIP),
+    ("testWriteTensorAndReadBackCodec", testWriteTensorAndReadBackCodec),
   ]
 }
