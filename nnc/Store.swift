@@ -180,13 +180,13 @@ func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
   return shifted
 }
 
-  // The ezm8 format consists of:
+  // The ezm7 format consists of:
   // |-- zipped exponents size (Int32) --|-- zipped exponents --|-- float without exponent --|
   // Each float without exponent is an 8-bit chunk of data:
   // |-- sign bit --|-- truncated mantissa (7 bits) --|
   // By putting the exponent into its own byte, it seems to make it much easier for zip to compress
   // it well. As for the sign bit and mantissa, they have so far been uncompressible
-  private let ezm8Encode:
+  private let ezm7Encode:
     @convention(c) (
       UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
       UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
@@ -211,7 +211,11 @@ func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
         let exponent = UInt8((floatBytes >> 10) & ((1 << 5) - 1))
         let signBit = UInt8(floatBytes >> 15)
         let mantissa = floatBytes & ((1 << 10) - 1)
-        let truncatedMantissa = UInt8(truncatedBits(mantissa, bitCount: 3))
+        var truncatedMantissa = UInt8(truncatedBits(mantissa, bitCount: 3))
+        if (truncatedMantissa & (1 << 7)) != 0 {
+          // If rounding would cause overflow, just round down instead
+          truncatedMantissa = UInt8(mantissa >> 3)
+        }
         exponents[i] = UInt8(exponent)
         floatsWithoutExp[i] = (signBit << 7) | truncatedMantissa
       }
@@ -232,7 +236,7 @@ func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
       return 1
     }
 
-private let ezm8Decode:
+private let ezm7Decode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
@@ -409,7 +413,7 @@ private let fpzipAndZipDecode:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
         decodedSize)
     case 0x511:
-      return ezm8Decode(
+      return ezm7Decode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
         decodedSize)
     default:
@@ -455,7 +459,7 @@ extension DynamicGraph {
       }
       public static let fpzip = Codec(rawValue: 1 << 0)
       public static let zip = Codec(rawValue: 1 << 1)
-      public static let ezm8 = Codec(rawValue: 1 << 2)
+      public static let ezm7 = Codec(rawValue: 1 << 2)
       var encode:
         (
           @convention(c) (
@@ -464,10 +468,10 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.ezm8) {
-          // .ezm8 is not supported with other formats
-          guard self == .ezm8 else { return nil } // TODO: do we want to handle this error differently?
-          return ezm8Encode
+        if contains(.ezm7) {
+          // .ezm7 is not supported with other formats
+          guard self == .ezm7 else { return nil } // TODO: do we want to handle this error differently?
+          return ezm7Encode
         } else if contains(.fpzip) && contains(.zip) {
           return fpzipAndZipEncode
         } else if contains(.fpzip) {
@@ -485,10 +489,10 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.ezm8) {
-          // .ezm8 is not supported with other formats
-          guard self == .ezm8 else { return nil } // TODO: do we want to handle this error differently?
-          return ezm8Decode
+        if contains(.ezm7) {
+          // .ezm7 is not supported with other formats
+          guard self == .ezm7 else { return nil } // TODO: do we want to handle this error differently?
+          return ezm7Decode
         } else if contains(.fpzip) && contains(.zip) {
           return fpzipAndZipDecode
         } else if contains(.fpzip) {
@@ -547,7 +551,7 @@ extension DynamicGraph {
         case 0xf7217:
           codec = .fpzip
         case 0x511:
-          codec = .ezm8
+          codec = .ezm7
         default:
           codec = []
         }
