@@ -861,4 +861,25 @@ extension DynamicGraph {
     return true
   }
 
+  public func transcodeFromEZM7IfNecessary(path originalPath: String, codec: Store.Codec) {
+    let transcodedPath = "\(NSTemporaryDirectory())/\(NSUUID().uuidString)"
+    // In case of error, ensure transcoded temp file is deleted
+    defer { try? FileManager.default.removeItem(atPath: transcodedPath) }
+    var needsTranscoding = false
+    openStore(originalPath, flags: .readOnly) { store in
+      if let firstKey = store.keys.first, store.codec(for: firstKey) != codec {
+        needsTranscoding = true
+      }
+    }
+    guard needsTranscoding else { return }
+    openStore(originalPath, flags: .readOnly) { originalStore in
+      openStore(transcodedPath) { transcodedStore in
+        for key in originalStore.keys {
+          guard let tensor = originalStore.read(key, codec: [.ezm7]) else { continue }
+          transcodedStore.write(key, tensor: tensor)
+        }
+      }
+    }
+    try? FileManager.default.moveItem(atPath: transcodedPath, toPath: originalPath)
+  }
 }
