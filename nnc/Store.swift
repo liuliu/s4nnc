@@ -3,7 +3,7 @@ import C_nnc
 import C_zlib
 import SQLite3
 
-private let fpzipEncode: 
+private let fpzipEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
@@ -16,7 +16,7 @@ private let fpzipEncode:
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
     guard let fpz = fpzip_write_to_buffer(encoded, encodedSize[0]) else { return 0 }
-    defer { fpzip_write_close(fpz) } 
+    defer { fpzip_write_close(fpz) }
     fpz.pointee.type = Int32(FPZIP_TYPE_FLOAT)
     switch dataType {
     case Int32(CCV_64F):
@@ -220,10 +220,12 @@ func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
       }
       guard encodedSize[0] > 4 else { return 0 }
       var zippedDataSize = encodedSize[0] - 4
-      guard zip(data: exponents, dataSize: floatCount, zippedData: encoded.advanced(by: 4), zippedDataSize: &zippedDataSize) else { return 0 }
+      guard zip(data: exponents,
+                dataSize: floatCount,
+                zippedData: encoded.advanced(by: 4),
+                zippedDataSize: &zippedDataSize) else { return 0 }
       encoded.assumingMemoryBound(to: Int32.self)[0] = Int32(zippedDataSize)
       guard 4 + zippedDataSize + floatCount <= encodedSize[0] else { return 0 }
-      // TODO: what is the encodedSize set to previosuly?
       memcpy(encoded.advanced(by: 4 + zippedDataSize), floatsWithoutExp, floatCount)
       identifier?[0] = 0x511
       encodedSize[0] =
@@ -245,13 +247,15 @@ private let ezm8Decode:
     guard let data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
-    // TODO: is decodedSize correct?
     var floatCount = decodedSize[0] / MemoryLayout<Float16>.size
     let exponentZipSize = Int(data.assumingMemoryBound(to: Int32.self)[0])
     let exponentZipData = data.advanced(by: MemoryLayout<Int32>.size)
     let exponentBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
     defer { exponentBuffer.deallocate() }
-    guard unzip(data: exponentZipData, dataSize: exponentZipSize, unzippedData: exponentBuffer, unzippedDataSize: &floatCount) else { return 0 }
+    guard unzip(data: exponentZipData,
+                dataSize: exponentZipSize,
+                unzippedData: exponentBuffer,
+                unzippedDataSize: &floatCount) else { return 0 }
     let floatsWithoutExp = exponentZipData.advanced(by: exponentZipSize).assumingMemoryBound(to: UInt8.self)
     let decodedAsInts = decoded.assumingMemoryBound(to: UInt16.self)
     for i in 0..<floatCount {
