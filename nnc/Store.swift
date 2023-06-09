@@ -167,7 +167,7 @@ private let zipDecode:
     else { return 0 }
     var unzippedDataSize = decodedSize[0]
     guard unzip(data: data, dataSize: dataSize, unzippedData: decoded, unzippedDataSize: &unzippedDataSize) else { return 0 }
-    decodedSize[0] = decodedSize[0] - unzippedDataSize
+    decodedSize[0] = unzippedDataSize
     return 1
   }
 
