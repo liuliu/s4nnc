@@ -305,7 +305,7 @@ private let ezm7Decode:
 
 #else
 
-  private func zip(data: UnsafeRawPointer, dataSize: Int, zippedData: UnsafeMutablePointer<Int>, zippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
+  private func zip(data: UnsafeRawPointer, dataSize: Int, zippedData: UnsafeMutableRawPointer, zippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
       var stream = z_stream()
       let streamSize = Int32(MemoryLayout<z_stream>.size)
       let result = deflateInit2_(
