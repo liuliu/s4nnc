@@ -215,7 +215,7 @@ func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
         let signBit = UInt8(floatBytes >> 15)
         let mantissa = floatBytes & ((1 << 10) - 1)
         let truncatedMantissa = UInt8(truncatedBits(mantissa, bitCount: 3))
-        exponents[i] = exponent as UInt8
+        exponents[i] = UInt8(exponent)
         floatsWithoutExp[i] = (signBit << 7) | truncatedMantissa
       }
       guard encodedSize[0] > 4 else { return 0 }
