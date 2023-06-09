@@ -133,85 +133,193 @@ private let fpzipDecode:
     return 1
   }
 
+private let zipEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+    identifier
+    in
+    guard let data = data, let dimensions = dimensions, let encoded = encoded,
+          let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    guard zip(data: data, dataSize: dataSize, zippedData: encoded, zippedDataSize: encodedSize) else {
+      return 0
+    }
+    identifier?[0] = 0x217
+    return 1
+  }
+
+private let zipDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+    decodedSize
+    in
+    guard identifier == 0x217 else { return 0 }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    guard unzip(data: data, dataSize: dataSize, unzippedData: decoded, unzippedDataSize: decodedSize) else { return 0 }
+    return 1
+  }
+
+
+func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
+  guard bitCount > 0 else { return number }
+  let mask: UInt16 = (1 << bitCount) - 1
+  let discard = number & mask
+  let threshold: UInt16 = 1 << (bitCount - 1)
+  var shifted = number >> bitCount
+  if discard > threshold || (discard == threshold && (shifted & 1) == 1) {
+    shifted += 1 // Round to even
+  }
+  return shifted
+}
+
+  // The ezm7 format consists of:
+  // |-- zipped exponents size (Int32) --|-- zipped exponents --|-- float without exponent --|
+  // Each float without exponent is an 8-bit chunk of data:
+  // |-- sign bit --|-- truncated mantissa (7 bits) --|
+  // By putting the exponent into its own byte, it seems to make it much easier for zip to compress
+  // it well. As for the sign bit and mantissa, they have so far been uncompressible
+  private let ezm7Encode:
+    @convention(c) (
+      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    ) -> Int32 = {
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier
+      in
+      guard let data = data, let dimensions = dimensions, let encoded = encoded,
+        let encodedSize = encodedSize, dimensionCount > 0
+      else { return 0 }
+      guard dataType == Int32(CCV_16F) else { return 0 }
+      let floatCount = dataSize / MemoryLayout<Float16>.size
+      let floatBytesBuffer = data.assumingMemoryBound(to: UInt16.self)
+      let floatsWithoutExp = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
+      let exponents = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
+      defer {
+        exponents.deallocate()
+        floatsWithoutExp.deallocate()
+      }
+      for i in 0..<floatCount {
+        let floatBytes = floatBytesBuffer[i]
+        let exponent = UInt8((floatBytes >> 10) & ((1 << 5) - 1))
+        let signBit = UInt8(floatBytes >> 15)
+        let mantissa = floatBytes & ((1 << 10) - 1)
+        var truncatedMantissa = UInt8(truncatedBits(mantissa, bitCount: 3))
+        if (truncatedMantissa & (1 << 7)) != 0 {
+          // If rounding would cause overflow, just round down instead
+          truncatedMantissa = UInt8(mantissa >> 3)
+        }
+        exponents[i] = UInt8(exponent)
+        floatsWithoutExp[i] = (signBit << 7) | truncatedMantissa
+      }
+      guard encodedSize[0] > 4 else { return 0 }
+      var zippedDataSize = encodedSize[0] - 4
+      guard zip(data: exponents,
+                dataSize: floatCount,
+                zippedData: encoded.advanced(by: 4),
+                zippedDataSize: &zippedDataSize) else { return 0 }
+      encoded.assumingMemoryBound(to: Int32.self)[0] = Int32(zippedDataSize)
+      guard 4 + zippedDataSize + floatCount <= encodedSize[0] else { return 0 }
+      memcpy(encoded.advanced(by: 4 + zippedDataSize), floatsWithoutExp, floatCount)
+      identifier?[0] = 0x511
+      encodedSize[0] =
+        4 /* for compressed exponents size */
+        + zippedDataSize /* exponents */
+        + floatCount /* floats without exponent */
+      return 1
+    }
+
+private let ezm7Decode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    guard dataType == Int32(CCV_16F) else { return 0 }
+    guard identifier == 0x511 else { return 0 }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    let floatCount = decodedSize[0] / MemoryLayout<Float16>.size
+    let exponentZipSize = Int(data.assumingMemoryBound(to: Int32.self)[0])
+    let exponentZipData = data.advanced(by: MemoryLayout<Int32>.size)
+    let exponentBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
+    defer { exponentBuffer.deallocate() }
+    var unzippedDataSize = floatCount
+    guard unzip(data: exponentZipData,
+                dataSize: exponentZipSize,
+                unzippedData: exponentBuffer,
+                unzippedDataSize: &unzippedDataSize) else { return 0 }
+    let floatsWithoutExp = exponentZipData.advanced(by: exponentZipSize).assumingMemoryBound(to: UInt8.self)
+    let decodedAsInts = decoded.assumingMemoryBound(to: UInt16.self)
+    for i in 0..<floatCount {
+      let floatWithoutExp = UInt16(floatsWithoutExp[i])
+      let signBit = floatWithoutExp >> 7
+      let mantissa = (floatWithoutExp & 0x7f) << 3
+      let exponent = UInt16(exponentBuffer[i])
+      decodedAsInts[i] = (signBit << 15) | (exponent << 10) | mantissa
+    }
+
+    return 1
+  }
+
 #if canImport(Compression)
   import Compression
 
-  private let zipEncode:
-    @convention(c) (
-      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
-    ) -> Int32 = {
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
-      identifier
-      in
-      guard let data = data, let dimensions = dimensions, let encoded = encoded,
-        let encodedSize = encodedSize, dimensionCount > 0
-      else { return 0 }
-      let outputSize = compression_encode_buffer(
-        encoded.assumingMemoryBound(to: UInt8.self), encodedSize[0],
-        data.assumingMemoryBound(to: UInt8.self), dataSize, nil, COMPRESSION_ZLIB)
-      guard outputSize > 0 else { return 0 }
-      identifier?[0] = 0x217
-      encodedSize[0] = outputSize
-      return 1
-    }
+  func zip(data: UnsafeRawPointer, dataSize: Int, zippedData: UnsafeMutableRawPointer, zippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
+    let outputSize = compression_encode_buffer(
+      zippedData.assumingMemoryBound(to: UInt8.self), zippedDataSize[0],
+      data.assumingMemoryBound(to: UInt8.self), dataSize, nil, COMPRESSION_ZLIB)
+    guard outputSize > 0 else { return false }
+    zippedDataSize[0] = outputSize
+    return true
+  }
 
-  private let zipDecode:
-    @convention(c) (
-      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-    ) -> Int32 = {
-      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
-      decodedSize
-      in
-      guard identifier == 0x217 else { return 0 }
-      guard let data = data, let dimensions = dimensions, let decoded = decoded,
-        let decodedSize = decodedSize, dimensionCount > 0
-      else { return 0 }
-      let nextIn = data.assumingMemoryBound(to: UInt8.self)
-      let nextOut = decoded.assumingMemoryBound(to: UInt8.self)
-      var stream = compression_stream(
-        dst_ptr: nextOut, dst_size: decodedSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
-      var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
-      guard status != COMPRESSION_STATUS_ERROR else { return 0 }
-      defer { compression_stream_destroy(&stream) }
-      stream.src_ptr = nextIn
-      stream.src_size = dataSize
-      stream.dst_ptr = nextOut
-      stream.dst_size = decodedSize[0]
-      repeat {
-        status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
-        guard status != COMPRESSION_STATUS_ERROR else { return 0 }
-      } while status == COMPRESSION_STATUS_OK && stream.dst_size > 0
-      decodedSize[0] = decodedSize[0] - stream.dst_size
-      return 1
-    }
+  private func unzip(data: UnsafeRawPointer, dataSize: Int, unzippedData: UnsafeMutableRawPointer, unzippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
+    let nextIn = data.assumingMemoryBound(to: UInt8.self)
+    let nextOut = unzippedData.assumingMemoryBound(to: UInt8.self)
+    var stream = compression_stream(
+      dst_ptr: nextOut, dst_size: unzippedDataSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
+    var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
+    guard status != COMPRESSION_STATUS_ERROR else { return false }
+    defer { compression_stream_destroy(&stream) }
+    stream.src_ptr = nextIn
+    stream.src_size = dataSize
+    stream.dst_ptr = nextOut
+    stream.dst_size = unzippedDataSize[0]
+    repeat {
+      status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+      guard status != COMPRESSION_STATUS_ERROR else { return false }
+    } while status == COMPRESSION_STATUS_OK && stream.dst_size > 0
+    unzippedDataSize[0] = unzippedDataSize[0] - stream.dst_size
+    return true
+  }
+
 #else
-  private let zipEncode:
-    @convention(c) (
-      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
-    ) -> Int32 = {
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
-      identifier
-      in
-      guard let data = data, let dimensions = dimensions, let encoded = encoded,
-        let encodedSize = encodedSize, dimensionCount > 0
-      else { return 0 }
+
+  private func zip(data: UnsafeRawPointer, dataSize: Int, zippedData: UnsafeMutableRawPointer, zippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
       var stream = z_stream()
       let streamSize = Int32(MemoryLayout<z_stream>.size)
       let result = deflateInit2_(
         &stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 9, Z_DEFAULT_STRATEGY, ZLIB_VERSION,
         streamSize)
       defer { deflateEnd(&stream) }
-      guard result == Z_OK else { return 0 }
+      guard result == Z_OK else { return false }
       let chunkSize = 0x8000_0000
       var availableSize = dataSize
       var outputSize = 0
-      var availableOutputSize = encodedSize[0]
+      var availableOutputSize = zippedDataSize[0]
       var flush = Z_NO_FLUSH
       var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
-      var nextOut = encoded.assumingMemoryBound(to: UInt8.self)
+      var nextOut = zippedData.assumingMemoryBound(to: UInt8.self)
       repeat {
         let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
         stream.next_in = nextIn
@@ -221,7 +329,7 @@ private let fpzipDecode:
           stream.next_out = nextOut
           let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
           stream.avail_out = UInt32(bufferOutputSize)
-          guard deflate(&stream, flush) >= Z_OK else { return 0 }
+          guard deflate(&stream, flush) >= Z_OK else { return false }
           let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
           nextOut = nextOut.advanced(by: thisOutputSize)
           outputSize += thisOutputSize
@@ -230,56 +338,44 @@ private let fpzipDecode:
         nextIn = nextIn.advanced(by: bufferInputSize)
         availableSize -= bufferInputSize
       } while flush != Z_FINISH
-      identifier?[0] = 0x217
-      encodedSize[0] = outputSize
-      return 1
+      zippedDataSize[0] = outputSize
+      return true
     }
 
-  private let zipDecode:
-    @convention(c) (
-      UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-      UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-    ) -> Int32 = {
-      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
-      decodedSize
-      in
-      guard identifier == 0x217 else { return 0 }
-      guard let data = data, let dimensions = dimensions, let decoded = decoded,
-        let decodedSize = decodedSize, dimensionCount > 0
-      else { return 0 }
-      var stream = z_stream()
-      let streamSize = Int32(MemoryLayout<z_stream>.size)
-      var result = inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, streamSize)
-      defer { inflateEnd(&stream) }
-      guard result == Z_OK else { return 0 }
-      let chunkSize = 0x8000_0000
-      var availableSize = dataSize
-      var outputSize = 0
-      var availableOutputSize = decodedSize[0]
-      var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
-      var nextOut = decoded.assumingMemoryBound(to: UInt8.self)
+  private func unzip(data: UnsafeRawPointer, dataSize: Int, unzippedData: UnsafeMutableRawPointer, unzippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
+    var stream = z_stream()
+    let streamSize = Int32(MemoryLayout<z_stream>.size)
+    var result = inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, streamSize)
+    defer { inflateEnd(&stream) }
+    guard result == Z_OK else { return false }
+    let chunkSize = 0x8000_0000
+    var availableSize = dataSize
+    var outputSize = 0
+    var availableOutputSize = unzippedDataSize[0]
+    var nextIn = UnsafeMutablePointer<UInt8>(mutating: data.assumingMemoryBound(to: UInt8.self))
+    var nextOut = unzippedData.assumingMemoryBound(to: UInt8.self)
+    repeat {
+      let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
+      stream.next_in = nextIn
+      stream.avail_in = UInt32(bufferInputSize)
       repeat {
-        let bufferInputSize = availableSize > chunkSize ? chunkSize : availableSize
-        stream.next_in = nextIn
-        stream.avail_in = UInt32(bufferInputSize)
-        repeat {
-          stream.next_out = nextOut
-          let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
-          stream.avail_out = UInt32(bufferOutputSize)
-          result = inflate(&stream, Z_NO_FLUSH)
-          guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else {
-            return 0
-          }
-          let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
-          nextOut = nextOut.advanced(by: thisOutputSize)
-          outputSize += thisOutputSize
-          availableOutputSize -= thisOutputSize
-        } while stream.avail_out == 0 && availableOutputSize > 0
-        nextIn = nextIn.advanced(by: bufferInputSize)
-        availableSize -= bufferInputSize
-      } while result != Z_STREAM_END && availableOutputSize > 0
-      return 1
-    }
+        stream.next_out = nextOut
+        let bufferOutputSize = availableOutputSize > chunkSize ? chunkSize : availableOutputSize
+        stream.avail_out = UInt32(bufferOutputSize)
+        result = inflate(&stream, Z_NO_FLUSH)
+        guard result != Z_NEED_DICT && result != Z_DATA_ERROR && result != Z_MEM_ERROR else {
+          return false
+        }
+        let thisOutputSize = bufferOutputSize - Int(stream.avail_out)
+        nextOut = nextOut.advanced(by: thisOutputSize)
+        outputSize += thisOutputSize
+        availableOutputSize -= thisOutputSize
+      } while stream.avail_out == 0 && availableOutputSize > 0
+      nextIn = nextIn.advanced(by: bufferInputSize)
+      availableSize -= bufferInputSize
+    } while result != Z_STREAM_END && availableOutputSize > 0
+    return true
+  }
 #endif
 
 private let fpzipAndZipEncode:
@@ -314,6 +410,10 @@ private let fpzipAndZipDecode:
         decodedSize)
     case 0x217:
       return zipDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        decodedSize)
+    case 0x511:
+      return ezm7Decode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
         decodedSize)
     default:
@@ -359,6 +459,7 @@ extension DynamicGraph {
       }
       public static let fpzip = Codec(rawValue: 1 << 0)
       public static let zip = Codec(rawValue: 1 << 1)
+      public static let ezm7 = Codec(rawValue: 1 << 2)
       var encode:
         (
           @convention(c) (
@@ -367,7 +468,11 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.fpzip) && contains(.zip) {
+        if contains(.ezm7) {
+          // .ezm7 is not supported with other formats
+          guard self == .ezm7 else { return nil } // TODO: do we want to handle this error differently?
+          return ezm7Encode
+        } else if contains(.fpzip) && contains(.zip) {
           return fpzipAndZipEncode
         } else if contains(.fpzip) {
           return fpzipEncode
@@ -384,7 +489,11 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.fpzip) && contains(.zip) {
+        if contains(.ezm7) {
+          // .ezm7 is not supported with other formats
+          guard self == .ezm7 else { return nil } // TODO: do we want to handle this error differently?
+          return ezm7Decode
+        } else if contains(.fpzip) && contains(.zip) {
           return fpzipAndZipDecode
         } else if contains(.fpzip) {
           return fpzipDecode
@@ -441,6 +550,8 @@ extension DynamicGraph {
           codec = .zip
         case 0xf7217:
           codec = .fpzip
+        case 0x511:
+          codec = .ezm7
         default:
           codec = []
         }

@@ -171,10 +171,13 @@ final class StoreTests: XCTestCase {
     tensor[0] = 2.2
     tensor[1] = 1.1
     var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmp.db") { store in
       store.write("a", tensor: tensor, codec: .fpzip)
       readout = store.read("a", codec: .fpzip)
+      readoutCodec = store.codec(for: "a")
     }
+    XCTAssertEqual(readoutCodec!, .fpzip)
     let varf = Tensor<Float32>(readout!)
     XCTAssertEqual(varf[0], 2.2)
     XCTAssertEqual(varf[1], 1.1)
@@ -187,10 +190,13 @@ final class StoreTests: XCTestCase {
       tensor[0] = 2.2
       tensor[1] = 1.1
       var readout: AnyTensor? = nil
+      var readoutCodec: DynamicGraph.Store.Codec? = nil
       graph.openStore("test/tmp.db") { store in
         store.write("a", tensor: tensor, codec: .fpzip)
         readout = store.read("a", codec: .fpzip)
+        readoutCodec = store.codec(for: "a")
       }
+      XCTAssertEqual(readoutCodec!, .fpzip)
       let varf = Tensor<Float16>(readout!)
       XCTAssertEqual(varf[0], tensor[0])
       XCTAssertEqual(varf[1], tensor[1])
@@ -203,10 +209,13 @@ final class StoreTests: XCTestCase {
         tensor[i] = 1.1 * Float16(i)
       }
       var readout: AnyTensor? = nil
+      var readoutCodec: DynamicGraph.Store.Codec? = nil
       graph.openStore("test/tmp.db") { store in
         store.write("a", tensor: tensor, codec: .fpzip)
         readout = store.read("a", codec: .fpzip)
+        readoutCodec = store.codec(for: "a")
       }
+      XCTAssertEqual(readoutCodec!, .fpzip)
       let varf = Tensor<Float16>(readout!)
       for i in 0..<128 {
         XCTAssertEqual(varf[i], tensor[i])
@@ -226,13 +235,55 @@ final class StoreTests: XCTestCase {
     tensor[0] = 2.2
     tensor[1] = 1.1
     var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmp.db") { store in
       store.write("a", tensor: tensor, codec: .fpzip)
       readout = store.read("a", codec: .fpzip)
+      readoutCodec = store.codec(for: "a")
     }
+    XCTAssertEqual(readoutCodec!, .fpzip)
     let varf = Tensor<Double>(readout!)
     XCTAssertEqual(varf[0], 2.2)
     XCTAssertEqual(varf[1], 1.1)
+  }
+
+  func testWriteTensorAndReadBackWithEZM7() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(128))
+    for i in 0..<128 {
+      tensor[i] = 1.1 * Float16(i)
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .ezm7)
+      readout = store.read("a", codec: .ezm7)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .ezm7)
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<128 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1.0)
+    }
+  }
+
+  func testWriteTensorAndReadBackPartialWithEZM7() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(2048))
+    for i in 0..<2048 {
+      tensor[i] = 1.1 * Float16(i)
+    }
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    let varf = graph.variable(.CPU, .C(64), of: Float16.self)
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .ezm7)
+      store.read("a", variable: varf, codec: .ezm7)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .ezm7)
+    for i in 0..<64 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1.0)
+    }
   }
 
   func testWriteTensorAndReadBackWithZIP() throws {
@@ -242,10 +293,13 @@ final class StoreTests: XCTestCase {
       tensor[i] = 1.1 * Float(i)
     }
     var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmp.db") { store in
       store.write("a", tensor: tensor, codec: .zip)
       readout = store.read("a", codec: .zip)
+      readoutCodec = store.codec(for: "a")
     }
+    XCTAssertEqual(readoutCodec!, .zip)
     let varf = Tensor<Float32>(readout!)
     for i in 0..<128 {
       XCTAssertEqual(varf[i], tensor[i])
@@ -259,10 +313,13 @@ final class StoreTests: XCTestCase {
       tensor[i] = Int32(i)
     }
     let varf = graph.variable(.CPU, .C(64), of: Int32.self)
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmp.db") { store in
       store.write("a", tensor: tensor, codec: .zip)
       store.read("a", variable: varf, codec: .zip)
+      readoutCodec = store.codec(for: "a")
     }
+    XCTAssertEqual(readoutCodec!, .zip)
     for i in 0..<64 {
       XCTAssertEqual(varf[i], Int32(i))
     }
@@ -273,6 +330,9 @@ final class StoreTests: XCTestCase {
     var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
     tensor[0] = 2.2
     tensor[1] = 1.1
+    var tensor16: Tensor<Float16> = Tensor(.CPU, .C(2))
+    tensor16[0] = 2.2
+    tensor16[1] = 1.1
     var intTensor: Tensor<Int32> = Tensor(.CPU, .C(2048))
     for i in 0..<2048 {
       intTensor[i] = Int32(i)
@@ -281,19 +341,23 @@ final class StoreTests: XCTestCase {
     var readoutCodecNil: DynamicGraph.Store.Codec? = nil
     var readoutCodecB: DynamicGraph.Store.Codec? = nil
     var readoutCodecC: DynamicGraph.Store.Codec? = nil
+    var readoutCodecD: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmpcodec.db") { store in
       store.write("a", tensor: tensor, codec: .fpzip)
       readoutCodec = store.codec(for: "a")
-      readoutCodecNil = store.codec(for: "d")
+      readoutCodecNil = store.codec(for: "z")
       store.write("b", tensor: intTensor, codec: .zip)
       readoutCodecB = store.codec(for: "b")
       store.write("c", tensor: intTensor)
       readoutCodecC = store.codec(for: "c")
+      store.write("d", tensor: tensor16, codec: .ezm7)
+      readoutCodecD = store.codec(for: "d")
     }
     XCTAssertEqual(readoutCodec!, .fpzip)
     XCTAssertNil(readoutCodecNil)
     XCTAssertEqual(readoutCodecB!, .zip)
     XCTAssertEqual(readoutCodecC!, [])
+    XCTAssertEqual(readoutCodecD!, [.ezm7])
   }
 
   static let allTests = [
