@@ -15,7 +15,7 @@ public protocol DynamicGraph_AnyTensorGroup: DynamicGraph_Any {
     outputs: [DynamicGraph_Any],
     streamContext: StreamContext?)
   static func evaluate(
-    model: OpaquePointer, isTest: Bool, dataParallel: inout Int?, inputs: [DynamicGraph_Any?],
+    model: OpaquePointer, testing: Bool, dataParallel: inout Int?, inputs: [DynamicGraph_Any?],
     outputSize: Int32, streamContext: StreamContext?
   ) -> [AnyTensor]
 }
@@ -99,7 +99,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
   }
 
   public static func evaluate(
-    model: OpaquePointer, isTest: Bool, dataParallel: inout Int?, inputs: [DynamicGraph_Any?],
+    model: OpaquePointer, testing: Bool, dataParallel: inout Int?, inputs: [DynamicGraph_Any?],
     outputSize: Int32, streamContext: StreamContext?
   ) -> [AnyTensor] {
     precondition(inputs.count > 0)
@@ -135,7 +135,7 @@ extension DynamicGraph.AnyTensor: DynamicGraph.AnyTensorGroup {
     let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_evaluate(
-      _graph, model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs, outputSize, nil,
+      _graph, model, testing ? 1 : 0, _inputs, Int32(_inputs.count), _outputs, outputSize, nil,
       _streamContext)
     // Set gradient update to noop. These will be reset when we call Optimizer.step.
     let params = CmdParamsFactory.factory.newParams()
@@ -240,7 +240,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
   }
 
   public static func evaluate(
-    model: OpaquePointer, isTest: Bool, dataParallel: inout Int?, inputs: [DynamicGraph_Any?],
+    model: OpaquePointer, testing: Bool, dataParallel: inout Int?, inputs: [DynamicGraph_Any?],
     outputSize: Int32, streamContext: StreamContext?
   ) -> [AnyTensor] {
     precondition(inputs.count > 0)
@@ -290,7 +290,7 @@ extension DynamicGraph.Group: DynamicGraph.AnyTensorGroup where Element: Dynamic
     let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
     ccv_nnc_dynamic_graph_evaluate(
-      _graph, model, isTest ? 1 : 0, _inputs, Int32(_inputs.count), _outputs,
+      _graph, model, testing ? 1 : 0, _inputs, Int32(_inputs.count), _outputs,
       outputSize * Int32(parallel), nil, _streamContext)
     // Set gradient update to noop. These will be reset when we call Optimizer.step.
     let params = CmdParamsFactory.factory.newParams()
@@ -362,7 +362,7 @@ extension Model {
     let outputSize = ccv_cnnp_model_output_size(cModel)
     graph = inputs.first?.graph
     return T.evaluate(
-      model: cModel, isTest: isTest, dataParallel: &dataParallel, inputs: inputs,
+      model: cModel, testing: testing, dataParallel: &dataParallel, inputs: inputs,
       outputSize: outputSize, streamContext: streamContext)
   }
   public func callAsFunction<T: DynamicGraph.AnyTensorGroup>(
@@ -389,7 +389,7 @@ extension AnyModelBuilder {
     let outputSize = self.outputSize
     model!.graph = inputs.first?.graph
     let outputs = U.evaluate(
-      model: model!.cModel, isTest: isTest, dataParallel: &model!.dataParallel, inputs: inputs,
+      model: model!.cModel, testing: testing, dataParallel: &model!.dataParallel, inputs: inputs,
       outputSize: Int32(outputSize), streamContext: streamContext)
     self.inputs = nil
     self.t = nil

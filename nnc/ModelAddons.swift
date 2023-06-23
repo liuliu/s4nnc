@@ -82,8 +82,10 @@ public final class Dense: Model {
     super.init(model)
   }
 
-  public init(count: Int, noBias: Bool = false, name: String = "") {
-    super.init(ccv_cnnp_dense(Int32(count), noBias ? 1 : 0, name))
+  public init(count: Int, noBias: Bool = false, trainable: Bool? = nil, name: String = "") {
+    super.init(
+      ccv_cnnp_dense(
+        Int32(count), noBias ? 1 : 0, trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -450,8 +452,10 @@ public final class BatchNorm: Model {
     super.init(model)
   }
 
-  public init(momentum: Float, epsilon: Float, name: String = "") {
-    super.init(ccv_cnnp_batch_norm(momentum, epsilon, name))
+  public init(momentum: Float, epsilon: Float, trainable: Bool? = nil, name: String = "") {
+    super.init(
+      ccv_cnnp_batch_norm(
+        momentum, epsilon, trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -468,9 +472,12 @@ public final class LayerNorm: Model {
     super.init(model)
   }
 
-  public init(epsilon: Float, axis: [Int], name: String = "") {
+  public init(epsilon: Float, axis: [Int], trainable: Bool? = nil, name: String = "") {
     let axis32: [Int32] = axis.map { Int32($0) }
-    super.init(ccv_cnnp_layer_norm(epsilon, axis32, Int32(axis.count), name))
+    super.init(
+      ccv_cnnp_layer_norm(
+        epsilon, axis32, Int32(axis.count), trainable == true ? 1 : (trainable == false ? 0 : -1),
+        name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -487,11 +494,14 @@ public final class GroupNorm: Model {
     super.init(model)
   }
 
-  public init(axis: Int, groups: Int, epsilon: Float, reduce: [Int], name: String = "") {
+  public init(
+    axis: Int, groups: Int, epsilon: Float, reduce: [Int], trainable: Bool? = nil, name: String = ""
+  ) {
     let axis32: [Int32] = reduce.map { Int32($0) }
     super.init(
       ccv_cnnp_group_norm(
-        Int32(axis), Int32(groups), epsilon, axis32, Int32(axis32.count), name))
+        Int32(axis), Int32(groups), epsilon, axis32, Int32(axis32.count),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -533,7 +543,7 @@ public final class Convolution: Model {
 
   public init(
     groups: Int, filters: Int, filterSize: [Int], noBias: Bool = false, hint: Hint = Hint(),
-    format: Format? = nil, name: String = ""
+    format: Format? = nil, trainable: Bool? = nil, name: String = ""
   ) {
     let kdim = toCDimensionsArray(filterSize)
     let format: TensorFormat? = format.map {
@@ -546,7 +556,8 @@ public final class Convolution: Model {
     }
     super.init(
       ccv_cnnp_convolution(
-        Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), format?.toC ?? 0, name)
+        Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), format?.toC ?? 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name)
     )
   }
 
@@ -893,12 +904,14 @@ public final class LSTM: Model {
 
   public init(
     masked: Bool, hiddenSize: Int, numberOfLayers: Int, projectSize: Int? = nil, bias: Bool = true,
-    batchFirst: Bool = true, bidirectional: Bool = false, dropout: Float? = nil, name: String = ""
+    batchFirst: Bool = true, bidirectional: Bool = false, dropout: Float? = nil,
+    trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_lstm(
         masked ? 1 : 0, Int32(hiddenSize), Int32(projectSize ?? 0), Int32(numberOfLayers),
-        bias ? 1 : 0, batchFirst ? 1 : 0, bidirectional ? 1 : 0, dropout ?? 0, name))
+        bias ? 1 : 0, batchFirst ? 1 : 0, bidirectional ? 1 : 0, dropout ?? 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
@@ -923,10 +936,13 @@ public final class Embedding: Model {
   }
 
   public init<T: TensorNumeric>(
-    _ dataType: T.Type, vocabularySize: Int, embeddingSize: Int, name: String = ""
+    _ dataType: T.Type, vocabularySize: Int, embeddingSize: Int, trainable: Bool? = nil,
+    name: String = ""
   ) {
     super.init(
-      ccv_cnnp_embedding(T.dataType.toC, Int32(vocabularySize), Int32(embeddingSize), name))
+      ccv_cnnp_embedding(
+        T.dataType.toC, Int32(vocabularySize), Int32(embeddingSize),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
@@ -1054,23 +1070,24 @@ public final class Parameter<Element: TensorNumeric>: Model {
 
   public init(
     _ kind: DeviceKind, format: TensorFormat, shape: TensorShape, initBound: Float = 0,
-    name: String = ""
+    trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_parameter(
         toCTensorParams(kind, dataType: Element.dataType, format: format, shape: shape), initBound,
-        name))
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public init(
     _ kind: DeviceKind, _ dimensionFormat: TensorShapeFormat, initBound: Float = 0,
-    name: String = ""
+    trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_parameter(
         toCTensorParams(
           kind, dataType: Element.dataType, format: dimensionFormat.format,
-          shape: dimensionFormat.shape), initBound, name))
+          shape: dimensionFormat.shape), initBound,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 }
 

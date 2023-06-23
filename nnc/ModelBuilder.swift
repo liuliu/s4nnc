@@ -3,7 +3,7 @@ import C_nnc
 /// A type-erased model builder.
 public class AnyModelBuilder {
 
-  public var isTest: Bool = false
+  public var testing: Bool = false
 
   var model: Model? = nil
   var t: Any? = nil

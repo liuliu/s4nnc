@@ -30,7 +30,7 @@ public class Model {
   /**
    * Whether the existing model is for testing or training.
    */
-  public var isTest: Bool = false
+  public var testing: Bool = false
 
   var dataParallel: Int? = nil  // Keep track of whether we applied data parallel to the model or not.
   public let cModel: OpaquePointer
@@ -126,6 +126,14 @@ public class Model {
   }
 
   /**
+   * Whether this is initialized as trainable model or not.
+   */
+  public var trainable: Bool? {
+    let trainable = ccv_cnnp_model_is_trainable(cModel)
+    return trainable >= 0 ? trainable != 0 : nil
+  }
+
+  /**
    * Setting the directory for parameters to be backed by files.
    */
   public var directoryForFileBackedParameters: String? = nil {
@@ -177,7 +185,8 @@ extension Model {
    * parameters over explicitly.
    */
   public func copied() -> Self {
-    let newModel = Self(ccv_cnnp_model_copy(cModel))
+    let newModel = Self(
+      ccv_cnnp_model_copy(cModel, trainable == true ? 1 : (trainable == false ? 0 : -1)))
     return newModel
   }
 }
@@ -225,11 +234,14 @@ extension Model {
    *   - outputs: The output IOs for the new model, usually it is outputs of some other models.
    *   - name: The name of the new model.
    */
-  public convenience init(_ inputs: [IO], _ outputs: [IO], name: String = "") {
+  public convenience init(
+    _ inputs: [IO], _ outputs: [IO], trainable: Bool? = nil, name: String = ""
+  ) {
     let _inputs: [ccv_cnnp_model_io_t?] = inputs.map { $0._io }
     let _outputs: [ccv_cnnp_model_io_t?] = outputs.map { $0._io }
     let cModel = ccv_cnnp_model_new(
-      _inputs, Int32(inputs.count), _outputs, Int32(outputs.count), name)!
+      _inputs, Int32(inputs.count), _outputs, Int32(outputs.count),
+      trainable == true ? 1 : (trainable == false ? 0 : -1), name)!
     self.init(cModel)
   }
 
@@ -240,9 +252,10 @@ extension Model {
    *   - models: The array of models.
    *   - name: The name of the new model.
    */
-  public convenience init(_ models: [Model], name: String = "") {
+  public convenience init(_ models: [Model], trainable: Bool? = nil, name: String = "") {
     let _models: [OpaquePointer?] = models.map { $0.cModel }
-    let cModel = ccv_cnnp_sequential_new(_models, Int32(models.count), name)!
+    let cModel = ccv_cnnp_sequential_new(
+      _models, Int32(models.count), trainable == true ? 1 : (trainable == false ? 0 : -1), name)!
     self.init(cModel)
   }
 
