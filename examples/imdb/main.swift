@@ -203,7 +203,7 @@ graph.openStore("/home/liu/workspace/s4nnc/imdb.checkpoint") { store in
   store.read("seq", variable: seqVec)
   store.read("transformer", model: transformer)
 }
-var adamOptimizer = AdamOptimizer(
+var adamOptimizer = AdamWOptimizer(
   graph, rate: 0.0001, betas: (0.9, 0.98), decay: 0, epsilon: 1e-9)
 adamOptimizer.parameters = [vocabVec, seqVec, transformer.parameters]
 var overallAccuracy = 0.0
