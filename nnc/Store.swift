@@ -1,7 +1,247 @@
+import C_ccv
 import C_fpzip
 import C_nnc
 import C_zlib
 import SQLite3
+
+// Quantize to 6-bit.
+private let q6pEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard let data = data, let dimensions = dimensions, let encoded = encoded,
+      let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    var elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      elementSize = MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      elementSize = MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      elementSize = MemoryLayout<UInt16>.size
+    default:
+      return 0
+    }
+    var n = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      n *= Int(dimensions[i])
+    }
+    guard (n + 3) / 4 * 3 + 64 * elementSize <= encodedSize[0] else { return 0 }
+    var input = ccv_dense_matrix(
+      1, Int32(n), dataType | Int32(CCV_C1), UnsafeMutableRawPointer(mutating: data), 0)
+    let indices = UnsafeMutablePointer<Int32>.allocate(capacity: n)
+    let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 64)
+    ccv_kmeans1d(&input, 64, indices, centroids)
+    switch dataType {
+    case Int32(CCV_64F):
+      // Write centroids directly to the output.
+      memcpy(encoded, centroids, elementSize * 64)
+    case Int32(CCV_32F):
+      let f32 = encoded.assumingMemoryBound(to: Float32.self)
+      for i in 0..<64 {
+        f32[i] = Float(centroids[i])
+      }
+    case Int32(CCV_16F):
+      let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+      for i in 0..<64 {
+        f32[i] = Float(centroids[i])
+      }
+      ccv_float_to_half_precision(
+        f32, UnsafeMutableRawPointer(encoded).assumingMemoryBound(to: UInt16.self), 64)
+    default:
+      return 0
+    }
+    centroids.deallocate()
+    let u8 = encoded.assumingMemoryBound(to: UInt8.self) + 64 * elementSize
+    var j = 0
+    for i in stride(from: 0, to: n, by: 4) {
+      let i0 = UInt8(indices[i])
+      let i1 = i + 1 < n ? UInt8(indices[i + 1]) : 0
+      let i2 = i + 2 < n ? UInt8(indices[i + 2]) : 0
+      let i3 = i + 3 < n ? UInt8(indices[i + 3]) : 0
+      let u0 = (i0 << 2) | (i1 >> 4)
+      let u1 = (i1 << 4) | (i2 >> 2)
+      let u2 = (i2 << 6) | i3
+      u8[j] = u0
+      u8[j + 1] = u1
+      u8[j + 2] = u2
+      j += 3
+    }
+    indices.deallocate()
+    identifier?[0] = 0x8a1e6b
+    encodedSize[0] = (n + 3) / 4 * 3 + 64 * elementSize
+    return 1
+  }
+
+private let q6pDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    guard identifier == 0x8a1e6b else { return 0 }
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    let elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      elementSize = MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      elementSize = MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      elementSize = MemoryLayout<UInt16>.size
+    default:
+      return 0
+    }
+    var n = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      n *= Int(dimensions[i])
+    }
+    n = min(decodedSize[0] / elementSize, n)
+    guard dataSize >= (n + 3) / 4 * 3 + 64 * elementSize else { return 0 }
+    switch dataType {
+    case Int32(CCV_64F):
+      let palette = data.assumingMemoryBound(to: Double.self)
+      let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+      let f64 = decoded.assumingMemoryBound(to: Double.self)
+      var j = 0
+      if n % 4 == 0 {
+        for i in stride(from: 0, to: n, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f64[i] = palette[i0]
+          f64[i + 1] = palette[i1]
+          f64[i + 2] = palette[i2]
+          f64[i + 3] = palette[i3]
+          j += 3
+        }
+      } else {
+        for i in stride(from: 0, to: n, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f64[i] = palette[i0]
+          if i + 1 < n {
+            f64[i + 1] = palette[i1]
+          }
+          if i + 2 < n {
+            f64[i + 2] = palette[i2]
+          }
+          if i + 3 < n {
+            f64[i + 3] = palette[i3]
+          }
+          j += 3
+        }
+      }
+    case Int32(CCV_32F):
+      let palette = data.assumingMemoryBound(to: Float.self)
+      let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+      let f32 = decoded.assumingMemoryBound(to: Float.self)
+      var j = 0
+      if n % 4 == 0 {
+        for i in stride(from: 0, to: n, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f32[i] = palette[i0]
+          f32[i + 1] = palette[i1]
+          f32[i + 2] = palette[i2]
+          f32[i + 3] = palette[i3]
+          j += 3
+        }
+      } else {
+        for i in stride(from: 0, to: n, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f32[i] = palette[i0]
+          if i + 1 < n {
+            f32[i + 1] = palette[i1]
+          }
+          if i + 2 < n {
+            f32[i + 2] = palette[i2]
+          }
+          if i + 3 < n {
+            f32[i + 3] = palette[i3]
+          }
+          j += 3
+        }
+      }
+    case Int32(CCV_16F):
+      let palette = data.assumingMemoryBound(to: UInt16.self)
+      let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+      let f16 = decoded.assumingMemoryBound(to: UInt16.self)
+      var j = 0
+      if n % 4 == 0 {
+        for i in stride(from: 0, to: n, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f16[i] = palette[i0]
+          f16[i + 1] = palette[i1]
+          f16[i + 2] = palette[i2]
+          f16[i + 3] = palette[i3]
+          j += 3
+        }
+      } else {
+        for i in stride(from: 0, to: n, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f16[i] = palette[i0]
+          if i + 1 < n {
+            f16[i + 1] = palette[i1]
+          }
+          if i + 2 < n {
+            f16[i + 2] = palette[i2]
+          }
+          if i + 3 < n {
+            f16[i + 3] = palette[i3]
+          }
+          j += 3
+        }
+      }
+    default:
+      return 0
+    }
+    decodedSize[0] = elementSize * n
+    return 1
+  }
 
 private let fpzipEncode:
   @convention(c) (
@@ -400,6 +640,23 @@ private let ezm7Decode:
   }
 #endif
 
+private let q6pAndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q6pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7Encode(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
 private let fpzipAndZipEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -418,7 +675,7 @@ private let fpzipAndZipEncode:
       identifier)
   }
 
-private let fpzipAndZipDecode:
+private let uDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
@@ -436,6 +693,10 @@ private let fpzipAndZipDecode:
         decodedSize)
     case 0x511:
       return ezm7Decode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        decodedSize)
+    case 0x8a1e6b:
+      return q6pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
         decodedSize)
     default:
@@ -482,6 +743,7 @@ extension DynamicGraph {
       public static let fpzip = Codec(rawValue: 1 << 0)
       public static let zip = Codec(rawValue: 1 << 1)
       public static let ezm7 = Codec(rawValue: 1 << 2)
+      public static let q6p = Codec(rawValue: 1 << 3)
       var encode:
         (
           @convention(c) (
@@ -490,10 +752,16 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.ezm7) {
-          // .ezm7 is not supported with other formats
-          guard self == .ezm7 else { return nil }  // TODO: do we want to handle this error differently?
+        if contains(.ezm7) && contains(.q6p) {
+          return q6pAndEzm7Encode  // Prefer q6p, if it is longer (because 64 palette), use ezm7.
+        } else if contains(.ezm7) {
+          // .ezm7 is not supported with other lossless formats
+          guard self == .ezm7 else { return nil }
           return ezm7Encode
+        } else if contains(.q6p) {
+          // .u6p is not supported with other lossless formats
+          guard self == .q6p else { return nil }
+          return q6pEncode
         } else if contains(.fpzip) && contains(.zip) {
           return fpzipAndZipEncode
         } else if contains(.fpzip) {
@@ -511,18 +779,21 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.ezm7) {
-          // .ezm7 is not supported with other formats
-          guard self == .ezm7 else { return nil }  // TODO: do we want to handle this error differently?
-          return ezm7Decode
-        } else if contains(.fpzip) && contains(.zip) {
-          return fpzipAndZipDecode
-        } else if contains(.fpzip) {
-          return fpzipDecode
-        } else if contains(.zip) {
-          return zipDecode
+        guard !isEmpty else {
+          return nil
         }
-        return nil
+        switch self {
+        case .ezm7:
+          return ezm7Decode
+        case .q6p:
+          return q6pDecode
+        case .fpzip:
+          return fpzipDecode
+        case .zip:
+          return zipDecode
+        default:
+          return uDecode
+        }
       }
     }
     private let graph: DynamicGraph
@@ -574,6 +845,8 @@ extension DynamicGraph {
           codec = .fpzip
         case 0x511:
           codec = .ezm7
+        case 0x8a1e6b:
+          codec = .q6p
         default:
           codec = []
         }

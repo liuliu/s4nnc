@@ -325,6 +325,45 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testWriteTensorAndReadBackWithQ6P() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(128))
+    for i in 0..<128 {
+      tensor[i] = 1.1 * Float16(i)
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .q6p)
+      readout = store.read("a", codec: .q6p)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .q6p)
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<128 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 0.8)
+    }
+  }
+
+  func testWriteTensorAndReadBackPartialWithQ6P() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(2048))
+    for i in 0..<2048 {
+      tensor[i] = 1.1 * Float16(i % 64)
+    }
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    let varf = graph.variable(.CPU, .C(64), of: Float16.self)
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .q6p)
+      store.read("a", variable: varf, codec: .q6p)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .q6p)
+    for i in 0..<64 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1e-6)
+    }
+  }
+
   func testWriteTensorAndReadBackCodec() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
@@ -381,6 +420,10 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithFPZIPDouble", testWriteTensorAndReadBackWithFPZIPDouble),
     ("testWriteTensorAndReadBackWithZIP", testWriteTensorAndReadBackWithZIP),
     ("testWriteTensorAndReadBackPartialWithZIP", testWriteTensorAndReadBackPartialWithZIP),
+    ("testWriteTensorAndReadBackWithEZM7", testWriteTensorAndReadBackWithEZM7),
+    ("testWriteTensorAndReadBackPartialWithEZM7", testWriteTensorAndReadBackPartialWithEZM7),
+    ("testWriteTensorAndReadBackWithQ6P", testWriteTensorAndReadBackWithQ6P),
+    ("testWriteTensorAndReadBackPartialWithQ6P", testWriteTensorAndReadBackPartialWithQ6P),
     ("testWriteTensorAndReadBackCodec", testWriteTensorAndReadBackCodec),
   ]
 }

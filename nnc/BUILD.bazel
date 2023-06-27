@@ -39,6 +39,7 @@ swift_library(
     visibility = ["//visibility:public"],
     deps = [
         ":C_zlib",
+        "@ccv//lib:ccv",
         "@ccv//lib:nnc",
         "@fpzip",
     ],
