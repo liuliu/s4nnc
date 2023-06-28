@@ -2,6 +2,7 @@ import C_ccv
 import C_fpzip
 import C_nnc
 import C_zlib
+import Dispatch
 import SQLite3
 
 // Quantize to 4-bit.
@@ -14,7 +15,7 @@ private let q4pEncode:
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, var encoded = encoded,
+    guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
     var elementSize: Int
@@ -39,19 +40,21 @@ private let q4pEncode:
     else { return 0 }
     encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
-    let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(1024, numberOfElements))
-    let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 16)
-    for blockIdx in 0..<numberOfBlocks {
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(1024, numberOfElements))
+      let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 16)
       let nI = min(1024, numberOfElements - blockIdx * 1024)
       var input = ccv_dense_matrix(
-        1, Int32(nI), dataType | Int32(CCV_C1), UnsafeMutableRawPointer(mutating: data), 0)
+        1, Int32(nI), dataType | Int32(CCV_C1),
+        UnsafeMutableRawPointer(mutating: data + 1024 * blockIdx * elementSize), 0)
       ccv_kmeans1d(&input, 16, indices, centroids)
+      let encodedBlock = encoded + (16 * elementSize + 512) * blockIdx
       switch dataType {
       case Int32(CCV_64F):
         // Write centroids directly to the output.
-        memcpy(encoded, centroids, elementSize * 16)
+        memcpy(encodedBlock, centroids, elementSize * 16)
       case Int32(CCV_32F):
-        let f32 = encoded.assumingMemoryBound(to: Float32.self)
+        let f32 = encodedBlock.assumingMemoryBound(to: Float32.self)
         for i in 0..<16 {
           f32[i] = Float(centroids[i])
         }
@@ -60,11 +63,11 @@ private let q4pEncode:
         for i in 0..<16 {
           f32[i] = Float(centroids[i])
         }
-        ccv_float_to_half_precision(f32, encoded.assumingMemoryBound(to: UInt16.self), 16)
+        ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 16)
       default:
-        return 0
+        return
       }
-      let u8 = encoded.assumingMemoryBound(to: UInt8.self) + 16 * elementSize
+      let u8 = encodedBlock.assumingMemoryBound(to: UInt8.self) + 16 * elementSize
       var j = 0
       for i in stride(from: 0, to: nI, by: 2) {
         let i0 = UInt8(indices[i])
@@ -73,11 +76,9 @@ private let q4pEncode:
         u8[j] = u0
         j += 1
       }
-      encoded += 16 * elementSize + (nI + 1) / 2
-      data += nI * elementSize
+      centroids.deallocate()
+      indices.deallocate()
     }
-    centroids.deallocate()
-    indices.deallocate()
     identifier?[0] = 0x8a1e4b
     encodedSize[0] =
       (numberOfElements + 1) / 2 + numberOfBlocks * 16 * elementSize + MemoryLayout<UInt32>.size
@@ -94,7 +95,7 @@ private let q4pDecode:
     guard identifier == 0x8a1e4b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, var decoded = decoded,
+    guard var data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -121,13 +122,16 @@ private let q4pDecode:
       dataSize >= (numberOfElements + 1) / 2 + numberOfBlocks * 16 * elementSize
         + MemoryLayout<UInt32>.size
     else { return 0 }
+    precondition(blockSize % 2 == 0)
     switch dataType {
     case Int32(CCV_64F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: Double.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 16
-        let f64 = decoded.assumingMemoryBound(to: Double.self)
+        let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Double.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
+        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
         var j = 0
         if nI % 2 == 0 {
           for i in stride(from: 0, to: nI, by: 2) {
@@ -150,15 +154,15 @@ private let q4pDecode:
             j += 1
           }
         }
-        data += (nI + 1) / 2 + 16 * elementSize
-        decoded += nI * elementSize
       }
     case Int32(CCV_32F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: Float.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 16
-        let f32 = decoded.assumingMemoryBound(to: Float.self)
+        let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Float.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
+        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
         var j = 0
         if nI % 2 == 0 {
           for i in stride(from: 0, to: nI, by: 2) {
@@ -181,15 +185,15 @@ private let q4pDecode:
             j += 1
           }
         }
-        data += (nI + 1) / 2 + 16 * elementSize
-        decoded += nI * elementSize
       }
     case Int32(CCV_16F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: UInt16.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 16
-        let f16 = decoded.assumingMemoryBound(to: UInt16.self)
+        let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
+        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
         var j = 0
         if nI % 2 == 0 {
           for i in stride(from: 0, to: nI, by: 2) {
@@ -212,8 +216,371 @@ private let q4pDecode:
             j += 1
           }
         }
-        data += (nI + 1) / 2 + 16 * elementSize
-        decoded += nI * elementSize
+      }
+    default:
+      return 0
+    }
+    decodedSize[0] = elementSize * numberOfElements
+    return 1
+  }
+
+// Quantize to 5-bit.
+private let q5pEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard let data = data, let dimensions = dimensions, var encoded = encoded,
+      let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    var elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      elementSize = MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      elementSize = MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      elementSize = MemoryLayout<UInt16>.size
+    default:
+      return 0
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    let numberOfBlocks = (numberOfElements + 2047) / 2048
+    guard
+      (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize + MemoryLayout<UInt32>.size
+        < encodedSize[0]
+    else { return 0 }
+    encoded.storeBytes(of: UInt32(2048), as: UInt32.self)
+    encoded += MemoryLayout<UInt32>.size
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(2048, numberOfElements))
+      let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 32)
+      let nI = min(2048, numberOfElements - blockIdx * 2048)
+      var input = ccv_dense_matrix(
+        1, Int32(nI), dataType | Int32(CCV_C1),
+        UnsafeMutableRawPointer(mutating: data + blockIdx * 2048 * elementSize), 0)
+      ccv_kmeans1d(&input, 32, indices, centroids)
+      let encodedBlock = encoded + (32 * elementSize + 1280) * blockIdx
+      switch dataType {
+      case Int32(CCV_64F):
+        // Write centroids directly to the output.
+        memcpy(encodedBlock, centroids, elementSize * 32)
+      case Int32(CCV_32F):
+        let f32 = encodedBlock.assumingMemoryBound(to: Float32.self)
+        for i in 0..<32 {
+          f32[i] = Float(centroids[i])
+        }
+      case Int32(CCV_16F):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<32 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 32)
+      default:
+        return
+      }
+      let u8 = encodedBlock.assumingMemoryBound(to: UInt8.self) + 32 * elementSize
+      var j = 0
+      for i in stride(from: 0, to: nI, by: 8) {
+        let i0 = UInt8(indices[i])
+        let i1 = i + 1 < nI ? UInt8(indices[i + 1]) : 0
+        let i2 = i + 2 < nI ? UInt8(indices[i + 2]) : 0
+        let i3 = i + 3 < nI ? UInt8(indices[i + 3]) : 0
+        let i4 = i + 4 < nI ? UInt8(indices[i + 4]) : 0
+        let i5 = i + 5 < nI ? UInt8(indices[i + 5]) : 0
+        let i6 = i + 6 < nI ? UInt8(indices[i + 6]) : 0
+        let i7 = i + 7 < nI ? UInt8(indices[i + 7]) : 0
+        let u0 = (i0 << 3) | (i1 >> 2)
+        let u1 = (i1 << 6) | (i2 << 1) | (i3 >> 4)
+        let u2 = (i3 << 4) | (i4 >> 1)
+        let u3 = (i4 << 7) | (i5 << 2) | (i6 >> 3)
+        let u4 = (i6 << 5) | i7
+        u8[j] = u0
+        u8[j + 1] = u1
+        u8[j + 2] = u2
+        u8[j + 3] = u3
+        u8[j + 4] = u4
+        j += 5
+      }
+      centroids.deallocate()
+      indices.deallocate()
+    }
+    identifier?[0] = 0x8a1e5b
+    encodedSize[0] =
+      (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize + MemoryLayout<UInt32>.size
+    return 1
+  }
+
+private let q5pDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    guard identifier == 0x8a1e5b else { return 0 }
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    let elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      elementSize = MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      elementSize = MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      elementSize = MemoryLayout<UInt16>.size
+    default:
+      return 0
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    data += MemoryLayout<UInt32>.size
+    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+    guard
+      dataSize >= (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize
+        + MemoryLayout<UInt32>.size
+    else { return 0 }
+    precondition(blockSize % 8 == 0)
+    switch dataType {
+    case Int32(CCV_64F):
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+        let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Double.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
+        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+        var j = 0
+        if nI % 8 == 0 {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let i0 = Int(u0 >> 3)
+            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+            let i2 = Int((u1 >> 1) & 31)
+            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+            let i5 = Int((u3 >> 2) & 31)
+            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+            let i7 = Int(u4 & 31)
+            f64[i] = palette[i0]
+            f64[i + 1] = palette[i1]
+            f64[i + 2] = palette[i2]
+            f64[i + 3] = palette[i3]
+            f64[i + 4] = palette[i4]
+            f64[i + 5] = palette[i5]
+            f64[i + 6] = palette[i6]
+            f64[i + 7] = palette[i7]
+            j += 5
+          }
+        } else {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let i0 = Int(u0 >> 3)
+            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+            let i2 = Int((u1 >> 1) & 31)
+            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+            let i5 = Int((u3 >> 2) & 31)
+            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+            let i7 = Int(u4 & 31)
+            f64[i] = palette[i0]
+            if i + 1 < nI {
+              f64[i + 1] = palette[i1]
+            }
+            if i + 2 < nI {
+              f64[i + 2] = palette[i2]
+            }
+            if i + 3 < nI {
+              f64[i + 3] = palette[i3]
+            }
+            if i + 4 < nI {
+              f64[i + 4] = palette[i4]
+            }
+            if i + 5 < nI {
+              f64[i + 5] = palette[i5]
+            }
+            if i + 6 < nI {
+              f64[i + 6] = palette[i6]
+            }
+            if i + 7 < nI {
+              f64[i + 7] = palette[i7]
+            }
+            j += 5
+          }
+        }
+      }
+    case Int32(CCV_32F):
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+        let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Float.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
+        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+        var j = 0
+        if nI % 8 == 0 {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let i0 = Int(u0 >> 3)
+            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+            let i2 = Int((u1 >> 1) & 31)
+            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+            let i5 = Int((u3 >> 2) & 31)
+            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+            let i7 = Int(u4 & 31)
+            f32[i] = palette[i0]
+            f32[i + 1] = palette[i1]
+            f32[i + 2] = palette[i2]
+            f32[i + 3] = palette[i3]
+            f32[i + 4] = palette[i4]
+            f32[i + 5] = palette[i5]
+            f32[i + 6] = palette[i6]
+            f32[i + 7] = palette[i7]
+            j += 5
+          }
+        } else {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let i0 = Int(u0 >> 3)
+            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+            let i2 = Int((u1 >> 1) & 31)
+            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+            let i5 = Int((u3 >> 2) & 31)
+            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+            let i7 = Int(u4 & 31)
+            f32[i] = palette[i0]
+            if i + 1 < nI {
+              f32[i + 1] = palette[i1]
+            }
+            if i + 2 < nI {
+              f32[i + 2] = palette[i2]
+            }
+            if i + 3 < nI {
+              f32[i + 3] = palette[i3]
+            }
+            if i + 4 < nI {
+              f32[i + 4] = palette[i4]
+            }
+            if i + 5 < nI {
+              f32[i + 5] = palette[i5]
+            }
+            if i + 6 < nI {
+              f32[i + 6] = palette[i6]
+            }
+            if i + 7 < nI {
+              f32[i + 7] = palette[i7]
+            }
+            j += 5
+          }
+        }
+      }
+    case Int32(CCV_16F):
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+        let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
+        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+        var j = 0
+        if nI % 8 == 0 {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let i0 = Int(u0 >> 3)
+            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+            let i2 = Int((u1 >> 1) & 31)
+            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+            let i5 = Int((u3 >> 2) & 31)
+            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+            let i7 = Int(u4 & 31)
+            f16[i] = palette[i0]
+            f16[i + 1] = palette[i1]
+            f16[i + 2] = palette[i2]
+            f16[i + 3] = palette[i3]
+            f16[i + 4] = palette[i4]
+            f16[i + 5] = palette[i5]
+            f16[i + 6] = palette[i6]
+            f16[i + 7] = palette[i7]
+            j += 5
+          }
+        } else {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let i0 = Int(u0 >> 3)
+            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+            let i2 = Int((u1 >> 1) & 31)
+            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+            let i5 = Int((u3 >> 2) & 31)
+            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+            let i7 = Int(u4 & 31)
+            f16[i] = palette[i0]
+            if i + 1 < nI {
+              f16[i + 1] = palette[i1]
+            }
+            if i + 2 < nI {
+              f16[i + 2] = palette[i2]
+            }
+            if i + 3 < nI {
+              f16[i + 3] = palette[i3]
+            }
+            if i + 4 < nI {
+              f16[i + 4] = palette[i4]
+            }
+            if i + 5 < nI {
+              f16[i + 5] = palette[i5]
+            }
+            if i + 6 < nI {
+              f16[i + 6] = palette[i6]
+            }
+            if i + 7 < nI {
+              f16[i + 7] = palette[i7]
+            }
+            j += 5
+          }
+        }
       }
     default:
       return 0
@@ -232,7 +599,7 @@ private let q6pEncode:
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, var encoded = encoded,
+    guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
     var elementSize: Int
@@ -257,19 +624,21 @@ private let q6pEncode:
     else { return 0 }
     encoded.storeBytes(of: UInt32(4096), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
-    let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(4096, numberOfElements))
-    let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 64)
-    for blockIdx in 0..<numberOfBlocks {
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(4096, numberOfElements))
+      let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 64)
       let nI = min(4096, numberOfElements - blockIdx * 4096)
       var input = ccv_dense_matrix(
-        1, Int32(nI), dataType | Int32(CCV_C1), UnsafeMutableRawPointer(mutating: data), 0)
+        1, Int32(nI), dataType | Int32(CCV_C1),
+        UnsafeMutableRawPointer(mutating: data + 4096 * elementSize * blockIdx), 0)
       ccv_kmeans1d(&input, 64, indices, centroids)
+      let encodedBlock = encoded + (64 * elementSize + 3072) * blockIdx
       switch dataType {
       case Int32(CCV_64F):
         // Write centroids directly to the output.
-        memcpy(encoded, centroids, elementSize * 64)
+        memcpy(encodedBlock, centroids, elementSize * 64)
       case Int32(CCV_32F):
-        let f32 = encoded.assumingMemoryBound(to: Float32.self)
+        let f32 = encodedBlock.assumingMemoryBound(to: Float32.self)
         for i in 0..<64 {
           f32[i] = Float(centroids[i])
         }
@@ -278,11 +647,11 @@ private let q6pEncode:
         for i in 0..<64 {
           f32[i] = Float(centroids[i])
         }
-        ccv_float_to_half_precision(f32, encoded.assumingMemoryBound(to: UInt16.self), 64)
+        ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 64)
       default:
-        return 0
+        return
       }
-      let u8 = encoded.assumingMemoryBound(to: UInt8.self) + 64 * elementSize
+      let u8 = encodedBlock.assumingMemoryBound(to: UInt8.self) + 64 * elementSize
       var j = 0
       for i in stride(from: 0, to: nI, by: 4) {
         let i0 = UInt8(indices[i])
@@ -297,11 +666,9 @@ private let q6pEncode:
         u8[j + 2] = u2
         j += 3
       }
-      encoded += 64 * elementSize + (nI + 3) / 4 * 3
-      data += nI * elementSize
+      centroids.deallocate()
+      indices.deallocate()
     }
-    centroids.deallocate()
-    indices.deallocate()
     identifier?[0] = 0x8a1e6b
     encodedSize[0] =
       (numberOfElements + 3) / 4 * 3 + numberOfBlocks * 64 * elementSize + MemoryLayout<UInt32>.size
@@ -318,7 +685,7 @@ private let q6pDecode:
     guard identifier == 0x8a1e6b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, var decoded = decoded,
+    guard var data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -345,13 +712,16 @@ private let q6pDecode:
       dataSize >= (numberOfElements + 3) / 4 * 3 + numberOfBlocks * 64 * elementSize
         + MemoryLayout<UInt32>.size
     else { return 0 }
+    precondition(blockSize % 4 == 0)
     switch dataType {
     case Int32(CCV_64F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: Double.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 64
-        let f64 = decoded.assumingMemoryBound(to: Double.self)
+        let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Double.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
         var j = 0
         if nI % 4 == 0 {
           for i in stride(from: 0, to: nI, by: 4) {
@@ -390,15 +760,15 @@ private let q6pDecode:
             j += 3
           }
         }
-        data += (nI + 3) / 4 * 3 + 64 * elementSize
-        decoded += nI * elementSize
       }
     case Int32(CCV_32F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: Float.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 64
-        let f32 = decoded.assumingMemoryBound(to: Float.self)
+        let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Float.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
         var j = 0
         if nI % 4 == 0 {
           for i in stride(from: 0, to: nI, by: 4) {
@@ -437,15 +807,15 @@ private let q6pDecode:
             j += 3
           }
         }
-        data += (nI + 3) / 4 * 3 + 64 * elementSize
-        decoded += nI * elementSize
       }
     case Int32(CCV_16F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: UInt16.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 64
-        let f16 = decoded.assumingMemoryBound(to: UInt16.self)
+        let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
         var j = 0
         if nI % 4 == 0 {
           for i in stride(from: 0, to: nI, by: 4) {
@@ -484,8 +854,389 @@ private let q6pDecode:
             j += 3
           }
         }
-        data += (nI + 3) / 4 * 3 + 64 * elementSize
-        decoded += nI * elementSize
+      }
+    default:
+      return 0
+    }
+    decodedSize[0] = elementSize * numberOfElements
+    return 1
+  }
+
+// Quantize to 7-bit.
+private let q7pEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard let data = data, let dimensions = dimensions, var encoded = encoded,
+      let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    var elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      elementSize = MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      elementSize = MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      elementSize = MemoryLayout<UInt16>.size
+    default:
+      return 0
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    let numberOfBlocks = (numberOfElements + 8191) / 8192
+    guard
+      (numberOfElements + 7) / 8 * 7 + numberOfBlocks * 128 * elementSize
+        + MemoryLayout<UInt32>.size
+        < encodedSize[0]
+    else { return 0 }
+    encoded.storeBytes(of: UInt32(8192), as: UInt32.self)
+    encoded += MemoryLayout<UInt32>.size
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(8192, numberOfElements))
+      let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 128)
+      let nI = min(8192, numberOfElements - blockIdx * 8192)
+      var input = ccv_dense_matrix(
+        1, Int32(nI), dataType | Int32(CCV_C1),
+        UnsafeMutableRawPointer(mutating: data + 8192 * elementSize * blockIdx), 0)
+      ccv_kmeans1d(&input, 128, indices, centroids)
+      let encodedBlock = encoded + (128 * elementSize + 7168) * blockIdx
+      switch dataType {
+      case Int32(CCV_64F):
+        // Write centroids directly to the output.
+        memcpy(encodedBlock, centroids, elementSize * 128)
+      case Int32(CCV_32F):
+        let f32 = encodedBlock.assumingMemoryBound(to: Float32.self)
+        for i in 0..<128 {
+          f32[i] = Float(centroids[i])
+        }
+      case Int32(CCV_16F):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<128 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 128)
+      default:
+        return
+      }
+      let u8 = encodedBlock.assumingMemoryBound(to: UInt8.self) + 128 * elementSize
+      var j = 0
+      for i in stride(from: 0, to: nI, by: 8) {
+        let i0 = UInt8(indices[i])
+        let i1 = i + 1 < nI ? UInt8(indices[i + 1]) : 0
+        let i2 = i + 2 < nI ? UInt8(indices[i + 2]) : 0
+        let i3 = i + 3 < nI ? UInt8(indices[i + 3]) : 0
+        let i4 = i + 4 < nI ? UInt8(indices[i + 4]) : 0
+        let i5 = i + 5 < nI ? UInt8(indices[i + 5]) : 0
+        let i6 = i + 6 < nI ? UInt8(indices[i + 6]) : 0
+        let i7 = i + 7 < nI ? UInt8(indices[i + 7]) : 0
+        let u0 = (i0 << 1) | (i1 >> 6)
+        let u1 = (i1 << 2) | (i2 >> 5)
+        let u2 = (i2 << 3) | (i3 >> 4)
+        let u3 = (i3 << 4) | (i4 >> 3)
+        let u4 = (i4 << 5) | (i5 >> 2)
+        let u5 = (i5 << 6) | (i6 >> 1)
+        let u6 = (i6 << 7) | i7
+        u8[j] = u0
+        u8[j + 1] = u1
+        u8[j + 2] = u2
+        u8[j + 3] = u3
+        u8[j + 4] = u4
+        u8[j + 5] = u5
+        u8[j + 6] = u6
+        j += 7
+      }
+      centroids.deallocate()
+      indices.deallocate()
+    }
+    identifier?[0] = 0x8a1e7b
+    encodedSize[0] =
+      (numberOfElements + 7) / 8 * 7 + numberOfBlocks * 128 * elementSize
+      + MemoryLayout<UInt32>.size
+    return 1
+  }
+
+private let q7pDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    in
+    guard identifier == 0x8a1e7b else { return 0 }
+    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    else { return 0 }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    let elementSize: Int
+    switch dataType {
+    case Int32(CCV_64F):
+      elementSize = MemoryLayout<Double>.size
+    case Int32(CCV_32F):
+      elementSize = MemoryLayout<Float>.size
+    case Int32(CCV_16F):
+      elementSize = MemoryLayout<UInt16>.size
+    default:
+      return 0
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    data += MemoryLayout<UInt32>.size
+    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+    guard
+      dataSize >= (numberOfElements + 7) / 8 * 7 + numberOfBlocks * 128 * elementSize
+        + MemoryLayout<UInt32>.size
+    else { return 0 }
+    precondition(blockSize % 8 == 0)
+    switch dataType {
+    case Int32(CCV_64F):
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+        let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Double.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
+        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+        var j = 0
+        if nI % 8 == 0 {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let u5 = u8[j + 5]
+            let u6 = u8[j + 6]
+            let i0 = Int(u0 >> 1)
+            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+            let i7 = Int(u6 & 127)
+            f64[i] = palette[i0]
+            f64[i + 1] = palette[i1]
+            f64[i + 2] = palette[i2]
+            f64[i + 3] = palette[i3]
+            f64[i + 4] = palette[i4]
+            f64[i + 5] = palette[i5]
+            f64[i + 6] = palette[i6]
+            f64[i + 7] = palette[i7]
+            j += 7
+          }
+        } else {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let u5 = u8[j + 5]
+            let u6 = u8[j + 6]
+            let i0 = Int(u0 >> 1)
+            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+            let i7 = Int(u6 & 127)
+            f64[i] = palette[i0]
+            if i + 1 < nI {
+              f64[i + 1] = palette[i1]
+            }
+            if i + 2 < nI {
+              f64[i + 2] = palette[i2]
+            }
+            if i + 3 < nI {
+              f64[i + 3] = palette[i3]
+            }
+            if i + 4 < nI {
+              f64[i + 4] = palette[i4]
+            }
+            if i + 5 < nI {
+              f64[i + 5] = palette[i5]
+            }
+            if i + 6 < nI {
+              f64[i + 6] = palette[i6]
+            }
+            if i + 7 < nI {
+              f64[i + 7] = palette[i7]
+            }
+            j += 7
+          }
+        }
+      }
+    case Int32(CCV_32F):
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+        let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Float.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
+        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+        var j = 0
+        if nI % 8 == 0 {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let u5 = u8[j + 5]
+            let u6 = u8[j + 6]
+            let i0 = Int(u0 >> 1)
+            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+            let i7 = Int(u6 & 127)
+            f32[i] = palette[i0]
+            f32[i + 1] = palette[i1]
+            f32[i + 2] = palette[i2]
+            f32[i + 3] = palette[i3]
+            f32[i + 4] = palette[i4]
+            f32[i + 5] = palette[i5]
+            f32[i + 6] = palette[i6]
+            f32[i + 7] = palette[i7]
+            j += 7
+          }
+        } else {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let u5 = u8[j + 5]
+            let u6 = u8[j + 6]
+            let i0 = Int(u0 >> 1)
+            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+            let i7 = Int(u6 & 127)
+            f32[i] = palette[i0]
+            if i + 1 < nI {
+              f32[i + 1] = palette[i1]
+            }
+            if i + 2 < nI {
+              f32[i + 2] = palette[i2]
+            }
+            if i + 3 < nI {
+              f32[i + 3] = palette[i3]
+            }
+            if i + 4 < nI {
+              f32[i + 4] = palette[i4]
+            }
+            if i + 5 < nI {
+              f32[i + 5] = palette[i5]
+            }
+            if i + 6 < nI {
+              f32[i + 6] = palette[i6]
+            }
+            if i + 7 < nI {
+              f32[i + 7] = palette[i7]
+            }
+            j += 7
+          }
+        }
+      }
+    case Int32(CCV_16F):
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+        let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
+        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+        var j = 0
+        if nI % 8 == 0 {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let u5 = u8[j + 5]
+            let u6 = u8[j + 6]
+            let i0 = Int(u0 >> 1)
+            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+            let i7 = Int(u6 & 127)
+            f16[i] = palette[i0]
+            f16[i + 1] = palette[i1]
+            f16[i + 2] = palette[i2]
+            f16[i + 3] = palette[i3]
+            f16[i + 4] = palette[i4]
+            f16[i + 5] = palette[i5]
+            f16[i + 6] = palette[i6]
+            f16[i + 7] = palette[i7]
+            j += 7
+          }
+        } else {
+          for i in stride(from: 0, to: nI, by: 8) {
+            let u0 = u8[j]
+            let u1 = u8[j + 1]
+            let u2 = u8[j + 2]
+            let u3 = u8[j + 3]
+            let u4 = u8[j + 4]
+            let u5 = u8[j + 5]
+            let u6 = u8[j + 6]
+            let i0 = Int(u0 >> 1)
+            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+            let i7 = Int(u6 & 127)
+            f16[i] = palette[i0]
+            if i + 1 < nI {
+              f16[i + 1] = palette[i1]
+            }
+            if i + 2 < nI {
+              f16[i + 2] = palette[i2]
+            }
+            if i + 3 < nI {
+              f16[i + 3] = palette[i3]
+            }
+            if i + 4 < nI {
+              f16[i + 4] = palette[i4]
+            }
+            if i + 5 < nI {
+              f16[i + 5] = palette[i5]
+            }
+            if i + 6 < nI {
+              f16[i + 6] = palette[i6]
+            }
+            if i + 7 < nI {
+              f16[i + 7] = palette[i7]
+            }
+            j += 7
+          }
+        }
       }
     default:
       return 0
@@ -504,7 +1255,7 @@ private let q8pEncode:
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, var encoded = encoded,
+    guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
     var elementSize: Int
@@ -528,19 +1279,21 @@ private let q8pEncode:
     }
     encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
-    let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(16_384, numberOfElements))
-    let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 256)
-    for blockIdx in 0..<numberOfBlocks {
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(16_384, numberOfElements))
+      let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 256)
       let nI = min(16_384, numberOfElements - blockIdx * 16_384)
       var input = ccv_dense_matrix(
-        1, Int32(nI), dataType | Int32(CCV_C1), UnsafeMutableRawPointer(mutating: data), 0)
+        1, Int32(nI), dataType | Int32(CCV_C1),
+        UnsafeMutableRawPointer(mutating: data + 16_384 * elementSize * blockIdx), 0)
       ccv_kmeans1d(&input, 256, indices, centroids)
+      let encodedBlock = encoded + (256 * elementSize + 16_384) * blockIdx
       switch dataType {
       case Int32(CCV_64F):
         // Write centroids directly to the output.
-        memcpy(encoded, centroids, elementSize * 256)
+        memcpy(encodedBlock, centroids, elementSize * 256)
       case Int32(CCV_32F):
-        let f32 = encoded.assumingMemoryBound(to: Float32.self)
+        let f32 = encodedBlock.assumingMemoryBound(to: Float32.self)
         for i in 0..<256 {
           f32[i] = Float(centroids[i])
         }
@@ -550,19 +1303,17 @@ private let q8pEncode:
           f32[i] = Float(centroids[i])
         }
         ccv_float_to_half_precision(
-          f32, UnsafeMutableRawPointer(encoded).assumingMemoryBound(to: UInt16.self), 256)
+          f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 256)
       default:
-        return 0
+        return
       }
-      let u8 = encoded.assumingMemoryBound(to: UInt8.self) + 256 * elementSize
+      let u8 = encodedBlock.assumingMemoryBound(to: UInt8.self) + 256 * elementSize
       for i in 0..<nI {
         u8[i] = UInt8(indices[i])
       }
-      encoded += 256 * elementSize + nI
-      data += nI * elementSize
+      centroids.deallocate()
+      indices.deallocate()
     }
-    centroids.deallocate()
-    indices.deallocate()
     identifier?[0] = 0x8a1e8b
     encodedSize[0] =
       numberOfElements + numberOfBlocks * 256 * elementSize + MemoryLayout<UInt32>.size
@@ -579,7 +1330,7 @@ private let q8pDecode:
     guard identifier == 0x8a1e8b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, var decoded = decoded,
+    guard var data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -607,40 +1358,40 @@ private let q8pDecode:
     else { return 0 }
     switch dataType {
     case Int32(CCV_64F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: Double.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 256
-        let f64 = decoded.assumingMemoryBound(to: Double.self)
+        let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Double.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
+        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
         for i in 0..<nI {
           f64[i] = palette[Int(u8[i])]
         }
-        data += nI + 256 * elementSize
-        decoded += nI * elementSize
       }
     case Int32(CCV_32F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: Float.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 256
-        let f32 = decoded.assumingMemoryBound(to: Float.self)
+        let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: Float.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
+        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
         for i in 0..<nI {
           f32[i] = palette[Int(u8[i])]
         }
-        data += nI + 256 * elementSize
-        decoded += nI * elementSize
       }
     case Int32(CCV_16F):
-      for blockIdx in 0..<numberOfBlocks {
+      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
         let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let palette = data.assumingMemoryBound(to: UInt16.self)
-        let u8 = data.assumingMemoryBound(to: UInt8.self) + elementSize * 256
-        let f16 = decoded.assumingMemoryBound(to: UInt16.self)
+        let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
+        let decodedBlock = decoded + blockSize * elementSize * blockIdx
+        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
+        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
         for i in 0..<nI {
           f16[i] = palette[Int(u8[i])]
         }
-        data += nI + 256 * elementSize
-        decoded += nI * elementSize
       }
     default:
       return 0
@@ -1063,6 +1814,23 @@ private let q4pAndEzm7Encode:
       identifier)
   }
 
+private let q5pAndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q5pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7Encode(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
 private let q6pAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -1072,6 +1840,23 @@ private let q6pAndEzm7Encode:
     in
     guard
       q6pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7Encode(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let q7pAndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q7pEncode(
         data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
         identifier) == 0
     else { return 1 }
@@ -1139,8 +1924,16 @@ private let uDecode:
       return q4pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
         decodedSize)
+    case 0x8a1e5b:
+      return q5pDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        decodedSize)
     case 0x8a1e6b:
       return q6pDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        decodedSize)
+    case 0x8a1e7b:
+      return q7pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
         decodedSize)
     case 0x8a1e8b:
@@ -1192,8 +1985,10 @@ extension DynamicGraph {
       public static let zip = Codec(rawValue: 1 << 1)
       public static let ezm7 = Codec(rawValue: 1 << 2)
       public static let q4p = Codec(rawValue: 1 << 3)
-      public static let q6p = Codec(rawValue: 1 << 4)
-      public static let q8p = Codec(rawValue: 1 << 5)
+      public static let q5p = Codec(rawValue: 1 << 4)
+      public static let q6p = Codec(rawValue: 1 << 5)
+      public static let q7p = Codec(rawValue: 1 << 6)
+      public static let q8p = Codec(rawValue: 1 << 7)
       var encode:
         (
           @convention(c) (
@@ -1204,8 +1999,12 @@ extension DynamicGraph {
       {
         if contains(.ezm7) && contains(.q4p) {
           return q4pAndEzm7Encode  // Prefer q4p, if it is longer (because 16 palette), use ezm7.
+        } else if contains(.ezm7) && contains(.q5p) {
+          return q5pAndEzm7Encode  // Prefer q5p, if it is longer (because 32 palette), use ezm7.
         } else if contains(.ezm7) && contains(.q6p) {
           return q6pAndEzm7Encode  // Prefer q6p, if it is longer (because 64 palette), use ezm7.
+        } else if contains(.ezm7) && contains(.q7p) {
+          return q7pAndEzm7Encode  // Prefer q7p, if it is longer (because 256 palette), use ezm7.
         } else if contains(.ezm7) && contains(.q8p) {
           return q8pAndEzm7Encode  // Prefer q8p, if it is longer (because 256 palette), use ezm7.
         } else if contains(.ezm7) {
@@ -1216,10 +2015,18 @@ extension DynamicGraph {
           // .q4p is not supported with other lossless formats
           guard self == .q4p else { return nil }
           return q4pEncode
+        } else if contains(.q5p) {
+          // .q5p is not supported with other lossless formats
+          guard self == .q5p else { return nil }
+          return q5pEncode
         } else if contains(.q6p) {
           // .q6p is not supported with other lossless formats
           guard self == .q6p else { return nil }
           return q6pEncode
+        } else if contains(.q7p) {
+          // .q7p is not supported with other lossless formats
+          guard self == .q7p else { return nil }
+          return q7pEncode
         } else if contains(.q8p) {
           // .q8p is not supported with other lossless formats
           guard self == .q8p else { return nil }
@@ -1249,8 +2056,12 @@ extension DynamicGraph {
           return ezm7Decode
         case .q4p:
           return q4pDecode
+        case .q5p:
+          return q5pDecode
         case .q6p:
           return q6pDecode
+        case .q7p:
+          return q7pDecode
         case .q8p:
           return q8pDecode
         case .fpzip:
@@ -1313,8 +2124,12 @@ extension DynamicGraph {
           codec = .ezm7
         case 0x8a1e4b:
           codec = .q4p
+        case 0x8a1e5b:
+          codec = .q5p
         case 0x8a1e6b:
           codec = .q6p
+        case 0x8a1e7b:
+          codec = .q7p
         case 0x8a1e8b:
           codec = .q8p
         default:

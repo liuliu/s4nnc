@@ -364,6 +364,45 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testWriteTensorAndReadBackWithQ5P() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(128))
+    for i in 0..<128 {
+      tensor[i] = 1.1 * Float16(i)
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .q5p)
+      readout = store.read("a", codec: .q5p)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .q5p)
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<128 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1.9)
+    }
+  }
+
+  func testWriteTensorAndReadBackPartialWithQ5P() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(2048))
+    for i in 0..<2048 {
+      tensor[i] = 1.1 * Float16(i % 32)
+    }
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    let varf = graph.variable(.CPU, .C(64), of: Float16.self)
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .q5p)
+      store.read("a", variable: varf, codec: .q5p)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .q5p)
+    for i in 0..<64 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1e-6)
+    }
+  }
+
   func testWriteTensorAndReadBackWithQ6P() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float16> = Tensor(.CPU, .C(128))
@@ -398,6 +437,45 @@ final class StoreTests: XCTestCase {
       readoutCodec = store.codec(for: "a")
     }
     XCTAssertEqual(readoutCodec!, .q6p)
+    for i in 0..<64 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1e-6)
+    }
+  }
+
+  func testWriteTensorAndReadBackWithQ7P() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(768))
+    for i in 0..<768 {
+      tensor[i] = 1.1 * Float16(i)
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .q7p)
+      readout = store.read("a", codec: .q7p)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .q7p)
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<768 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 3.6)
+    }
+  }
+
+  func testWriteTensorAndReadBackPartialWithQ7P() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(24_048))
+    for i in 0..<24_048 {
+      tensor[i] = 1.1 * Float16(i % 128)
+    }
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    let varf = graph.variable(.CPU, .C(64), of: Float16.self)
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .q7p)
+      store.read("a", variable: varf, codec: .q7p)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .q7p)
     for i in 0..<64 {
       XCTAssertEqual(varf[i], tensor[i], accuracy: 1e-6)
     }
@@ -502,8 +580,12 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackPartialWithEZM7", testWriteTensorAndReadBackPartialWithEZM7),
     ("testWriteTensorAndReadBackWithQ4P", testWriteTensorAndReadBackWithQ4P),
     ("testWriteTensorAndReadBackPartialWithQ4P", testWriteTensorAndReadBackPartialWithQ4P),
+    ("testWriteTensorAndReadBackWithQ5P", testWriteTensorAndReadBackWithQ5P),
+    ("testWriteTensorAndReadBackPartialWithQ5P", testWriteTensorAndReadBackPartialWithQ5P),
     ("testWriteTensorAndReadBackWithQ6P", testWriteTensorAndReadBackWithQ6P),
     ("testWriteTensorAndReadBackPartialWithQ6P", testWriteTensorAndReadBackPartialWithQ6P),
+    ("testWriteTensorAndReadBackWithQ7P", testWriteTensorAndReadBackWithQ7P),
+    ("testWriteTensorAndReadBackPartialWithQ7P", testWriteTensorAndReadBackPartialWithQ7P),
     ("testWriteTensorAndReadBackWithQ8P", testWriteTensorAndReadBackWithQ8P),
     ("testWriteTensorAndReadBackPartialWithQ8P", testWriteTensorAndReadBackPartialWithQ8P),
     ("testWriteTensorAndReadBackCodec", testWriteTensorAndReadBackCodec),
