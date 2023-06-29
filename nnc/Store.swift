@@ -1597,7 +1597,10 @@ private let ezm7Encode:
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
     guard dataType == Int32(CCV_16F) else { return 0 }
-    let floatCount = dataSize / 2
+    var floatCount = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      floatCount *= Int(dimensions[i])
+    }
     let floatBytesBuffer = data.assumingMemoryBound(to: UInt16.self)
     let floatsWithoutExp = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
     let exponents = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
@@ -1650,8 +1653,13 @@ private let ezm7Decode:
     guard let data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
-    let floatCount = decodedSize[0] / 2
+    var floatCount = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      floatCount *= Int(dimensions[i])
+    }
+    floatCount = min(floatCount, decodedSize[0] / 2)
     let exponentZipSize = Int(data.assumingMemoryBound(to: Int32.self)[0])
+    guard dataSize >= 4 + exponentZipSize + floatCount else { return 0 }
     let exponentZipData = data.advanced(by: MemoryLayout<Int32>.size)
     let exponentBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: floatCount)
     defer { exponentBuffer.deallocate() }
