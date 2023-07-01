@@ -142,6 +142,12 @@ public class Model {
     }
   }
 
+  public var maxConcurrency: Int = 0 {
+    didSet {
+      ccv_cnnp_model_set_max_concurrency(cModel, Int32(maxConcurrency))
+    }
+  }
+
   public enum ParametersType {
     case weight
     case bias
