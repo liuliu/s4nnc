@@ -37,6 +37,12 @@ public class AnyModelBuilder {
     return outputSize
   }
 
+  public var maxConcurrency: Int = 0 {
+    didSet {
+      ccv_cnnp_model_set_max_concurrency(model!.cModel, Int32(maxConcurrency))
+    }
+  }
+
   /**
    * Abstract representation of the stateful components from the model builder.
    */

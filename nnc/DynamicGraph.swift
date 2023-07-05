@@ -189,6 +189,12 @@ public final class DynamicGraph {
    */
   public var workspaceSize: Int = 0
 
+  public var maxConcurrency: Int = 0 {
+    didSet {
+      ccv_nnc_dynamic_graph_set_max_concurrency(cGraph, Int32(maxConcurrency))
+    }
+  }
+
   struct WeakAnyTensor {
     weak var value: AnyTensor?
   }
