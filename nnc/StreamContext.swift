@@ -2,6 +2,26 @@ import C_nnc
 
 /// A stream context is an object that an execution can be performed upon.
 public final class StreamContext {
+  public enum Concurrency {
+    case noLimit
+    case limit(Int)
+    init(rawValue: Int) {
+      switch rawValue {
+      case 0:
+        self = .noLimit
+      default:
+        self = .limit(rawValue)
+      }
+    }
+    var rawValue: Int {
+      switch self {
+      case .noLimit:
+        return 0
+      case .limit(let value):
+        return value
+      }
+    }
+  }
 
   let _stream: OpaquePointer
 

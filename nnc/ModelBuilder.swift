@@ -37,9 +37,9 @@ public class AnyModelBuilder {
     return outputSize
   }
 
-  public var maxConcurrency: Int = 0 {
+  public var maxConcurrency: StreamContext.Concurrency = .noLimit {
     didSet {
-      ccv_cnnp_model_set_max_concurrency(model!.cModel, Int32(maxConcurrency))
+      ccv_cnnp_model_set_max_concurrency(model!.cModel, Int32(maxConcurrency.rawValue))
     }
   }
 
