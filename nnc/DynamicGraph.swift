@@ -178,6 +178,8 @@ public final class DynamicGraph {
         rawValue[indices, Element.self] = v
       }
     }
+
+    public var typeErased: AnyTensor { self }
   }
 
   public let cGraph: OpaquePointer

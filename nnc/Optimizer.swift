@@ -4,6 +4,7 @@ import C_nnc
 public protocol Optimizer {
   var graph: DynamicGraph { get }
   var parameters: [DynamicGraph_AnyParameters] { get set }
+  var scale: Float { get set }
   /**
    * Update parameters.
    *
@@ -15,6 +16,10 @@ public protocol Optimizer {
 protocol OptimizerAddons {
   var savedAux: [DynamicGraph_Any] { get }
   var minimizer: ccv_nnc_cmd_t { get }
+}
+
+protocol OptimizerTrackSteps {
+  var step: Int { get set }
 }
 
 extension Optimizer {
@@ -161,13 +166,13 @@ extension Optimizer {
   }
 }
 
-extension Collection where Element: Optimizer {
+extension MutableCollection where Element: Optimizer {
   /**
    * Update parameters together for a collection of optimizers.
    *
    * - Parameter streamContext: The stream context to have update operation on.
    */
-  public func step(streamContext: StreamContext? = nil) {
+  public mutating func step(streamContext: StreamContext? = nil) {
     // This is different from calling step on individual element is to set all parameters on models first
     // before calling step individually. In this way, we can make sure whenever we step through, we will
     // have all model parameters setup properly.
@@ -217,12 +222,19 @@ extension Collection where Element: Optimizer {
       }
     }
     // All done! Now run through optimizer!
-    for optimizer in self {
+    var i = startIndex
+    while i != endIndex {
+      let optimizer = self[i]
       let tensorParameters = optimizer.parameters.compactMap { $0 as? DynamicGraph_Any }
       let addons = (optimizer as! OptimizerAddons)
       optimizerStep(
         graph: optimizer.graph, minimizer: addons.minimizer, parameters: tensorParameters,
         savedAux: addons.savedAux, streamContext: streamContext)
+      if var optimizer = optimizer as? OptimizerTrackSteps {
+        optimizer.step += 1
+        self[i] = optimizer as! Element
+      }
+      i = index(after: i)
     }
   }
 }

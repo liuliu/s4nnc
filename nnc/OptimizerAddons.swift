@@ -57,13 +57,14 @@ public struct SGDOptimizer: Optimizer, OptimizerAddons {
 }
 
 /// Adam optimizer.
-public struct AdamOptimizer: Optimizer, OptimizerAddons {
+public struct AdamOptimizer: Optimizer, OptimizerAddons, OptimizerTrackSteps {
   public let graph: DynamicGraph
   public var step: Int
   public var rate: Float
   public var betas: (Float, Float)
   public var decay: Float
   public var epsilon: Float
+  public var scale: Float
   public var parameters = [DynamicGraph_AnyParameters]() {
     willSet {
       for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
@@ -84,6 +85,7 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
     var params = CmdParamsFactory.factory.newParams()
     params.adam.step = Int32(step)
     params.adam.rate = rate
+    params.adam.scale = scale
     params.adam.beta1 = betas.0
     params.adam.beta2 = betas.1
     params.adam.decay = decay
@@ -101,6 +103,7 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
     self.betas = betas
     self.decay = decay
     self.epsilon = epsilon
+    scale = 1
   }
 
   public mutating func step(streamContext: StreamContext?) {
@@ -112,13 +115,14 @@ public struct AdamOptimizer: Optimizer, OptimizerAddons {
 }
 
 /// LAMB optimizer.
-public struct LAMBOptimizer: Optimizer, OptimizerAddons {
+public struct LAMBOptimizer: Optimizer, OptimizerAddons, OptimizerTrackSteps {
   public let graph: DynamicGraph
   public var step: Int
   public var rate: Float
   public var betas: (Float, Float)
   public var decay: Float
   public var epsilon: Float
+  public var scale: Float
   public var parameters = [DynamicGraph_AnyParameters]() {
     willSet {
       for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
@@ -139,6 +143,7 @@ public struct LAMBOptimizer: Optimizer, OptimizerAddons {
     var params = CmdParamsFactory.factory.newParams()
     params.lamb.step = Int32(step)
     params.lamb.rate = rate
+    params.lamb.scale = scale
     params.lamb.beta1 = betas.0
     params.lamb.beta2 = betas.1
     params.lamb.decay = decay
@@ -156,6 +161,7 @@ public struct LAMBOptimizer: Optimizer, OptimizerAddons {
     self.betas = betas
     self.decay = decay
     self.epsilon = epsilon
+    scale = 1
   }
 
   public mutating func step(streamContext: StreamContext?) {
@@ -167,13 +173,14 @@ public struct LAMBOptimizer: Optimizer, OptimizerAddons {
 }
 
 /// AdamW optimizer.
-public struct AdamWOptimizer: Optimizer, OptimizerAddons {
+public struct AdamWOptimizer: Optimizer, OptimizerAddons, OptimizerTrackSteps {
   public let graph: DynamicGraph
   public var step: Int
   public var rate: Float
   public var betas: (Float, Float)
   public var decay: Float
   public var epsilon: Float
+  public var scale: Float
   public var parameters = [DynamicGraph_AnyParameters]() {
     willSet {
       for var parameter in parameters.compactMap({ $0 as? DynamicGraph_Any }) {
@@ -194,6 +201,7 @@ public struct AdamWOptimizer: Optimizer, OptimizerAddons {
     var params = CmdParamsFactory.factory.newParams()
     params.adam.step = Int32(step)
     params.adam.rate = rate
+    params.adam.scale = scale
     params.adam.beta1 = betas.0
     params.adam.beta2 = betas.1
     params.adam.decay = decay
@@ -211,6 +219,7 @@ public struct AdamWOptimizer: Optimizer, OptimizerAddons {
     self.betas = betas
     self.decay = decay
     self.epsilon = epsilon
+    scale = 1
   }
 
   public mutating func step(streamContext: StreamContext?) {

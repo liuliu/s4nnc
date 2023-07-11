@@ -1439,6 +1439,10 @@ extension DynamicGraph.Tensor {
       _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
   }
 
+  /// Scale the given tensor with a constant.
+  public func scaled(by a: Float, streamContext: StreamContext?) -> Self {
+    Functional.scalmul(left: a, right: self, streamContext: streamContext)
+  }
 }
 
 extension DynamicGraph.Group {
@@ -1463,6 +1467,13 @@ extension DynamicGraph.Group {
       _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
       _streamContext)
     _outputs.deallocate()
+  }
+}
+
+extension DynamicGraph.Group where Element: DynamicGraph_TensorGroup {
+  /// Scale the given tensor with a constant.
+  public func scaled(by a: Float, streamContext: StreamContext?) -> Self {
+    Functional.scalmul(left: a, right: self, streamContext: streamContext)
   }
 }
 
@@ -1688,5 +1699,22 @@ extension DynamicGraph.Group where Element == DynamicGraph.AnyTensor {
     let result = DynamicGraph.Group<DynamicGraph.Tensor<T>>(self)
     assert(result.dataType == T.dataType)
     return result
+  }
+}
+
+extension DynamicGraph.AnyTensor {
+  public var isNaN: Bool {
+    var params = CmdParamsFactory.factory.newParams()
+    params.reduce.count = Int32(shape.count)
+    params.reduce.axis = toCDimensions(Array(0..<Int(params.reduce.count)))
+    let cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_ISNAN_FORWARD, nil, params, 0)
+    let _graph = graph.cGraph
+    let output = graph.variable(kind, format: format, shape: [1], of: Int32.self)
+    var _input: ccv_nnc_tensor_variable_t? = _tensor
+    var _output: ccv_nnc_tensor_variable_t? = output._tensor
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, nil)
+    let isNaN = output.toCPU().rawValue[0]
+    return isNaN != 0
   }
 }

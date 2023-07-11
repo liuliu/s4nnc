@@ -18,6 +18,7 @@ swift_library(
         "DynamicGraph.swift",
         "Functional.swift",
         "FunctionalAddons.swift",
+        "GradScaler.swift",
         "Group.swift",
         "Hint.swift",
         "Loss.swift",

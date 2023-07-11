@@ -125,6 +125,36 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
       }
     }
   }
+  public var grad: DynamicGraph.Group<DynamicGraph.AnyTensor>? {
+    get {
+      guard underlyingArray[0].grad != nil else {
+        return nil
+      }
+      return DynamicGraph.Group<DynamicGraph.AnyTensor>(underlyingArray.map { $0.grad! })
+    }
+    set(v) {
+      guard let v = v else {
+        for tensor in underlyingArray {
+          tensor.grad = nil
+        }
+        return
+      }
+      for (tensor, grad) in zip(underlyingArray, v.underlyingArray) {
+        tensor.grad = grad
+      }
+    }
+  }
+  public var typeErased: DynamicGraph.Group<DynamicGraph.AnyTensor> {
+    DynamicGraph.Group<DynamicGraph.AnyTensor>(underlyingArray)
+  }
+  public var isNaN: Bool {
+    for tensor in underlyingArray {
+      if tensor.isNaN {
+        return true
+      }
+    }
+    return false
+  }
 }
 
 extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {

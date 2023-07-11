@@ -2,6 +2,9 @@
 public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   associatedtype ElementNumeric: TensorNumeric
   init(_: AnyTensor)
+  var grad: AnyTensor? { get set }
+  var typeErased: AnyTensor { get }
+  var isNaN: Bool { get }
   subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext?) -> Self { get set }
   subscript(ranges: [Range<Int>], streamContext streamContext: StreamContext?) -> Self { get set }
   subscript(range: Range<Int>, streamContext streamContext: StreamContext?) -> Self { get set }
@@ -90,6 +93,8 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext?) -> Self
   /// Scale the given tensor with a constant inplace.
   func scale(by a: Float, streamContext: StreamContext?)
+  /// Scale the given tensor with a constant.
+  func scaled(by a: Float, streamContext: StreamContext?) -> Self
   /// Apply softmax activation to the given tensor inplace.
   func softmax(streamContext: StreamContext?)
   /// Apply ReLU activation to the given tensor inplace.
@@ -306,6 +311,11 @@ extension DynamicGraph_TensorGroup {
   @inlinable
   public func scale(by a: Float, streamContext: StreamContext? = nil) {
     scale(by: a, streamContext: streamContext)
+  }
+  /// Scale the given tensor with a constant.
+  @inlinable
+  public func scaled(by a: Float, streamContext: StreamContext? = nil) -> Self {
+    scaled(by: a, streamContext: streamContext)
   }
   /// Apply softmax activation to the given tensor inplace.
   @inlinable
