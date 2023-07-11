@@ -164,7 +164,7 @@ public struct GradScaler {
     }
     precondition(optimizers.count > 0)
     let unscale = 1.0 / scale
-    var unscaledOptimizers = optimizers.map {
+    var unscaledOptimizers: [T] = optimizers.map {
       var optimizer = $0
       optimizer.scale *= unscale
       return optimizer
