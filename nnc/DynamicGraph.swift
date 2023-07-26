@@ -736,8 +736,14 @@ extension DynamicGraph {
      */
     public static let disableMmapMTLBuffer = EnableBits(
       rawValue: UInt64(CCV_NNC_DISABLE_MMAP_MTL_BUFFER))
+    /**
+     * Disable Metal flash attention.
+     */
+    public static let disableMetalFlashAttention = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_METAL_FLASH_ATTENTION))
     public static let allCases: [EnableBits] = [
       .disableMixedMPSGEMM, .disableMixedMPSSoftMax, .disableMmapMTLBuffer,
+      .disableMetalFlashAttention,
     ]
   }
 
