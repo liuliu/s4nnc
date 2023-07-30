@@ -122,10 +122,10 @@ extension TensorShape: CustomStringConvertible {
 
 extension TensorShape: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
-    return lhs.dims.0 == lhs.dims.0 && lhs.dims.1 == lhs.dims.1 && lhs.dims.2 == lhs.dims.2
-      && lhs.dims.3 == lhs.dims.3 && lhs.dims.4 == lhs.dims.4 && lhs.dims.5 == lhs.dims.5
-      && lhs.dims.6 == lhs.dims.6 && lhs.dims.7 == lhs.dims.7 && lhs.dims.8 == lhs.dims.8
-      && lhs.dims.9 == lhs.dims.9 && lhs.dims.10 == lhs.dims.10 && lhs.dims.11 == lhs.dims.11
+    return lhs.dims.0 == rhs.dims.0 && lhs.dims.1 == rhs.dims.1 && lhs.dims.2 == rhs.dims.2
+      && lhs.dims.3 == rhs.dims.3 && lhs.dims.4 == rhs.dims.4 && lhs.dims.5 == rhs.dims.5
+      && lhs.dims.6 == rhs.dims.6 && lhs.dims.7 == rhs.dims.7 && lhs.dims.8 == rhs.dims.8
+      && lhs.dims.9 == rhs.dims.9 && lhs.dims.10 == rhs.dims.10 && lhs.dims.11 == rhs.dims.11
   }
 }
 
