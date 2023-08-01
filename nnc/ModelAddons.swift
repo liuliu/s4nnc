@@ -1114,3 +1114,33 @@ public final class Scalar: Model {
     super.init(ccv_cnnp_scalar(0, 0, 0, value, name))
   }
 }
+
+/// Scaled-dot-product-attention model.
+public final class ScaledDotProductAttention: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
+    fusedWeights: Bool = false, noBias: Bool = false, trainable: Bool? = nil, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_scaled_dot_product_attention(
+        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, fusedWeights ? 1 : 0, noBias ? 1 : 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    queries q: T, keys k: T, values v: T, attentionMask: T? = nil,
+    streamContext: StreamContext? = nil
+  ) -> T {
+    if let attentionMask = attentionMask {
+      let outputs = self(inputs: q, k, v, attentionMask, streamContext: streamContext)
+      return T(outputs[0])
+    } else {
+      let outputs = self(inputs: q, k, v, streamContext: streamContext)
+      return T(outputs[0])
+    }
+  }
+}
