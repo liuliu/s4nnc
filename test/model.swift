@@ -139,21 +139,22 @@ final class ModelTests: XCTestCase {
 
   func testModelScaledDotProductAttention() throws {
     let dynamicGraph = DynamicGraph()
-    let q = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .NHWC(1, 8, 10, 20)))
-    let k = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .NHWC(1, 8, 20, 20)))
-    let v = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .NHWC(1, 8, 20, 30)))
+    let q = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .NHWC(1, 10, 8, 20)))
+    let k = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .NHWC(1, 20, 8, 20)))
+    let v = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .NHWC(1, 20, 8, 30)))
     q.randn()
     k.randn()
     v.randn()
     let scaledDotProductAttention = ScaledDotProductAttention(scale: 1)
     let out = scaledDotProductAttention(queries: q, keys: k, values: v)
-    var dot = Functional.matmul(left: q, right: k, rightTranspose: (2, 3))
+    var dot = Functional.matmul(
+      left: q.transposed(1, 2), right: k.transposed(1, 2), rightTranspose: (2, 3))
     dot = dot.reshaped(.NC(8 * 10, 20))
     dot.softmax()
     dot = dot.reshaped(.NHWC(1, 8, 10, 20))
-    let out2 = dot * v
-    for i in 0..<8 {
-      for j in 0..<10 {
+    let out2 = (dot * v.transposed(1, 2)).transposed(1, 2)
+    for i in 0..<10 {
+      for j in 0..<8 {
         for k in 0..<30 {
           XCTAssertEqual(out[0, i, j, k], out2[0, i, j, k], accuracy: 1e-5)
         }
