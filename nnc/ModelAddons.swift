@@ -104,7 +104,7 @@ public final class Reshape: Model {
 
   public init(
     dimensions: TensorShape, offset: TensorShape? = nil, strides: TensorShape? = nil,
-    name: String = ""
+    format: TensorFormat? = nil, name: String = ""
   ) {
     var dimensions = dimensions.dims
     var offset = offset?.dims ?? (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -115,7 +115,7 @@ public final class Reshape: Model {
         let offset = UnsafeRawPointer(offset).assumingMemoryBound(to: Int32.self)
         return withUnsafePointer(to: &strides) { strides -> OpaquePointer in
           let strides = UnsafeRawPointer(strides).assumingMemoryBound(to: Int32.self)
-          return ccv_cnnp_reshape(dimensions, offset, strides, name)!
+          return ccv_cnnp_reshape(format?.toC ?? 0, dimensions, offset, strides, name)!
         }
       }
     }
@@ -131,13 +131,52 @@ extension ModelIOConvertible {
    *   - dimensions: The new dimensions for the input.
    *   - offset: Whether apply certain offset for each dimension.
    *   - strides: What's the stride for each dimension.
+   *   - format: What's the new format of the tensor.
    */
   public func reshaped(
-    _ dimensions: TensorShape, offset: TensorShape? = nil, strides: TensorShape? = nil
+    _ dimensions: TensorShape, offset: TensorShape? = nil, strides: TensorShape? = nil,
+    format: TensorFormat? = nil
   )
     -> Model.IO
   {
-    return Reshape(dimensions: dimensions, offset: offset, strides: strides)(self)
+    return Reshape(dimensions: dimensions, offset: offset, strides: strides, format: format)(self)
+  }
+  /**
+   * Reshape an IO to a new dimension. You cannot reshape data types.
+   *
+   * - Parameters:
+   *   - shape: The new dimensions and format for the input.
+   *   - offset: Whether apply certain offset for each dimension.
+   *   - strides: What's the stride for each dimension.
+   *   - format: What's the new format of the tensor.
+   */
+  public func reshaped(
+    _ shape: TensorShapeFormat, offset: TensorShape? = nil, strides: TensorShape? = nil
+  )
+    -> Model.IO
+  {
+    return Reshape(dimensions: shape.shape, offset: offset, strides: strides, format: shape.format)(
+      self)
+  }
+}
+
+/// A identity model.
+public final class Identity: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_identity(name))
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Identity op for a model IO. This doesn't do anything but to change the order of execution.
+   */
+  public func identity() -> Model.IO {
+    return Identity()(self)
   }
 }
 
