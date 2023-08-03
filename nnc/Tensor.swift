@@ -248,6 +248,7 @@ extension TensorShape: RandomAccessCollection {
 public enum TensorShapeFormat {
   case C(Int)  // Assuming NCHW
   case NC(Int, Int)  // Assuming NCHW
+  case WC(Int, Int)  // Assuming NHWC
   case HWC(Int, Int, Int)  // Assuming NHWC
   case CHW(Int, Int, Int)  // Assuming NCHW
   case NHWC(Int, Int, Int, Int)
@@ -261,6 +262,8 @@ public enum TensorShapeFormat {
       return .NCHW
     case .NC:
       return .NCHW
+    case .WC:
+      return .NHWC
     case .HWC:
       return .NHWC
     case .CHW:
@@ -284,6 +287,10 @@ public enum TensorShapeFormat {
       assert(n > 0)
       assert(c > 0)
       return [n, c]
+    case let .WC(w, c):
+      assert(w > 0)
+      assert(c > 0)
+      return [w, c]
     case let .HWC(h, w, c):
       assert(h > 0)
       assert(w > 0)
