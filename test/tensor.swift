@@ -86,6 +86,21 @@ final class TensorTests: XCTestCase {
     }
   }
 
+  func testTensorMakeContiguous() throws {
+    var tensor = Tensor<Float32>(.CPU, .NC(2, 3))
+    tensor[1, ...] = [1, 2, 3]
+    tensor[0, ...] = [-1, -2, -3]
+    let partTensor = Tensor<Float32>(from: tensor[0..<2, 1..<3])
+    for tuple in zip([-2.0, -3.0], Array(partTensor[0, ...])) {
+      XCTAssertEqual(tuple.0, Double(tuple.1), accuracy: 1e-5)
+    }
+    for tuple in zip([2.0, 3.0], Array(partTensor[1, ...])) {
+      XCTAssertEqual(tuple.0, Double(tuple.1), accuracy: 1e-5)
+    }
+    XCTAssertFalse(tensor[0..<2, 1..<3].isContiguous)
+    XCTAssertTrue(partTensor.isContiguous)
+  }
+
   func testNoneMatchTensorAssignments() throws {
     var tensor = Tensor<Int32>(.CPU, .NC(2, 3))
     var source = Tensor<Int32>(.CPU, .C(3))
@@ -182,6 +197,7 @@ final class TensorTests: XCTestCase {
     ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
     ("testGetSetUnboundedPartTensorFromArray", testGetSetUnboundedPartTensorFromArray),
     ("testTensorTypeConversion", testTensorTypeConversion),
+    ("testTensorMakeContiguous", testTensorMakeContiguous),
     ("testNoneMatchTensorAssignments", testNoneMatchTensorAssignments),
     ("testNoneMatchTensorAssignmentsWithGPU", testNoneMatchTensorAssignmentsWithGPU),
     ("testTensorShapeAccessors", testTensorShapeAccessors),

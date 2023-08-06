@@ -683,6 +683,16 @@ extension AnyTensor {
   }
 
   @inlinable
+  public var isContiguous: Bool {
+    let type = Int(cTensor.pointee.type)
+    guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
+      return true
+    }
+    let cTensorView = UnsafeRawPointer(cTensor).assumingMemoryBound(to: ccv_nnc_tensor_view_t.self)
+    return cTensorView.pointee.contiguous == 1
+  }
+
+  @inlinable
   public var strides: TensorShape {
     guard isTensorView else {
       var strides = shape
@@ -755,12 +765,17 @@ public struct Tensor<Element: TensorNumeric>: AnyTensor {
   }
 
   /**
-   * Convert from a different type tensor to this tensor.
+   * Convert from a different type tensor to this tensor. If the given tensor is not contiguous,
+   * this method will make it contiguous.
    * - Parameter tensor: A type-erased tensor.
    */
   public init(from tensor: AnyTensor) {
     if tensor.dataType == Element.dataType {
-      _storage = tensor.storage
+      if tensor.isContiguous {
+        _storage = tensor.storage
+      } else {
+        _storage = tensor.storage.copy()
+      }
     } else {
       var cTensor = ccv_nnc_tensor_new(
         nil,
