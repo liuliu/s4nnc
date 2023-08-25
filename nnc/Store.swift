@@ -2345,21 +2345,75 @@ extension DynamicGraph {
         fatalError("Cannot recognize the variable")
       }
     }
+    public enum ModelWriterResult {
+      /// Continue to write the tensor with the given name.
+      case `continue`(String)
+      /// Nothing to write.
+      case skip
+    }
+    class ModelWriterHelper {
+      let writer: (String, NNC.AnyTensor) -> ModelWriterResult
+      let sqlite: UnsafeMutableRawPointer
+      init(
+        writer: @escaping (String, NNC.AnyTensor) -> ModelWriterResult,
+        sqlite: UnsafeMutableRawPointer
+      ) {
+        self.writer = writer
+        self.sqlite = sqlite
+      }
+    }
     /**
      * Write a model to the store.
      *
      * - Parameters:
      *   - key: The key corresponding to a particular model.
      *   - model: The model where its parameters to be persisted.
+     *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
      */
-    public func write(_ key: String, model: Model, codec: Codec = []) {
+    public func write(
+      _ key: String, model: Model, codec: Codec = [],
+      writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
+    ) {
+      guard let writer = writer else {
+        if codec.isEmpty {
+          ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil)
+        } else {
+          var option = ccv_nnc_tensor_io_option_t()
+          option.encode = codec.encode
+          ccv_cnnp_model_write(model.cModel, store.sqlite, key, &option)
+        }
+        return
+      }
+      let writerHelper = ModelWriterHelper(writer: writer, sqlite: store.sqlite)
+      ccv_cnnp_model_set_io(
+        model.cModel, nil,
+        { (tensor, sql, handle, name, options) -> Int32 in
+          if let sql = sql {
+            sqlite3_exec(handle.map { OpaquePointer($0) }, sql, nil, nil, nil)
+            return Int32(CCV_IO_FINAL)
+          }
+          let writerHelper = Unmanaged<ModelWriterHelper>.fromOpaque(handle!).takeUnretainedValue()
+          let result = writerHelper.writer(
+            name.map { String(cString: $0) } ?? "",
+            AnyTensorStorage(UnsafeMutablePointer(mutating: tensor!), selfOwned: false)
+              .toAnyTensor())
+          switch result {
+          case .continue(let name):
+            return ccv_nnc_tensor_write(tensor, writerHelper.sqlite, name, options)
+          case .skip:
+            return Int32(CCV_IO_FINAL)
+          }
+        })
+      let unmanaged = Unmanaged.passRetained(writerHelper)
       if codec.isEmpty {
-        ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil)
+        ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, nil)
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.encode = codec.encode
-        ccv_cnnp_model_write(model.cModel, store.sqlite, key, &option)
+        ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, &option)
       }
+      ccv_cnnp_model_set_io(model.cModel, nil, nil)
+      unmanaged.release()
     }
     /**
      * Write a model builder to the store.
@@ -2368,8 +2422,11 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular model builder.
      *   - model builder: The model where its parameters to be persisted.
      */
-    public func write(_ key: String, model: AnyModelBuilder, codec: Codec = []) {
-      write(key, model: model.model!)
+    public func write(
+      _ key: String, model: AnyModelBuilder, codec: Codec = [],
+      writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
+    ) {
+      write(key, model: model.model!, codec: codec, writer: writer)
     }
 
     init(_ store: _Store, graph: DynamicGraph) {

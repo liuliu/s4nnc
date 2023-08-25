@@ -165,6 +165,23 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(tv2[0], 2.2)
   }
 
+  func testWriteModelWriteDifferentNameAndRead() throws {
+    let graph = DynamicGraph()
+    let linear0 = Dense(count: 1, noBias: true, name: "linear")
+    let tv0 = graph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = linear0(inputs: tv0)[0].as(of: Float32.self)
+    let linear1 = Dense(count: 1, noBias: true)
+    linear1.compile(inputs: tv0)
+    graph.openStore("test/modelw.db") { store in
+      store.write("a", model: linear0) { name, _ in
+        return .continue("__a__[t-0-0]")
+      }
+      store.read("a", model: linear1)
+    }
+    let tv2 = linear1(inputs: tv0)[0].as(of: Float32.self)
+    XCTAssertEqual(tv1[0], tv2[0])
+  }
+
   func testWriteTensorAndReadBackWithFPZIP() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
@@ -567,6 +584,7 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorReadBackAndDelete", testWriteTensorReadBackAndDelete),
     ("testWriteModelAndReadWithDifferentName", testWriteModelAndReadWithDifferentName),
     ("testWriteModelAndLoadFromNothing", testWriteModelAndLoadFromNothing),
+    ("testWriteModelWriteDifferentNameAndRead", testWriteModelWriteDifferentNameAndRead),
     ("testWriteTensorAndReadBackWithFPZIP", testWriteTensorAndReadBackWithFPZIP),
     ("testWriteTensorAndReadBackWithFPZIPFloat16", testWriteTensorAndReadBackWithFPZIPFloat16),
     (
