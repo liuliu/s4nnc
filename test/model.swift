@@ -1,3 +1,4 @@
+import C_nnc
 import NNC
 import XCTest
 
@@ -139,9 +140,9 @@ final class ModelTests: XCTestCase {
 
   func testModelScaledDotProductAttention() throws {
     let dynamicGraph = DynamicGraph()
-    let q = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .NHWC(1, 10, 8, 20)))
-    let k = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .NHWC(1, 20, 8, 20)))
-    let v = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .NHWC(1, 20, 8, 30)))
+    let q = dynamicGraph.variable(Tensor<Float32>(.CPU, .NHWC(1, 10, 8, 20)))
+    let k = dynamicGraph.variable(Tensor<Float32>(.CPU, .NHWC(1, 20, 8, 20)))
+    let v = dynamicGraph.variable(Tensor<Float32>(.CPU, .NHWC(1, 20, 8, 30)))
     q.randn()
     k.randn()
     v.randn()
@@ -162,6 +163,184 @@ final class ModelTests: XCTestCase {
     }
   }
 
+  func testCustomModel() throws {
+    let dynamicGraph = DynamicGraph()
+    var params = ccv_nnc_tensor_param_t()
+    params.type = Int32(CCV_TENSOR_CPU_MEMORY)
+    params.datatype = Int32(CCV_32F)
+    params.format = Int32(CCV_TENSOR_FORMAT_NHWC)
+    params.dim = (80, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    var cmdParams = CmdParamsFactory.factory.newParams()
+    cmdParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    cmdParams.blas.a = (1.0 / 80, 0, 0)
+    let initFirstWeightState = ccv_cnnp_cmd_exec_io_set_by(
+      ccv_nnc_cmd(CCV_NNC_RANDOM_NORMAL_FORWARD, nil, cmdParams, 0), ccv_nnc_hint_t(), 0, params)
+    params.dim = (80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    cmdParams.blas.a = (0, 0, 0)
+    let initFirstBiasState = ccv_cnnp_cmd_exec_io_set_by(
+      ccv_nnc_cmd(CCV_NNC_SET_FORWARD, nil, cmdParams, 0), ccv_nnc_hint_t(), 0, params)
+    params.dim = (20, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    cmdParams.blas.a = (1.0 / 20, 0, 0)
+    let initSecondWeightState = ccv_cnnp_cmd_exec_io_set_by(
+      ccv_nnc_cmd(CCV_NNC_RANDOM_NORMAL_FORWARD, nil, cmdParams, 0), ccv_nnc_hint_t(), 0, params)
+    params.dim = (20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    cmdParams.blas.a = (0, 0, 0)
+    let initSecondBiasState = ccv_cnnp_cmd_exec_io_set_by(
+      ccv_nnc_cmd(CCV_NNC_SET_FORWARD, nil, cmdParams, 0), ccv_nnc_hint_t(), 0, params)
+    let feedForward = CustomModel(
+      inputs: [
+        .inputOrOutput, .sharedTensorAsTrainable(initFirstWeightState),
+        .sharedTensorAsTrainable(initFirstBiasState),
+        .sharedTensorAsTrainable(initFirstWeightState),
+        .sharedTensorAsTrainable(initFirstBiasState),
+        .sharedTensorAsTrainable(initSecondWeightState),
+        .sharedTensorAsTrainable(initSecondBiasState),
+      ], outputs: [.inputOrOutput], hint: Hint(),
+      shapeInference: {
+        (
+          _: ccv_nnc_cmd_t, inputs: UnsafePointer<ccv_nnc_tensor_param_t>?, _: Int32,
+          _: ccv_nnc_hint_t, outputs: UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, _: Int32
+        ) -> Void in
+        var params = inputs![0]
+        params.dim.1 = 20
+        outputs![0] = params
+      },
+      execute: {
+        (
+          cmd: ccv_nnc_cmd_t, _: ccv_nnc_hint_t, _: Int32,
+          inputs: UnsafePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?, inputSize: Int32,
+          outputs: UnsafePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?, outputSize: Int32,
+          streamContext: OpaquePointer?
+        ) -> Int32 in
+        if cmd.cmd == UInt32(CCV_NNC_CUSTOM_FORWARD) {
+          var denseParams = CmdParamsFactory.factory.newParams()
+          denseParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          denseParams.blas.transpose_b = (0, 1)
+          let gemm = ccv_nnc_cmd(CCV_NNC_GEMM_FORWARD, nil, denseParams, 0)
+          var tensorParams = inputs![0]!.pointee.info
+          tensorParams.dim = (tensorParams.dim.0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          var fc10 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          var fc11 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          ccv_nnc_cmd_exec(gemm, ccv_nnc_hint_t(), 0, inputs, 3, &fc10, 1, streamContext)
+          ccv_nnc_cmd_exec(
+            gemm, ccv_nnc_hint_t(), 0, [inputs![0], inputs![3], inputs![4]], 3, &fc11, 1,
+            streamContext)
+          var geluParams = CmdParamsFactory.factory.newParams()
+          geluParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          geluParams.gelu.tanh = 0
+          let gelu = ccv_nnc_cmd(CCV_NNC_GELU_FORWARD, nil, geluParams, 0)
+          ccv_nnc_cmd_exec(gelu, ccv_nnc_hint_t(), 0, &fc11, 1, &fc11, 1, streamContext)
+          var mulParams = CmdParamsFactory.factory.newParams()
+          mulParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          mulParams.blas.a = (1, 0, 0)
+          let mul = ccv_nnc_cmd(CCV_NNC_MUL_FORWARD, nil, mulParams, 0)
+          ccv_nnc_cmd_exec(mul, ccv_nnc_hint_t(), 0, [fc10, fc11], 2, &fc10, 1, streamContext)
+          ccv_nnc_tensor_free(fc11)
+          ccv_nnc_cmd_exec(
+            gemm, ccv_nnc_hint_t(), 0, [fc10, inputs![5], inputs![6]], 3, outputs, 1, streamContext)
+          ccv_nnc_tensor_free(fc10)
+        } else if cmd.cmd == UInt32(CCV_NNC_CUSTOM_BACKWARD) {
+          var denseParams = CmdParamsFactory.factory.newParams()
+          denseParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          denseParams.blas.transpose_b = (0, 1)
+          let gemm = ccv_nnc_cmd(CCV_NNC_GEMM_FORWARD, nil, denseParams, 0)
+          var tensorParams = inputs![1]!.pointee.info
+          tensorParams.dim = (tensorParams.dim.0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          var fc10 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          var fc11 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          ccv_nnc_cmd_exec(gemm, ccv_nnc_hint_t(), 0, inputs! + 1, 3, &fc10, 1, streamContext)
+          ccv_nnc_cmd_exec(
+            gemm, ccv_nnc_hint_t(), 0, [inputs![1], inputs![4], inputs![5]], 3, &fc11, 1,
+            streamContext)
+          var geluParams = CmdParamsFactory.factory.newParams()
+          geluParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          geluParams.gelu.tanh = 0
+          let gelu = ccv_nnc_cmd(CCV_NNC_GELU_FORWARD, nil, geluParams, 0)
+          var fc12 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          ccv_nnc_cmd_exec(gelu, ccv_nnc_hint_t(), 0, &fc11, 1, &fc12, 1, streamContext)
+          var mulParams = CmdParamsFactory.factory.newParams()
+          mulParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          mulParams.blas.a = (1, 0, 0)
+          var fc2 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          let gemmBack = ccv_nnc_cmd(CCV_NNC_GEMM_BACKWARD, nil, denseParams, 0)
+          ccv_nnc_cmd_exec(
+            gemmBack, ccv_nnc_hint_t(), 0, [inputs![0], nil, inputs![6], inputs![7]], 4, &fc2, 1,
+            streamContext)
+          var fc21 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          let mul = ccv_nnc_cmd(CCV_NNC_MUL_FORWARD, nil, mulParams, 0)
+          ccv_nnc_cmd_exec(mul, ccv_nnc_hint_t(), 0, [fc10, fc2], 2, &fc21, 1, streamContext)
+          ccv_nnc_cmd_exec(mul, ccv_nnc_hint_t(), 0, [fc2, fc12], 2, &fc10, 1, streamContext)
+          let geluBack = ccv_nnc_cmd(CCV_NNC_GELU_BACKWARD, nil, geluParams, 0)
+          ccv_nnc_cmd_exec(geluBack, ccv_nnc_hint_t(), 0, [fc21, fc11], 2, &fc12, 1, streamContext)
+          ccv_nnc_tensor_free(fc11)
+          ccv_nnc_tensor_free(fc21)
+          tensorParams = inputs![1]!.pointee.info
+          var din0 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          ccv_nnc_cmd_exec(
+            gemmBack, ccv_nnc_hint_t(), 0, [fc10, nil, inputs![2], inputs![3]], 4, &din0, 1,
+            streamContext)
+          ccv_nnc_tensor_free(fc10)
+          var din1 = ccv_nnc_tensor_new(nil, tensorParams, 0)
+          ccv_nnc_cmd_exec(
+            gemmBack, ccv_nnc_hint_t(), 0, [fc12, nil, inputs![4], inputs![5]], 4, &din1, 1,
+            streamContext)
+          ccv_nnc_tensor_free(fc12)
+          var sumParams = CmdParamsFactory.factory.newParams()
+          sumParams.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+          let sum = ccv_nnc_cmd(CCV_NNC_EWSUM_FORWARD, nil, sumParams, 0)
+          ccv_nnc_cmd_exec(sum, ccv_nnc_hint_t(), 0, [din0, din1], 2, outputs, 1, streamContext)
+          ccv_nnc_tensor_free(din0)
+          ccv_nnc_tensor_free(din1)
+        }
+        return Int32(CCV_NNC_EXEC_SUCCESS)
+      })
+    let input = dynamicGraph.variable(Tensor<Float32>(.CPU, .NC(4, 20)))
+    input.randn()
+    let output = feedForward(inputs: input)[0].as(of: Float32.self)
+
+    let (fc10, fc11, fc2, feedForward2) =
+      ({ () -> (Model, Model, Model, Model) in
+        let x = Input()
+        let fc10 = Dense(count: 80)
+        let fc11 = Dense(count: 80)
+        var out = fc10(x)
+        out = out .* GELU()(fc11(x))
+        let fc2 = Dense(count: 20)
+        out = fc2(out)
+        return (fc10, fc11, fc2, Model([x], [out]))
+      })()
+    feedForward2.compile(inputs: input)
+    let tensor = Tensor<Float32>(.CPU, .NC(80, 20))
+    feedForward.parameters(for: .index(0)).copy(to: tensor)
+    fc10.weight.copy(from: tensor)
+    feedForward.parameters(for: .index(2)).copy(to: tensor)
+    fc11.weight.copy(from: tensor)
+    let tensor2 = Tensor<Float32>(.CPU, .NC(20, 80))
+    feedForward.parameters(for: .index(4)).copy(to: tensor2)
+    fc2.weight.copy(from: tensor2)
+    let output2 = feedForward2(inputs: input)[0].as(of: Float32.self)
+    for i in 0..<4 {
+      for j in 0..<20 {
+        XCTAssertEqual(output[i, j], output2[i, j], accuracy: 1e-5)
+      }
+    }
+    let grad = dynamicGraph.variable(.CPU, .NC(4, 20), of: Float32.self)
+    grad.randn()
+    output2.grad = grad
+    input.requiresGrad = true
+    output2.backward(to: input)
+    let outGrad2 = input.grad!.as(of: Float32.self)
+    output.grad = grad
+    input.grad = nil
+    output.backward(to: input)
+    let outGrad = input.grad!.as(of: Float32.self)
+    for i in 0..<4 {
+      for j in 0..<20 {
+        XCTAssertEqual(outGrad[i, j], outGrad2[i, j], accuracy: 1e-5)
+      }
+    }
+  }
+
   static let allTests = [
     ("testModel", testModel),
     ("testModelBuilder", testModelBuilder),
@@ -169,5 +348,6 @@ final class ModelTests: XCTestCase {
     ("testModelWithScalar", testModelWithScalar),
     ("testModelWithParameter", testModelWithParameter),
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
+    ("testCustomModel", testCustomModel),
   ]
 }

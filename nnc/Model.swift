@@ -151,6 +151,7 @@ public class Model {
   public enum ParametersType {
     case weight
     case bias
+    case index(Int)
   }
 
   private var _biasParameters: ccv_cnnp_model_io_t? = nil
@@ -181,6 +182,10 @@ public class Model {
         return Parameters(biasParameters, model: self)
       }
       return Parameters(_biasParameters, model: self)
+    case .index(let idx):
+      let indexParameters = ccv_cnnp_model_parameters(
+        cModel, -1, Int32(idx))!
+      return Parameters(indexParameters, model: self)
     }
   }
 }

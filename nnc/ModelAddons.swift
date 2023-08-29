@@ -1185,3 +1185,75 @@ public final class ScaledDotProductAttention: Model {
     }
   }
 }
+
+/// Custom model.
+public final class CustomModel: Model {
+  required init(_ model: OpaquePointer) {
+    isa = ccv_nnc_cmd_vtab_t()
+    super.init(model)
+  }
+
+  public enum IOType {
+    case inputOrOutput
+    case noTensor
+    case tensorNotOutput
+    case sharedTensor(ccv_cnnp_cmd_exec_io_init_state_t)
+    case sharedTensorAsTrainable(ccv_cnnp_cmd_exec_io_init_state_t)
+  }
+
+  private var isa: ccv_nnc_cmd_vtab_t
+
+  public init(
+    inputs: [IOType], outputs: [IOType], hint: Hint, trainable: Bool? = nil, name: String = "",
+    shapeInference: @convention(c) (
+      _: ccv_nnc_cmd_t, _: UnsafePointer<ccv_nnc_tensor_param_t>?, _: Int32, _: ccv_nnc_hint_t,
+      _: UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, _: Int32
+    ) -> Void,
+    execute: @convention(c) (
+      _: ccv_nnc_cmd_t, _: ccv_nnc_hint_t, _: Int32,
+      _: UnsafePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?, _: Int32,
+      _: UnsafePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?, _: Int32, _: OpaquePointer?
+    ) -> Int32
+  ) {
+    isa = ccv_nnc_cmd_vtab_s()
+    isa.tensor_auto = shapeInference
+    isa.exec = execute
+    let cmd = ccv_nnc_cmd(UInt32(CCV_NNC_CUSTOM_FORWARD), &isa, ccv_nnc_cmd_param_t(), 0)
+    let cInputs: [ccv_cnnp_cmd_exec_io_t] = inputs.map {
+      var io = ccv_cnnp_cmd_exec_io_t()
+      switch $0 {
+      case .inputOrOutput:
+        io.type = Int32(CCV_CNNP_IO)
+      case .noTensor:
+        io.type = Int32(CCV_CNNP_NO_TENSOR)
+      case .tensorNotOutput:
+        io.type = Int32(CCV_CNNP_TENSOR_NOT_OUTPUT)
+      case .sharedTensor(let init_state):
+        io.type = Int32(CCV_CNNP_INIT_SHARED_TENSOR)
+        io.init_state = init_state
+      case .sharedTensorAsTrainable(let init_state):
+        io.type = Int32(CCV_CNNP_INIT_SHARED_TENSOR_AS_TRAINABLE)
+        io.init_state = init_state
+      }
+      return io
+    }
+    let cOutputs: [Int32] = outputs.map {
+      switch $0 {
+      case .inputOrOutput:
+        return Int32(CCV_CNNP_IO)
+      case .noTensor:
+        return Int32(CCV_CNNP_NO_TENSOR)
+      case .tensorNotOutput:
+        return Int32(CCV_CNNP_TENSOR_NOT_OUTPUT)
+      case .sharedTensor(_):
+        return Int32(CCV_CNNP_INIT_SHARED_TENSOR)
+      case .sharedTensorAsTrainable(_):
+        return Int32(CCV_CNNP_INIT_SHARED_TENSOR_AS_TRAINABLE)
+      }
+    }
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, hint.toCHint(), 0, cInputs, Int32(inputs.count), cOutputs, Int32(outputs.count),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+}
