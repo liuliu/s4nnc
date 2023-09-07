@@ -1972,7 +1972,6 @@ private let q4pDecodeJit:
     else { return 0 }
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    data += MemoryLayout<UInt32>.size
     guard tensorOut!.pointee == nil else {
       return q4pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -1987,8 +1986,8 @@ private let q4pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    let params = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(params)
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
@@ -1996,9 +1995,10 @@ private let q4pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
     let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
     let decoded = decoded ?? tensorData!
+    data += MemoryLayout<UInt32>.size
     memcpy(decoded, data, decodedDataSize)
     decodedSize[0] = decodedDataSize
     return 1
@@ -2021,7 +2021,6 @@ private let q5pDecodeJit:
     else { return 0 }
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    data += MemoryLayout<UInt32>.size
     guard tensorOut!.pointee == nil else {
       return q5pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -2036,8 +2035,8 @@ private let q5pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    let params = ccv_nnc_tensor_palettize(params, 5, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(params)
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 5, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
@@ -2045,9 +2044,10 @@ private let q5pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
     let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
     let decoded = decoded ?? tensorData!
+    data += MemoryLayout<UInt32>.size
     memcpy(decoded, data, decodedDataSize)
     decodedSize[0] = decodedDataSize
     return 1
@@ -2070,7 +2070,6 @@ private let q6pDecodeJit:
     else { return 0 }
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    data += MemoryLayout<UInt32>.size
     guard tensorOut!.pointee == nil else {
       return q6pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -2085,8 +2084,8 @@ private let q6pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    let params = ccv_nnc_tensor_palettize(params, 6, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(params)
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 6, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
@@ -2094,9 +2093,10 @@ private let q6pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
     let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
     let decoded = decoded ?? tensorData!
+    data += MemoryLayout<UInt32>.size
     memcpy(decoded, data, decodedDataSize)
     decodedSize[0] = decodedDataSize
     return 1
@@ -2119,7 +2119,6 @@ private let q7pDecodeJit:
     else { return 0 }
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    data += MemoryLayout<UInt32>.size
     guard tensorOut!.pointee == nil else {
       return q7pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -2134,8 +2133,8 @@ private let q7pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    let params = ccv_nnc_tensor_palettize(params, 7, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(params)
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 7, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
@@ -2143,9 +2142,10 @@ private let q7pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
     let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
     let decoded = decoded ?? tensorData!
+    data += MemoryLayout<UInt32>.size
     memcpy(decoded, data, decodedDataSize)
     decodedSize[0] = decodedDataSize
     return 1
@@ -2168,7 +2168,6 @@ private let q8pDecodeJit:
     else { return 0 }
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    data += MemoryLayout<UInt32>.size
     guard tensorOut!.pointee == nil else {
       return q8pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -2183,8 +2182,8 @@ private let q8pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    let params = ccv_nnc_tensor_palettize(params, 8, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(params)
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 8, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
@@ -2192,9 +2191,10 @@ private let q8pDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
     let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
     let decoded = decoded ?? tensorData!
+    data += MemoryLayout<UInt32>.size
     memcpy(decoded, data, decodedDataSize)
     decodedSize[0] = decodedDataSize
     return 1
