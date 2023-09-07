@@ -99,9 +99,12 @@ public class AnyModelBuilder {
       let readerHelper = DynamicGraph.Store.ModelReaderHelper(reader: reader, sqlite: store.sqlite)
       ccv_cnnp_model_set_io(
         model!.cModel,
-        { (handle, name, dir, options, tensorOut) -> Int32 in
+        { (handle, name, dir, options, params, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
             .takeUnretainedValue()
+          if tensorOut!.pointee == nil {
+            tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+          }
           let cTensorOut = tensorOut!.pointee
           let params = cTensorOut!.pointee.info
           let result = readerHelper.reader(
@@ -114,7 +117,8 @@ public class AnyModelBuilder {
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, tensorOut)
+            var params = params
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, &params, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
@@ -145,9 +149,12 @@ public class AnyModelBuilder {
           reader: reader, sqlite: store.sqlite)
         ccv_cnnp_model_set_io(
           model!.cModel,
-          { (handle, name, dir, options, tensorOut) -> Int32 in
+          { (handle, name, dir, options, params, tensorOut) -> Int32 in
             let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
               .takeUnretainedValue()
+            if tensorOut!.pointee == nil {
+              tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+            }
             let cTensorOut = tensorOut!.pointee
             let params = cTensorOut!.pointee.info
             let result = readerHelper.reader(
@@ -160,7 +167,9 @@ public class AnyModelBuilder {
               ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
               return Int32(CCV_IO_FINAL)
             case .continue(let name):
-              return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, tensorOut)
+              var params = params
+              return ccv_nnc_tensor_read(
+                readerHelper.sqlite, name, dir, options, &params, tensorOut)
             case .fail:
               return Int32(CCV_IO_ERROR)
             }

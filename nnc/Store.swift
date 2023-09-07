@@ -88,14 +88,20 @@ private let q4pEncode:
 private let q4pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0x8a1e4b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -321,14 +327,20 @@ private let q5pEncode:
 private let q5pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0x8a1e5b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -678,14 +690,20 @@ private let q6pEncode:
 private let q6pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0x8a1e6b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -965,14 +983,20 @@ private let q7pEncode:
 private let q7pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0x8a1e7b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -1323,14 +1347,20 @@ private let q8pEncode:
 private let q8pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0x8a1e8b else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     let elementSize: Int
@@ -1468,14 +1498,20 @@ private let fpzipEncode:
 private let fpzipDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0xf7217 else { return 0 }
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
-    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     guard let fpz = fpzip_read_from_buffer(data) else { return 0 }
@@ -1552,13 +1588,18 @@ private let zipEncode:
 private let zipDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
-    decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard identifier == 0x217 else { return 0 }
-    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     guard
@@ -1644,13 +1685,19 @@ private let ezm7Encode:
 private let ezm7Decode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     guard dataType == Int32(CCV_16F) else { return 0 }
     guard identifier == 0x511 else { return 0 }
-    guard let data = data, let dimensions = dimensions, let decoded = decoded,
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
     var floatCount = Int(dimensions[0])
@@ -1911,42 +1958,52 @@ private let fpzipAndZipEncode:
 private let uDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
     UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded, decodedSize
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
     in
     switch identifier {
     case 0xf7217:
       return fpzipDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x217:
       return zipDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x511:
       return ezm7Decode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x8a1e4b:
       return q4pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x8a1e5b:
       return q5pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x8a1e6b:
       return q6pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x8a1e7b:
       return q7pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     case 0x8a1e8b:
       return q8pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, decoded,
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded,
         decodedSize)
     default:
       return 0
@@ -2052,7 +2109,9 @@ extension DynamicGraph {
         (
           @convention(c) (
             UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32,
-            UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+            UnsafeMutableRawPointer?, ccv_nnc_tensor_param_t,
+            UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+            UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
           ) -> Int32
         )?
       {
@@ -2093,11 +2152,11 @@ extension DynamicGraph {
       var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
       let result: Int32
       if codec.isEmpty {
-        result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+        result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, nil, &underlying)
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.decode = codec.decode
-        result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, &underlying)
+        result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, nil, &underlying)
       }
       guard result == CCV_IO_FINAL else { return nil }
       let anyTensor = AnyTensorStorage(underlying!)
@@ -2170,11 +2229,11 @@ extension DynamicGraph {
           var underlying = raw
           let result: Int32
           if codec.isEmpty {
-            result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+            result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, nil, &underlying)
           } else {
             var option = ccv_nnc_tensor_io_option_t()
             option.decode = codec.decode
-            result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, &underlying)
+            result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, nil, &underlying)
           }
           if result == CCV_IO_FINAL {
             assert(underlying == raw)
@@ -2184,11 +2243,11 @@ extension DynamicGraph {
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
         let result: Int32
         if codec.isEmpty {
-          result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, &underlying)
+          result = ccv_nnc_tensor_read(store.sqlite, key, nil, nil, nil, &underlying)
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.decode = codec.decode
-          result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, &underlying)
+          result = ccv_nnc_tensor_read(store.sqlite, key, nil, &option, nil, &underlying)
         }
         guard result == CCV_IO_FINAL else { return false }
         let anyTensor = AnyTensorStorage(underlying!)
@@ -2255,8 +2314,11 @@ extension DynamicGraph {
       let readerHelper = ModelReaderHelper(reader: reader, sqlite: store.sqlite)
       ccv_cnnp_model_set_io(
         model.cModel,
-        { (handle, name, dir, options, tensorOut) -> Int32 in
+        { (handle, name, dir, options, params, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<ModelReaderHelper>.fromOpaque(handle!).takeUnretainedValue()
+          if tensorOut!.pointee == nil {
+            tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+          }
           let cTensorOut = tensorOut!.pointee
           let params = cTensorOut!.pointee.info
           let result = readerHelper.reader(
@@ -2269,7 +2331,8 @@ extension DynamicGraph {
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, tensorOut)
+            var params = params
+            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, &params, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
