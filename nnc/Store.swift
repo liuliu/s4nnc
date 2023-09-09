@@ -1981,7 +1981,10 @@ private let q4pDecodeJit:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements && (numberOfElements % blockSize) == 0 else {
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
       return q4pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2030,7 +2033,10 @@ private let q5pDecodeJit:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements && (numberOfElements % blockSize) == 0 else {
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
       return q5pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2079,7 +2085,10 @@ private let q6pDecodeJit:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements && (numberOfElements % blockSize) == 0 else {
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
       return q6pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2128,7 +2137,10 @@ private let q7pDecodeJit:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements && (numberOfElements % blockSize) == 0 else {
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
       return q7pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2177,7 +2189,10 @@ private let q8pDecodeJit:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements && (numberOfElements % blockSize) == 0 else {
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
       return q8pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
