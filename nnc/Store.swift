@@ -2617,11 +2617,7 @@ extension DynamicGraph {
         model.cModel,
         { (handle, name, dir, options, params, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<ModelReaderHelper>.fromOpaque(handle!).takeUnretainedValue()
-          if tensorOut!.pointee == nil {
-            tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-          }
-          let cTensorOut = tensorOut!.pointee
-          let params = cTensorOut!.pointee.info
+          let params = tensorOut!.pointee?.pointee.info ?? params
           let result = readerHelper.reader(
             name.map { String(cString: $0) } ?? "", DataType.from(cTensorParams: params),
             TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
@@ -2629,6 +2625,10 @@ extension DynamicGraph {
           case .final(let tensor):
             precondition(tensor.kind == .CPU)
             let dataSize = ccv_nnc_tensor_data_size(tensor.cTensor.pointee.info)
+            if tensorOut!.pointee == nil {
+              tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+            }
+            let cTensorOut = tensorOut!.pointee
             ccv_nnc_tensor_swap(cTensorOut, name, dir, tensor.cTensor.pointee.data.ptr, dataSize)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
