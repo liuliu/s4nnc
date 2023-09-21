@@ -2839,6 +2839,10 @@ extension DynamicGraph {
 
   }
 
+  public enum OpenError: Error {
+    case cannotOpen
+  }
+
   /**
    * Open the store from a file.
    *
@@ -2849,10 +2853,10 @@ extension DynamicGraph {
    * - Returns: Wether this store can be successfully open or not.
    */
   @discardableResult
-  public func openStore(
+  public func openStore<SuccessResult>(
     _ filePath: String, flags: Store.OpenFlag = .truncateWhenClose,
-    procedure: (_ store: Store) throws -> Void
-  ) rethrows -> Bool {
+    procedure: (_ store: Store) throws -> SuccessResult
+  ) rethrows -> Result<SuccessResult, OpenError> {
     var _sqlite: OpaquePointer? = nil
     if flags.contains(.readOnly) {
       if sqlite3_libversion_number() >= 3_022_000 {
@@ -2863,11 +2867,10 @@ extension DynamicGraph {
     } else {
       sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
     }
-    guard let sqlite = _sqlite else { return false }
+    guard let sqlite = _sqlite else { return .failure(.cannotOpen) }
     sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
     let store = Store(_Store(sqlite: sqlite, flags: flags), graph: self)
-    try procedure(store)
-    return true
+    return .success(try procedure(store))
   }
 
 }
