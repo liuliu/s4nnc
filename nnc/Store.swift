@@ -2752,11 +2752,11 @@ extension DynamicGraph {
       ccv_cnnp_model_set_io(
         model.cModel, nil,
         { (tensor, sql, handle, name, options) -> Int32 in
+          let writerHelper = Unmanaged<ModelWriterHelper>.fromOpaque(handle!).takeUnretainedValue()
           if let sql = sql {
-            sqlite3_exec(handle.map { OpaquePointer($0) }, sql, nil, nil, nil)
+            sqlite3_exec(OpaquePointer(writerHelper.sqlite), sql, nil, nil, nil)
             return Int32(CCV_IO_FINAL)
           }
-          let writerHelper = Unmanaged<ModelWriterHelper>.fromOpaque(handle!).takeUnretainedValue()
           let result = writerHelper.writer(
             name.map { String(cString: $0) } ?? "",
             AnyTensorStorage(UnsafeMutablePointer(mutating: tensor!), selfOwned: false)
