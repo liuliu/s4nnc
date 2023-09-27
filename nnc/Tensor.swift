@@ -333,7 +333,7 @@ public enum DataType {
   case UInt8
 
   public static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DataType {
-    switch Int(cTensorParams.datatype) {
+    switch Int(cTensorParams.datatype & 0xff000) {
     case CCV_64F:
       return .Float64
     case CCV_64S:
@@ -346,6 +346,23 @@ public enum DataType {
       return .Float16
     case CCV_8U:
       return .UInt8
+    case CCV_QX:
+      switch Int((cTensorParams.datatype & 0xff) << 12) {
+        case CCV_64F:
+          return .Float64
+        case CCV_64S:
+          return .Int64
+        case CCV_32F:
+          return .Float32
+        case CCV_32S:
+          return .Int32
+        case CCV_16F:
+          return .Float16
+        case CCV_8U:
+          return .UInt8
+        default:
+          fatalError("unspecified datatype")
+      }
     default:
       fatalError("unspecified datatype")
     }
