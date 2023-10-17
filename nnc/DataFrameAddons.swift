@@ -296,13 +296,13 @@ extension DataFrame.UntypedSeries {
 
 extension DataFrame.TypedSeries where Element == Int {
   /// Create one-hot tensors. It is expected to be called from a column with Int.
-  public func toOneHot<Element: TensorNumeric>(
-    _ dataType: Element.Type, count: Int, onval: Float = 1, offval: Float = 0
+  public func toOneHot<T: TensorNumeric>(
+    _ dataType: T.Type, count: Int, onval: Float = 1, offval: Float = 0
   ) -> DataFrame.UntypedSeries {
     return DataFrame.UntypedSeries(
       .native(
         property, DataFrame.addToOneHot,
-        OneHotParams(dataType: Element.dataType, count: count, onval: onval, offval: offval)))
+        OneHotParams(dataType: T.dataType, count: count, onval: onval, offval: offval)))
   }
 }
 
@@ -665,8 +665,8 @@ extension DataFrame.UntypedSeries {
 
 extension DataFrame.TypedSeries where Element: AnyTensor {
   /// Apply some jitter to loaded images.
-  public func toImageJitter<Element: TensorNumeric>(
-    _ ofType: Element.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0,
+  public func toImageJitter<T: TensorNumeric>(
+    _ ofType: T.Type, size: ImageJitter.Size, resize: ImageJitter.Resize, contrast: Float = 0,
     saturation: Float = 0, brightness: Float = 0, lighting: Float = 0, aspectRatio: Float = 0,
     symmetric: Bool = false, seed: Int = 0, centerCrop: Bool = false,
     offset: ImageJitter.Offset = ImageJitter.Offset(x: 0, y: 0),
@@ -680,6 +680,6 @@ extension DataFrame.TypedSeries where Element: AnyTensor {
           contrast: contrast, saturation: saturation, brightness: brightness, lighting: lighting,
           aspectRatio: aspectRatio, symmetric: symmetric, seed: seed, centerCrop: centerCrop,
           size: size, resize: resize, offset: offset, normalize: normalize,
-          dataType: Element.dataType)))
+          dataType: T.dataType)))
   }
 }
