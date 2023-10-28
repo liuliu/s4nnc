@@ -1669,6 +1669,10 @@ extension DynamicGraph.Group {
 extension DynamicGraph.Tensor {
   /// Explicitly do conversion between types.
   public convenience init(from input: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil) {
+    guard input.dataType != Element.dataType else {
+      self.init(input)
+      return
+    }
     let params = CmdParamsFactory.factory.newParams()
     let cmd = ccv_nnc_cmd(CCV_NNC_DATATYPE_CONVERSION_FORWARD, nil, params, 0)
     let output = input.graph.variable(
