@@ -48,7 +48,21 @@ fileprivate func _step(
       assert(aux.graph === graph)
     }
   }
+  var parameters = parameters
+  var savedAux = savedAux
+  if !savedAux.isEmpty {
+    let zipped = zip(parameters, savedAux).filter {
+      !($0.0.untyped.contains { $0.grad == nil })
+    }
+    parameters = zipped.map { $0.0 }
+    savedAux = zipped.map { $0.1 }
+  } else {
+    parameters = parameters.filter {
+      !($0.untyped.contains { $0.grad == nil })
+    }
+  }
   let parameterSize = parameters.count
+  guard parameterSize > 0 else { return }
   var _gradients = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * parameterSize)
   let _parameters = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
     capacity: parameterSize * parallel)
