@@ -51,11 +51,20 @@ fileprivate func _step(
   var parameters = parameters
   var savedAux = savedAux
   if !savedAux.isEmpty {
-    let zipped = zip(parameters, savedAux).filter {
-      !($0.0.untyped.contains { $0.grad == nil })
+    var newParameters = [DynamicGraph_Any]()
+    var newSavedAux = [DynamicGraph_Any]()
+    precondition(savedAux.count % parameters.count == 0)
+    let auxSize = savedAux.count / parameters.count
+    for (i, parameter) in parameters.enumerated() {
+      guard !(parameter.untyped.contains { $0.grad == nil }) else { continue }
+      let aux = [DynamicGraph_Any]()
+      newParameters.append(parameter)
+      for j in 0..<auxSize {
+        newSavedAux.append(savedAux[i * auxSize + j])
+      }
     }
-    parameters = zipped.map { $0.0 }
-    savedAux = zipped.map { $0.1 }
+    parameters = newParameters
+    savedAux = newSavedAux
   } else {
     parameters = parameters.filter {
       !($0.untyped.contains { $0.grad == nil })
