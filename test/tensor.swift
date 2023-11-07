@@ -3,6 +3,10 @@ import NNC
 import XCTest
 
 final class TensorTests: XCTestCase {
+  func testCreateZeroLengthTensor() throws {
+    let tensor = Tensor<Float>(.CPU, format: .NHWC, shape: [])
+    XCTAssertEqual([], tensor.shape)
+  }
 
   func testGetSetPartTensor() throws {
     var tensor = Tensor<Int32>(.CPU, .NC(5, 2))
@@ -193,6 +197,7 @@ final class TensorTests: XCTestCase {
   }
 
   static let allTests = [
+    ("testCreateZeroLengthTensor", testCreateZeroLengthTensor),
     ("testGetSetPartTensor", testGetSetPartTensor),
     ("testGetSetPartTensorFromArray", testGetSetPartTensorFromArray),
     ("testGetSetUnboundedPartTensorFromArray", testGetSetUnboundedPartTensorFromArray),

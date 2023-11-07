@@ -377,6 +377,17 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(b0[3], a1[0, 1, 0])
   }
 
+  func testConcatZeroLengthTensor() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(.CPU, format: .NCHW, shape: [], of: Float.self)
+    let a1 = dynamicGraph.variable(Tensor<Float>([1, 2, 3, 4], .CPU, .NC(2, 2)))
+    let b0 = Concat(axis: 1)(inputs: a0, a1)[0].as(of: Float.self)
+    XCTAssertEqual(b0[0, 0], 1)
+    XCTAssertEqual(b0[0, 1], 2)
+    XCTAssertEqual(b0[1, 0], 3)
+    XCTAssertEqual(b0[1, 1], 4)
+  }
+
   static let allTests = [
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
@@ -401,5 +412,6 @@ final class GraphTests: XCTestCase {
     ("testPermute", testPermute),
     ("testPermuteAndGetASubset", testPermuteAndGetASubset),
     ("testPermuteAndReshape", testPermuteAndReshape),
+    ("testConcatZeroLengthTensor", testConcatZeroLengthTensor),
   ]
 }
