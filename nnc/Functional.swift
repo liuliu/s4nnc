@@ -399,6 +399,13 @@ extension AnyModelBuilder {
 
 extension ModelBuilder {
   public func callAsFunction<U: DynamicGraph.AnyTensorGroup>(
+    _ t: T, inputs firstInput: U, _ restInputs: [DynamicGraph_Any],
+    streamContext: StreamContext? = nil
+  ) -> [U.AnyTensor] {
+    let tensorInputs: [DynamicGraph_Any] = [firstInput as DynamicGraph_Any] + restInputs
+    return apply(ofType: U.self, t, tensorInputs, streamContext: streamContext)
+  }
+  public func callAsFunction<U: DynamicGraph.AnyTensorGroup>(
     _ t: T, inputs firstInput: U, _ restInputs: DynamicGraph_Any...,
     streamContext: StreamContext? = nil
   ) -> [U.AnyTensor] {
@@ -408,6 +415,12 @@ extension ModelBuilder {
 }
 
 extension ModelBuilder where T == Void {
+  public func callAsFunction<U: DynamicGraph.AnyTensorGroup>(
+    inputs firstInput: U, _ restInputs: [DynamicGraph_Any], streamContext: StreamContext? = nil
+  ) -> [U.AnyTensor] {
+    let tensorInputs: [DynamicGraph_Any] = [firstInput as DynamicGraph_Any] + restInputs
+    return apply(ofType: U.self, Void(), tensorInputs, streamContext: streamContext)
+  }
   public func callAsFunction<U: DynamicGraph.AnyTensorGroup>(
     inputs firstInput: U, _ restInputs: DynamicGraph_Any..., streamContext: StreamContext? = nil
   ) -> [U.AnyTensor] {
