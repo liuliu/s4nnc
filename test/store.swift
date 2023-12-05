@@ -20,6 +20,8 @@ final class StoreTests: XCTestCase {
     variable[1] = 0
     graph.openStore("test/some_variables.db") { store in
       store.read("b", variable: variable)
+      let b = store.read(like: "b")!
+      XCTAssertEqual(b.shape[0], 2)
     }
     XCTAssertEqual(variable[0], 1.1)
     XCTAssertEqual(variable[1], 2.2)

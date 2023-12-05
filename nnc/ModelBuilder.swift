@@ -118,7 +118,8 @@ public class AnyModelBuilder {
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
             var params = params
-            return ccv_nnc_tensor_read(readerHelper.sqlite, name, dir, options, &params, tensorOut)
+            return ccv_nnc_tensor_read(
+              readerHelper.sqlite, name, dir, options, 0, &params, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
@@ -169,7 +170,7 @@ public class AnyModelBuilder {
             case .continue(let name):
               var params = params
               return ccv_nnc_tensor_read(
-                readerHelper.sqlite, name, dir, options, &params, tensorOut)
+                readerHelper.sqlite, name, dir, options, 0, &params, tensorOut)
             case .fail:
               return Int32(CCV_IO_ERROR)
             }
