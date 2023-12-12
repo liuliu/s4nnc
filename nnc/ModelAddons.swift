@@ -1161,14 +1161,14 @@ public final class ScaledDotProductAttention: Model {
   }
 
   public init(
-    scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
+    scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false, upcast: Bool = false,
     multiHeadOutputProjectionFused: Bool = false, noBias: Bool = false, trainable: Bool? = nil,
     name: String = ""
   ) {
     super.init(
       ccv_cnnp_scaled_dot_product_attention(
-        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, multiHeadOutputProjectionFused ? 1 : 0,
-        noBias ? 1 : 0,
+        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, upcast ? 1 : 0,
+        multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
