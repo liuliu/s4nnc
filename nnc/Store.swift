@@ -1973,6 +1973,16 @@ private let q4pDecodeJit:
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     guard tensorOut!.pointee == nil else {
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
+        guard decodedDataSize > 0, let decoded = decoded else {
+          return 0
+        }
+        data += MemoryLayout<UInt32>.size
+        memcpy(decoded, data, decodedDataSize)
+        decodedSize[0] = decodedDataSize
+        return 1
+      }
       return q4pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2025,6 +2035,16 @@ private let q5pDecodeJit:
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     guard tensorOut!.pointee == nil else {
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
+        guard decodedDataSize > 0, let decoded = decoded else {
+          return 0
+        }
+        data += MemoryLayout<UInt32>.size
+        memcpy(decoded, data, decodedDataSize)
+        decodedSize[0] = decodedDataSize
+        return 1
+      }
       return q5pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2077,6 +2097,16 @@ private let q6pDecodeJit:
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     guard tensorOut!.pointee == nil else {
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
+        guard decodedDataSize > 0, let decoded = decoded else {
+          return 0
+        }
+        data += MemoryLayout<UInt32>.size
+        memcpy(decoded, data, decodedDataSize)
+        decodedSize[0] = decodedDataSize
+        return 1
+      }
       return q6pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2129,6 +2159,16 @@ private let q7pDecodeJit:
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     guard tensorOut!.pointee == nil else {
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
+        guard decodedDataSize > 0, let decoded = decoded else {
+          return 0
+        }
+        data += MemoryLayout<UInt32>.size
+        memcpy(decoded, data, decodedDataSize)
+        decodedSize[0] = decodedDataSize
+        return 1
+      }
       return q7pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -2181,6 +2221,16 @@ private let q8pDecodeJit:
     guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     guard tensorOut!.pointee == nil else {
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
+        guard decodedDataSize > 0, let decoded = decoded else {
+          return 0
+        }
+        data += MemoryLayout<UInt32>.size
+        memcpy(decoded, data, decodedDataSize)
+        decodedSize[0] = decodedDataSize
+        return 1
+      }
       return q8pDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
