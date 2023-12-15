@@ -1,6 +1,6 @@
-infix operator .*: MultiplicationPrecedence
-infix operator ./: MultiplicationPrecedence
-infix operator .+: AdditionPrecedence
+infix operator .* : MultiplicationPrecedence
+infix operator ./ : MultiplicationPrecedence
+infix operator .+ : AdditionPrecedence
 
 // Element-wise addition
 public func .+ <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
@@ -14,6 +14,10 @@ public func .+ (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO
 // Element-wise division
 public func ./ <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.div(left: left, right: right)
+}
+
+public func ./ (left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
+  return Div(reciprocal: false)(left, right)
 }
 
 // Broadcast element-wise multiplication
@@ -82,6 +86,22 @@ public func + (left: Float, right: ModelIOConvertible) -> Model.IO {
 
 public func + (left: ModelIOConvertible, right: Float) -> Model.IO {
   return Add()(left, Scalar(value: right)(left))
+}
+
+public func / (left: Float, right: ModelIOConvertible) -> Model.IO {
+  if left == 1 {
+    return Div(reciprocal: true)(right)
+  } else {
+    return left * Div(reciprocal: true)(right)
+  }
+}
+
+public func / (left: ModelIOConvertible, right: Float) -> Model.IO {
+  if right == 1 {
+    return left.io
+  } else {
+    return Scalmul(1.0 / right)(left)
+  }
 }
 
 // Broadcast element-wise subtraction.

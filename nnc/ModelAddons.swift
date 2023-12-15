@@ -56,6 +56,33 @@ public final class Mul: Model {
   }
 }
 
+/// Div two inputs together. It will not do broadcast.
+public final class Div: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(reciprocal: Bool = false, name: String = "") {
+    super.init(ccv_cnnp_div(reciprocal ? 1 : 0, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Compute the reciprocal for a model IO.
+   */
+  public func reciprocal() -> Model.IO {
+    return Div(reciprocal: true)(self)
+  }
+}
+
 /// Matrix-multiplication over two inputs.
 public final class Matmul: Model {
   required init(_ model: OpaquePointer) {

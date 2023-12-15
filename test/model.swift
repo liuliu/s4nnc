@@ -138,6 +138,27 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(tv3.rawValue[0], 1.1 * 2.2 + 3.1, accuracy: 1e-5)
   }
 
+  func testModelDiv() throws {
+    let dynamicGraph = DynamicGraph()
+
+    func DivRec() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 ./ i1
+      let i3 = Input()
+      let i4 = 0.5 / i3
+      return Model([i0, i1, i3], [i2, i4])
+    }
+
+    let div = DivRec()
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+    let tv2 = dynamicGraph.variable(Tensor<Float32>([0.2], .CPU, .C(1)))
+    let tv3s = div(inputs: tv0, tv1, tv2).map { $0.as(of: Float32.self) }
+    XCTAssertEqual(tv3s[0].rawValue[0], 1.1 / 2.2, accuracy: 1e-5)
+    XCTAssertEqual(tv3s[1].rawValue[0], 0.5 / 0.2, accuracy: 1e-5)
+  }
+
   func testModelScaledDotProductAttention() throws {
     let dynamicGraph = DynamicGraph()
     let q = dynamicGraph.variable(Tensor<Float32>(.CPU, .NHWC(1, 10, 8, 20)))
@@ -347,6 +368,7 @@ final class ModelTests: XCTestCase {
     ("testSequential", testSequential),
     ("testModelWithScalar", testModelWithScalar),
     ("testModelWithParameter", testModelWithParameter),
+    ("testModelDiv", testModelDiv),
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
     ("testCustomModel", testCustomModel),
   ]
