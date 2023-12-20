@@ -83,6 +83,33 @@ extension ModelIOConvertible {
   }
 }
 
+/// Square root of a input. It will not do broadcast.
+public final class SquareRoot: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_sqrt(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Compute the reciprocal for a model IO.
+   */
+  public func squareRoot() -> Model.IO {
+    return SquareRoot()(self)
+  }
+}
+
 /// Matrix-multiplication over two inputs.
 public final class Matmul: Model {
   required init(_ model: OpaquePointer) {
