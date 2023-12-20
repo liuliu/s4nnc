@@ -635,10 +635,11 @@ public final class Convolution: Model {
   }
 
   public init(
-    groups: Int, filters: Int, filterSize: [Int], noBias: Bool = false, hint: Hint = Hint(),
-    format: Format? = nil, trainable: Bool? = nil, name: String = ""
+    groups: Int, filters: Int, filterSize: [Int], dilation: [Int] = [], noBias: Bool = false,
+    hint: Hint = Hint(), format: Format? = nil, trainable: Bool? = nil, name: String = ""
   ) {
     let kdim = toCDimensionsArray(filterSize)
+    let dilation = toCDimensionsArray(dilation)
     let format: TensorFormat? = format.map {
       switch $0 {
       case .OIHW:
@@ -649,8 +650,8 @@ public final class Convolution: Model {
     }
     super.init(
       ccv_cnnp_convolution(
-        Int32(groups), Int32(filters), kdim, noBias ? 1 : 0, hint.toCHint(), format?.toC ?? 0,
-        trainable == true ? 1 : (trainable == false ? 0 : -1), name)
+        Int32(groups), Int32(filters), kdim, dilation, noBias ? 1 : 0, hint.toCHint(),
+        format?.toC ?? 0, trainable == true ? 1 : (trainable == false ? 0 : -1), name)
     )
   }
 
