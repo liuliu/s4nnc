@@ -56,6 +56,14 @@ public final class Mul: Model {
   }
 }
 
+extension Functional {
+  public static func mul(left: ModelIOConvertible, right: ModelIOConvertible, scalar: Float)
+    -> Model.IO
+  {
+    return Mul(scalar: scalar)(left, right)
+  }
+}
+
 /// Div two inputs together. It will not do broadcast.
 public final class Div: Model {
   required init(_ model: OpaquePointer) {
@@ -127,6 +135,39 @@ public final class Matmul: Model {
   ) -> T {
     let outputs = self(inputs: left, right, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func matmul(
+    left: ModelIOConvertible, right: ModelIOConvertible, leftTranspose: (Int, Int),
+    rightTranspose: (Int, Int)
+  ) -> Model.IO {
+    return Matmul(transposeA: leftTranspose, transposeB: rightTranspose)(left, right)
+  }
+}
+
+/// Comlex number multiplication over two inputs.
+public final class Cmul: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_cmul(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ left: T, _ right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: left, right, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func cmul(left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
+    return Cmul()(left, right)
   }
 }
 
@@ -595,6 +636,28 @@ public final class GroupNorm: Model {
       ccv_cnnp_group_norm(
         Int32(axis), Int32(groups), epsilon, axis32, Int32(axis32.count),
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// RMSNorm model.
+public final class RMSNorm: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(epsilon: Float, axis: [Int], trainable: Bool? = nil, name: String = "") {
+    let axis32: [Int32] = axis.map { Int32($0) }
+    super.init(
+      ccv_cnnp_rmsnorm(
+        epsilon, axis32, Int32(axis.count), trainable == true ? 1 : (trainable == false ? 0 : -1),
+        name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(

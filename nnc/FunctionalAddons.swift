@@ -308,6 +308,19 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Complex number multiplication
+  public static func cmul<T: DynamicGraph.TensorGroup>(
+    left: T, right: T, streamContext: StreamContext? = nil
+  ) -> T {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_CMUL_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Make a copy.
   public static func copy<T: DynamicGraph.TensorGroup>(
     from: T, to: T, streamContext: StreamContext? = nil
