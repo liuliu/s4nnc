@@ -206,8 +206,9 @@ extension Model {
   /**
    * Compile a model with the given inputs without executing it. After this, you can load
    * parameters from the store.
+   * - isEager: Whether we want to push compilation as far as possible up until the actual execution.
    */
-  public func compile(inputs: [DynamicGraph_Any]) {
+  public func compile(inputs: [DynamicGraph_Any], isEager: Bool = false) {
     assert(inputs.count > 0)
     let params = CmdParamsFactory.factory.newParams()
     let noop = ccv_nnc_cmd(CCV_NNC_NOOP, nil, params, 0)
@@ -223,13 +224,20 @@ extension Model {
       return ccv_nnc_tensor_variable_params(tensor.graph.cGraph, tensor._tensor)
     }
     ccv_cnnp_model_compile(cModel, inputParams, Int32(inputParams.count), noop, noop)
+    if isEager {
+      let graph = inputs[0].graph
+      let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0.untyped[0]._tensor }
+      let _streamContext = graph.streamContext?._stream
+      ccv_nnc_dynamic_graph_dry_run(
+        graph.cGraph, cModel, testing ? 1 : 0, _inputs, Int32(_inputs.count), _streamContext)
+    }
   }
   /**
    * Compile a model with the given inputs without executing it. After this, you can load
    * parameters from the store.
    */
-  public func compile(inputs: DynamicGraph_Any...) {
-    compile(inputs: inputs)
+  public func compile(inputs: DynamicGraph_Any..., isEager: Bool = false) {
+    compile(inputs: inputs, isEager: isEager)
   }
 }
 

@@ -30,7 +30,7 @@ public class AnyModelBuilder {
       return outputSize
     }
     // Compile explicitly.
-    compileModel()
+    compileModel(isEager: false)
     // After the model compiled, we can access the outputSize now.
     let outputSize = Int(ccv_cnnp_model_output_size(model!.cModel))
     _outputSize = outputSize
@@ -140,9 +140,9 @@ public class AnyModelBuilder {
     _key = key
   }
 
-  fileprivate func compileModel() {
+  fileprivate func compileModel(isEager: Bool) {
     let inputs = self.inputs!
-    model!.compile(inputs: inputs)
+    model!.compile(inputs: inputs, isEager: isEager)
     // If we have store / key, try to load parameters now after it is compiled.
     if let store = _store, let key = _key {
       if let reader = _reader {
@@ -214,10 +214,10 @@ public final class ModelBuilder<T>: AnyModelBuilder {
    * Compile a model with the given inputs without executing it. After this, you can load
    * parameters from the store.
    */
-  public func compile(_ t: T, inputs: [DynamicGraph_Any]) {
+  public func compile(_ t: T, inputs: [DynamicGraph_Any], isEager: Bool = false) {
     self.t = t
     self.inputs = inputs
-    compileModel()
+    compileModel(isEager: isEager)
     _outputSize = Int(ccv_cnnp_model_output_size(model!.cModel))
     self.inputs = nil
     self.t = nil
@@ -227,8 +227,8 @@ public final class ModelBuilder<T>: AnyModelBuilder {
    * Compile a model with the given inputs without executing it. After this, you can load
    * parameters from the store.
    */
-  public func compile(_ t: T, inputs: DynamicGraph_Any...) {
-    compile(t, inputs: inputs)
+  public func compile(_ t: T, inputs: DynamicGraph_Any..., isEager: Bool = false) {
+    compile(t, inputs: inputs, isEager: isEager)
   }
 }
 
@@ -245,10 +245,10 @@ extension ModelBuilder where T == Void {
    * Compile a model with the given inputs without executing it. After this, you can load
    * parameters from the store.
    */
-  public func compile(inputs: [DynamicGraph_Any]) {
+  public func compile(inputs: [DynamicGraph_Any], isEager: Bool = false) {
     self.t = Void()
     self.inputs = inputs
-    compileModel()
+    compileModel(isEager: isEager)
     _outputSize = Int(ccv_cnnp_model_output_size(model!.cModel))
     self.inputs = nil
     self.t = nil
@@ -258,7 +258,7 @@ extension ModelBuilder where T == Void {
    * Compile a model with the given inputs without executing it. After this, you can load
    * parameters from the store.
    */
-  public func compile(inputs: DynamicGraph_Any...) {
-    compile(inputs: inputs)
+  public func compile(inputs: DynamicGraph_Any..., isEager: Bool = false) {
+    compile(inputs: inputs, isEager: isEager)
   }
 }
