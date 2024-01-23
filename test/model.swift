@@ -24,6 +24,18 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(tv3.rawValue[0], 1.1 * 2.2 - 0.2, accuracy: 1e-5)
   }
 
+  func testConvolutionTransposeModel() throws {
+    let dynamicGraph = DynamicGraph()
+
+    let convTranspose = ConvolutionTranspose(groups: 1, filters: 2, filterSize: [3, 3])
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .NHWC(1, 2, 2, 3)))
+    let tv1 = convTranspose(tv0)
+    XCTAssertEqual(tv1.shape[0], 1)
+    XCTAssertEqual(tv1.shape[1], 4)
+    XCTAssertEqual(tv1.shape[2], 4)
+    XCTAssertEqual(tv1.shape[3], 2)
+  }
+
   func testModelBuilder() throws {
     let dynamicGraph = DynamicGraph()
 
@@ -364,6 +376,7 @@ final class ModelTests: XCTestCase {
 
   static let allTests = [
     ("testModel", testModel),
+    ("testConvolutionTransposeModel", testConvolutionTransposeModel),
     ("testModelBuilder", testModelBuilder),
     ("testSequential", testSequential),
     ("testModelWithScalar", testModelWithScalar),

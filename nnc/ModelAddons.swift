@@ -726,6 +726,43 @@ public final class Convolution: Model {
   }
 }
 
+/// Convolution Transpose model.
+public final class ConvolutionTranspose: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    groups: Int, filters: Int, filterSize: [Int], dilation: [Int] = [], outputPadding: Int = 0,
+    noBias: Bool = false, hint: Hint = Hint(), format: Convolution.Format? = nil,
+    trainable: Bool? = nil, name: String = ""
+  ) {
+    let kdim = toCDimensionsArray(filterSize)
+    let dilation = toCDimensionsArray(dilation)
+    let format: TensorFormat? = format.map {
+      switch $0 {
+      case .OIHW:
+        return TensorFormat.NCHW
+      case .OHWI:
+        return TensorFormat.NHWC
+      }
+    }
+    super.init(
+      ccv_cnnp_convolution_transpose(
+        Int32(groups), Int32(filters), kdim, dilation, Int32(outputPadding), noBias ? 1 : 0,
+        hint.toCHint(), format?.toC ?? 0, trainable == true ? 1 : (trainable == false ? 0 : -1),
+        name)
+    )
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 /// max pooling model.
 public final class MaxPool: Model {
   required init(_ model: OpaquePointer) {
