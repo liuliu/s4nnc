@@ -403,6 +403,53 @@ final class ModelTests: XCTestCase {
     }
   }
 
+  func testPad() {
+    let input0 = Input()
+    let input1 = Input()
+    let out = input0.padded(begin: [0, 2, 2, 1], end: [0, 1, 2, 0]) + input1
+    let final = Model([input0, input1], [out])
+    let graph = DynamicGraph()
+    let x = graph.variable(.CPU, .NHWC(1, 2, 3, 2), of: Float.self)
+    x[0, 0, 0, 0] = 1
+    x[0, 0, 0, 1] = 2
+    x[0, 0, 1, 0] = 3
+    x[0, 0, 1, 1] = 4
+    x[0, 0, 2, 0] = 5
+    x[0, 0, 2, 1] = 6
+    x[0, 1, 0, 0] = 7
+    x[0, 1, 0, 1] = 8
+    x[0, 1, 1, 0] = 9
+    x[0, 1, 1, 1] = 10
+    x[0, 1, 2, 0] = 11
+    x[0, 1, 2, 1] = 12
+    let x1 = graph.variable(.CPU, .NHWC(1, 5, 7, 3), of: Float.self)
+    x1.full(-1)
+    final.compile(inputs: x, x1)
+    let result = final(inputs: x, x1)[0].as(of: Float.self)
+    let y0 = graph.variable(.CPU, .NHWC(1, 5, 7, 3), of: Float.self)
+    for i in 0..<5 {
+      for j in 0..<7 {
+        for k in 0..<3 {
+          y0[0, i, j, k] = -1
+        }
+      }
+    }
+    for i in 0..<2 {
+      for j in 0..<3 {
+        for k in 0..<2 {
+          y0[0, i + 2, j + 2, k + 1] = x[0, i, j, k] - 1
+        }
+      }
+    }
+    for i in 0..<5 {
+      for j in 0..<7 {
+        for k in 0..<3 {
+          XCTAssertEqual(result[0, i, j, k], y0[0, i, j, k], accuracy: 1e-5)
+        }
+      }
+    }
+  }
+
   static let allTests = [
     ("testModel", testModel),
     ("testConvolutionTransposeModel", testConvolutionTransposeModel),
@@ -414,5 +461,6 @@ final class ModelTests: XCTestCase {
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
     ("testCustomModel", testCustomModel),
     ("testModelShareWeights", testModelShareWeights),
+    ("testPad", testPad),
   ]
 }
