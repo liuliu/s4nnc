@@ -92,6 +92,73 @@ extension Model.Parameters {
 }
 
 extension Model.Parameters {
+  public enum ModelParametersShareResult {
+    /// Continue to load parameter with the given name.
+    case `continue`(String)
+    /// Nothing is loaded.
+    case fail
+  }
+  private final class ModelParametersShareRenameHelper {
+    let renamer: (String, String) -> ModelParametersShareResult
+    init(renamer: @escaping (String, String) -> ModelParametersShareResult) {
+      self.renamer = renamer
+    }
+  }
+  /**
+   * Share parameters from another model. This is a specific memory optimization.
+   *
+   * - Parameter parameters: The model parameter to share from.
+   */
+  public func share(
+    from parameters: Model.Parameters,
+    renamer: ((String, String) -> ModelParametersShareResult)? = nil
+  ) {
+    guard var fromModel = parameters.model,
+      var toModel = model
+    else {
+      fatalError()
+    }
+    // We can only copy parameters from fully compiled model, i.e., the owner of the sub-models.
+    // Try to find them.
+    while let owner = fromModel.owner {
+      fromModel = owner
+    }
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    toModel.originals.append(fromModel)
+    guard let renamer = renamer else {
+      ccv_cnnp_model_share_parameters(
+        toModel.cModel, _io, fromModel.cModel, parameters._io, nil, nil)
+      return
+    }
+    let renameHelper = ModelParametersShareRenameHelper(renamer: renamer)
+    let unmanaged = Unmanaged.passRetained(renameHelper)
+    ccv_cnnp_model_share_parameters(
+      toModel.cModel, _io, fromModel.cModel, parameters._io,
+      { handle, srcName, updatedName, providedSize in
+        let renameHelper = Unmanaged<ModelParametersShareRenameHelper>.fromOpaque(handle!)
+          .takeUnretainedValue()
+        let result = renameHelper.renamer(
+          srcName.map { String(cString: $0) } ?? "", updatedName.map { String(cString: $0) } ?? "")
+        switch result {
+        case .fail:
+          return -1
+        case .continue(var name):
+          name.withUTF8 {
+            if $0.count > 0 {
+              memcpy(updatedName!, $0.baseAddress!, min($0.count, providedSize - 1))
+            }
+            updatedName?[min($0.count, providedSize - 1)] = 0
+          }
+          return 0
+        }
+      }, unmanaged.toOpaque())
+    unmanaged.release()
+  }
+}
+
+extension Model.Parameters {
   /**
    * Interpolate from current parameters to the another.
    *

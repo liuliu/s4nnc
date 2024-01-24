@@ -36,6 +36,7 @@ public class Model {
   public let cModel: OpaquePointer
   var owner: Model? = nil
   weak var graph: DynamicGraph? = nil
+  var originals: [Any] = []  // Keep some other models alive if it enabled parameter sharing.
 
   private func ownerHook() {
     ccv_cnnp_model_notify_hook(

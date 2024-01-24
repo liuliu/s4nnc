@@ -374,6 +374,35 @@ final class ModelTests: XCTestCase {
     }
   }
 
+  func testModelShareWeights() {
+    let input = Input()
+    let linear = Dense(count: 10, noBias: true, name: "linear")
+    let down = Dense(count: 2, noBias: true)
+    let up = Dense(count: 10, noBias: true)
+    let out = linear(input) + up(down(input))
+    let final = Model([input], [out])
+    let linear2 = Dense(count: 10, noBias: true, name: "linear")
+    let graph = DynamicGraph()
+    let x = graph.variable(.CPU, .C(4), of: Float.self)
+    x[0] = 1
+    x[1] = 2
+    x[2] = 3
+    x[3] = 4
+    final.compile(inputs: x)
+    let upWeights = graph.variable(.CPU, .NC(10, 2), of: Float.self)
+    upWeights.full(0)
+    up.parameters.copy(from: upWeights)
+    let result0 = final(inputs: x)[0].as(of: Float.self)
+    linear2.compile(inputs: x)
+    linear2.parameters.share(from: final.parameters) { destName, srcName in
+      .continue(destName)
+    }
+    let result1 = linear2(inputs: x)[0].as(of: Float.self)
+    for i in 0..<10 {
+      XCTAssertEqual(result0[i], result1[i], accuracy: 1e-5)
+    }
+  }
+
   static let allTests = [
     ("testModel", testModel),
     ("testConvolutionTransposeModel", testConvolutionTransposeModel),
@@ -384,5 +413,6 @@ final class ModelTests: XCTestCase {
     ("testModelDiv", testModelDiv),
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
     ("testCustomModel", testCustomModel),
+    ("testModelShareWeights", testModelShareWeights),
   ]
 }
