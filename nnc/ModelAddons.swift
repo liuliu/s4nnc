@@ -855,8 +855,12 @@ public final class Upsample: Model {
     super.init(model)
   }
 
-  public init(_ mode: Mode, widthScale: Float, heightScale: Float, name: String = "") {
-    super.init(ccv_cnnp_upsample(mode.rawValue, widthScale, heightScale, name))
+  public init(
+    _ mode: Mode, widthScale: Float, heightScale: Float, alignCorners: Bool = false,
+    name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_upsample(mode.rawValue, widthScale, heightScale, alignCorners ? 1 : 0, name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
