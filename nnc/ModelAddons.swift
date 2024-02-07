@@ -1348,6 +1348,47 @@ public final class Scalar: Model {
   }
 }
 
+/// Variable model.
+public final class Variable<Element: TensorNumeric>: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    _ kind: DeviceKind, format: TensorFormat, shape: TensorShape, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_variable(
+        toCTensorParams(kind, dataType: Element.dataType, format: format, shape: shape), name))
+  }
+
+  public init(
+    _ kind: DeviceKind, _ dimensionFormat: TensorShapeFormat, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_variable(
+        toCTensorParams(
+          kind, dataType: Element.dataType, format: dimensionFormat.format,
+          shape: dimensionFormat.shape), name))
+  }
+}
+
+extension Variable: ModelIOConvertible {
+  public var io: Model.IO {
+    return apply([])
+  }
+}
+
+extension ModelIOConvertible {
+  /// Move the value to another Model.IO. This is a special operation that can perform optimizations
+  /// violates SSA. Use it with extreme care.
+  public func moved(to output: ModelIOConvertible, name: String = "")
+    -> Model.IO
+  {
+    return Model(ccv_cnnp_move(name))(self, output)
+  }
+}
+
 /// Scaled-dot-product-attention model.
 public final class ScaledDotProductAttention: Model {
   required init(_ model: OpaquePointer) {
