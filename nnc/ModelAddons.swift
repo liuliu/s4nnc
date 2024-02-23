@@ -641,11 +641,15 @@ public final class LayerNorm: Model {
     super.init(model)
   }
 
-  public init(epsilon: Float, axis: [Int], trainable: Bool? = nil, name: String = "") {
+  public init(
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
+    name: String = ""
+  ) {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
       ccv_cnnp_layer_norm(
-        epsilon, axis32, Int32(axis.count), trainable == true ? 1 : (trainable == false ? 0 : -1),
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1),
         name))
   }
 
@@ -664,12 +668,13 @@ public final class GroupNorm: Model {
   }
 
   public init(
-    axis: Int, groups: Int, epsilon: Float, reduce: [Int], trainable: Bool? = nil, name: String = ""
+    axis: Int, groups: Int, epsilon: Float, reduce: [Int], elementwiseAffine: Bool = true,
+    trainable: Bool? = nil, name: String = ""
   ) {
     let axis32: [Int32] = reduce.map { Int32($0) }
     super.init(
       ccv_cnnp_group_norm(
-        Int32(axis), Int32(groups), epsilon, axis32, Int32(axis32.count),
+        Int32(axis), Int32(groups), epsilon, axis32, Int32(axis32.count), elementwiseAffine ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
