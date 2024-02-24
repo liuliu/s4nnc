@@ -406,7 +406,7 @@ final class ModelTests: XCTestCase {
   func testPad() {
     let input0 = Input()
     let input1 = Input()
-    let out = input0.padded(begin: [0, 2, 2, 1], end: [0, 1, 2, 0]) + input1
+    let out = input0.padded(.zero, begin: [0, 2, 2, 1], end: [0, 1, 2, 0]) + input1
     let final = Model([input0, input1], [out])
     let graph = DynamicGraph()
     let x = graph.variable(.CPU, .NHWC(1, 2, 3, 2), of: Float.self)

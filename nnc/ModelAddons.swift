@@ -257,12 +257,17 @@ extension ModelIOConvertible {
 
 /// A pad model.
 public final class Pad: Model {
+  public enum Mode {
+    case zero
+    case replication
+    public static let clampToEdge: Mode = .replication
+  }
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
   public init(
-    begin: TensorShape, end: TensorShape, name: String = ""
+    _ mode: Mode, begin: TensorShape, end: TensorShape, name: String = ""
   ) {
     var begin = begin.dims
     var end = end.dims
@@ -270,7 +275,14 @@ public final class Pad: Model {
       let begin = UnsafeRawPointer(begin).assumingMemoryBound(to: Int32.self)
       return withUnsafePointer(to: &end) { end -> OpaquePointer in
         let end = UnsafeRawPointer(end).assumingMemoryBound(to: Int32.self)
-        return ccv_cnnp_pad(begin, end, name)!
+        let type: Int32
+        switch mode {
+        case .zero:
+          type = Int32(CCV_NNC_PAD_ZERO)
+        case .replication:
+          type = Int32(CCV_NNC_PAD_REPLICATE)
+        }
+        return ccv_cnnp_pad(type, begin, end, name)!
       }
     }
     super.init(_model)
@@ -285,8 +297,8 @@ extension ModelIOConvertible {
    *   - begin: The beginning pad for each dimension.
    *   - end: The end pad for each dimension.
    */
-  public func padded(begin: TensorShape, end: TensorShape) -> Model.IO {
-    return Pad(begin: begin, end: end)(self)
+  public func padded(_ mode: Pad.Mode, begin: TensorShape, end: TensorShape) -> Model.IO {
+    return Pad(mode, begin: begin, end: end)(self)
   }
 }
 
