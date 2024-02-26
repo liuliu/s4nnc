@@ -348,20 +348,20 @@ public enum DataType {
       return .UInt8
     case CCV_QX:
       switch Int((cTensorParams.datatype & 0xff) << 12) {
-        case CCV_64F:
-          return .Float64
-        case CCV_64S:
-          return .Int64
-        case CCV_32F:
-          return .Float32
-        case CCV_32S:
-          return .Int32
-        case CCV_16F:
-          return .Float16
-        case CCV_8U:
-          return .UInt8
-        default:
-          fatalError("unspecified datatype")
+      case CCV_64F:
+        return .Float64
+      case CCV_64S:
+        return .Int64
+      case CCV_32F:
+        return .Float32
+      case CCV_32S:
+        return .Int32
+      case CCV_16F:
+        return .Float16
+      case CCV_8U:
+        return .UInt8
+      default:
+        fatalError("unspecified datatype")
       }
     default:
       fatalError("unspecified datatype")
@@ -1131,6 +1131,16 @@ extension Tensor {
    * - Returns: A new tensor copied from the existing one.
    */
   public func copied() -> Self {
+    return Self(storage.copy())
+  }
+
+  /**
+   * Only make explicit copy if the original is not contiguous in memory.
+   *
+   * - Returns: A new tensor copied from the existing one.
+   */
+  public func contiguous() -> Self {
+    guard !isContiguous else { return self }
     return Self(storage.copy())
   }
 

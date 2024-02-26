@@ -1369,7 +1369,7 @@ extension DynamicGraph.Tensor {
 }
 
 extension DynamicGraph.Group {
-  /// Reduce along a given dimension.
+  /// Make a copy of the existing tensor group.
   public func copied(streamContext: StreamContext?)
     -> DynamicGraph.Group<Element>
   {
@@ -1378,6 +1378,30 @@ extension DynamicGraph.Group {
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 1, streamContext: streamContext)
     return DynamicGraph.Group<Element>(outputs[0])
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Only make a copy of the existing tensor if it is not contiguous in memory.
+  public func contiguous(streamContext: StreamContext?)
+    -> DynamicGraph.Tensor<Element>
+  {
+    guard !isContiguous else {
+      return self
+    }
+    return copied(streamContext: streamContext)
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Only make a copy of the existing tensor group if it is not contiguous in memory.
+  public func contiguous(streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
+    guard !isContiguous else {
+      return self
+    }
+    return copied(streamContext: streamContext)
   }
 }
 

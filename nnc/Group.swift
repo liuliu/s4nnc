@@ -11,6 +11,7 @@ public protocol DynamicGraph_Any: DynamicGraph_AnyParameters {
   var format: TensorFormat { get }
   var strides: TensorShape { get }
   var isConstant: Bool { get }
+  var isContiguous: Bool { get }
   var requiresGrad: Bool { get set }
 }
 
@@ -110,6 +111,13 @@ extension DynamicGraph.Group: DynamicGraph.AnyGroup {
       assert(isConstant == tensor.isConstant)
     }
     return isConstant
+  }
+  public var isContiguous: Bool {
+    let isContiguous = underlyingArray[0].isContiguous
+    for tensor in underlyingArray {
+      assert(isContiguous == tensor.isContiguous)
+    }
+    return isContiguous
   }
   public var requiresGrad: Bool {
     get {

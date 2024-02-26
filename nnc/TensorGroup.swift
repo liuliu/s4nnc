@@ -89,6 +89,8 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext?) -> Self
   /// Make a copy of the given tensor.
   func copied(streamContext: StreamContext?) -> Self
+  /// Only ake a copy of the given tensor if it is not contiguous in memory.
+  func contiguous(streamContext: StreamContext?) -> Self
   /// Reduce along a given dimension.
   func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext?) -> Self
   /// Scale the given tensor with a constant inplace.
@@ -301,6 +303,11 @@ extension DynamicGraph_TensorGroup {
   @inlinable
   public func copied(streamContext: StreamContext? = nil) -> Self {
     copied(streamContext: streamContext)
+  }
+  /// Only make a copy of the given tensor if it is not contiguous in memory.
+  @inlinable
+  public func contiguous(streamContext: StreamContext? = nil) -> Self {
+    contiguous(streamContext: streamContext)
   }
   /// Reduce along a given dimension.
   @inlinable

@@ -1282,6 +1282,33 @@ extension ModelIOConvertible {
   }
 }
 
+/// "Making" contiguous model.
+public final class Contiguous: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_contiguous(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ x: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: x, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Make the output contiguous in memory.
+   */
+  public func contiguous() -> Model.IO {
+    return Contiguous()(self)
+  }
+}
+
 extension ModelIOConvertible {
   func clamped(
     min: Float?, max: Float?

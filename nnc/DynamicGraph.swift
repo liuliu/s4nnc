@@ -129,6 +129,22 @@ public final class DynamicGraph {
       let _graph = graph.cGraph
       return ccv_nnc_tensor_variable_is_constant(_graph, _tensor) == 1
     }
+
+    /**
+     * Whether this tensor is contiguous in memory.
+     */
+    public var isContiguous: Bool {
+      let _graph = graph.cGraph
+      let _streamContext = graph.streamContext?._stream
+      let cTensor = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, _streamContext)!
+      let type = Int(cTensor.pointee.type)
+      guard (type & CCV_TENSOR_VIEW) == CCV_TENSOR_VIEW else {
+        return true
+      }
+      let cTensorView = UnsafeRawPointer(cTensor).assumingMemoryBound(
+        to: ccv_nnc_tensor_view_t.self)
+      return cTensorView.pointee.contiguous == 1
+    }
   }
 
   /**
@@ -748,7 +764,7 @@ extension DynamicGraph {
       rawValue: UInt64(CCV_NNC_DISABLE_MFA_GEMM))
     public static let allCases: [EnableBits] = [
       .disableMixedMPSGEMM, .disableMixedMPSSoftMax, .disableMmapMTLBuffer,
-      .disableMetalFlashAttention, .disableMFAGEMM
+      .disableMetalFlashAttention, .disableMFAGEMM,
     ]
   }
 
