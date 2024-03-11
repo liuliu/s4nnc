@@ -134,15 +134,6 @@ public class Model {
     return trainable >= 0 ? trainable != 0 : nil
   }
 
-  /**
-   * Setting the directory for parameters to be backed by files.
-   */
-  public var directoryForFileBackedParameters: String? = nil {
-    didSet {
-      ccv_cnnp_model_set_file_backed_parameters(cModel, directoryForFileBackedParameters)
-    }
-  }
-
   public var maxConcurrency: StreamContext.Concurrency = .noLimit {
     didSet {
       ccv_cnnp_model_set_max_concurrency(cModel, Int32(maxConcurrency.rawValue))
