@@ -92,6 +92,7 @@ public class AnyModelBuilder {
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.decode = codec.decode
+          option.context = Unmanaged<DynamicGraph._Store>.passUnretained(store).toOpaque()
           ccv_cnnp_model_read(store.sqlite, key, &option, model!.cModel)
         }
         return
@@ -113,7 +114,11 @@ public class AnyModelBuilder {
           switch result {
           case .final(let tensor):
             precondition(tensor.kind == .CPU)
-            let dataSize = ccv_nnc_tensor_data_size(tensor.cTensor.pointee.info)
+            var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = tensor.cTensor
+            ccv_nnc_cmd_exec(
+              ccv_nnc_cmd(
+                CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
+              ccv_nnc_no_hint, 0, &input, 1, tensorOut, 1, nil)
             return Int32(CCV_IO_FINAL)
           case .continue(let name):
             var params = params
@@ -129,6 +134,7 @@ public class AnyModelBuilder {
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.decode = codec.decode
+        option.context = Unmanaged<DynamicGraph._Store>.passUnretained(store).toOpaque()
         ccv_cnnp_model_read(unmanaged.toOpaque(), key, &option, model!.cModel)
       }
       ccv_cnnp_model_set_io(model!.cModel, nil, nil)
@@ -159,11 +165,14 @@ public class AnyModelBuilder {
             switch result {
             case .final(let tensor):
               precondition(tensor.kind == .CPU)
-              let dataSize = ccv_nnc_tensor_data_size(tensor.cTensor.pointee.info)
               if tensorOut!.pointee == nil {
                 tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
               }
-              let cTensorOut = tensorOut!.pointee
+              var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = tensor.cTensor
+              ccv_nnc_cmd_exec(
+                ccv_nnc_cmd(
+                  CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
+                ccv_nnc_no_hint, 0, &input, 1, tensorOut, 1, nil)
               return Int32(CCV_IO_FINAL)
             case .continue(let name):
               var params = params

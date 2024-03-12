@@ -3,6 +3,7 @@ import C_fpzip
 import C_nnc
 import C_zlib
 import Dispatch
+import Foundation
 import SQLite3
 
 // Quantize to 4-bit.
@@ -85,6 +86,145 @@ private let q4pEncode:
     return 1
   }
 
+private func q4pDecode(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e4b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  if tensorOut!.pointee == nil {
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+  }
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
+    let decodedSize = decodedSize, dimensionCount > 0
+  else { return 0 }
+  let elementSize: Int
+  switch dataType {
+  case Int32(CCV_64F):
+    elementSize = MemoryLayout<Double>.size
+  case Int32(CCV_32F):
+    elementSize = MemoryLayout<Float>.size
+  case Int32(CCV_16F):
+    elementSize = MemoryLayout<UInt16>.size
+  default:
+    return 0
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+  let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+  guard
+    dataSize >= (numberOfElements + 1) / 2 + numberOfBlocks * 16 * elementSize
+  else { return 0 }
+  precondition(blockSize % 2 == 0)
+  switch dataType {
+  case Int32(CCV_64F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Double.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
+      let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+      var j = 0
+      if nI % 2 == 0 {
+        for i in stride(from: 0, to: nI, by: 2) {
+          let u0 = u8[j]
+          let i0 = Int(u0 >> 4)
+          let i1 = Int(u0 & 15)
+          f64[i] = palette[i0]
+          f64[i + 1] = palette[i1]
+          j += 1
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 2) {
+          let u0 = u8[j]
+          let i0 = Int(u0 >> 4)
+          let i1 = Int(u0 & 15)
+          f64[i] = palette[i0]
+          if i + 1 < nI {
+            f64[i + 1] = palette[i1]
+          }
+          j += 1
+        }
+      }
+    }
+  case Int32(CCV_32F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Float.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
+      let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+      var j = 0
+      if nI % 2 == 0 {
+        for i in stride(from: 0, to: nI, by: 2) {
+          let u0 = u8[j]
+          let i0 = Int(u0 >> 4)
+          let i1 = Int(u0 & 15)
+          f32[i] = palette[i0]
+          f32[i + 1] = palette[i1]
+          j += 1
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 2) {
+          let u0 = u8[j]
+          let i0 = Int(u0 >> 4)
+          let i1 = Int(u0 & 15)
+          f32[i] = palette[i0]
+          if i + 1 < nI {
+            f32[i + 1] = palette[i1]
+          }
+          j += 1
+        }
+      }
+    }
+  case Int32(CCV_16F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
+      let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+      var j = 0
+      if nI % 2 == 0 {
+        for i in stride(from: 0, to: nI, by: 2) {
+          let u0 = u8[j]
+          let i0 = Int(u0 >> 4)
+          let i1 = Int(u0 & 15)
+          f16[i] = palette[i0]
+          f16[i + 1] = palette[i1]
+          j += 1
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 2) {
+          let u0 = u8[j]
+          let i0 = Int(u0 >> 4)
+          let i1 = Int(u0 & 15)
+          f16[i] = palette[i0]
+          if i + 1 < nI {
+            f16[i + 1] = palette[i1]
+          }
+          j += 1
+        }
+      }
+    }
+  default:
+    return 0
+  }
+  decodedSize[0] = elementSize * numberOfElements
+  return 1
+}
+
 private let q4pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -94,140 +234,12 @@ private let q4pDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e4b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    if tensorOut!.pointee == nil {
-      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-    }
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
-      let decodedSize = decodedSize, dimensionCount > 0
-    else { return 0 }
-    let elementSize: Int
-    switch dataType {
-    case Int32(CCV_64F):
-      elementSize = MemoryLayout<Double>.size
-    case Int32(CCV_32F):
-      elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
-      elementSize = MemoryLayout<UInt16>.size
-    default:
-      return 0
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     data += MemoryLayout<UInt32>.size
-    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
-    guard
-      dataSize >= (numberOfElements + 1) / 2 + numberOfBlocks * 16 * elementSize
-        + MemoryLayout<UInt32>.size
-    else { return 0 }
-    precondition(blockSize % 2 == 0)
-    switch dataType {
-    case Int32(CCV_64F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Double.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
-        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
-        var j = 0
-        if nI % 2 == 0 {
-          for i in stride(from: 0, to: nI, by: 2) {
-            let u0 = u8[j]
-            let i0 = Int(u0 >> 4)
-            let i1 = Int(u0 & 15)
-            f64[i] = palette[i0]
-            f64[i + 1] = palette[i1]
-            j += 1
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 2) {
-            let u0 = u8[j]
-            let i0 = Int(u0 >> 4)
-            let i1 = Int(u0 & 15)
-            f64[i] = palette[i0]
-            if i + 1 < nI {
-              f64[i + 1] = palette[i1]
-            }
-            j += 1
-          }
-        }
-      }
-    case Int32(CCV_32F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Float.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
-        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
-        var j = 0
-        if nI % 2 == 0 {
-          for i in stride(from: 0, to: nI, by: 2) {
-            let u0 = u8[j]
-            let i0 = Int(u0 >> 4)
-            let i1 = Int(u0 & 15)
-            f32[i] = palette[i0]
-            f32[i + 1] = palette[i1]
-            j += 1
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 2) {
-            let u0 = u8[j]
-            let i0 = Int(u0 >> 4)
-            let i1 = Int(u0 & 15)
-            f32[i] = palette[i0]
-            if i + 1 < nI {
-              f32[i + 1] = palette[i1]
-            }
-            j += 1
-          }
-        }
-      }
-    case Int32(CCV_16F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 16
-        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
-        var j = 0
-        if nI % 2 == 0 {
-          for i in stride(from: 0, to: nI, by: 2) {
-            let u0 = u8[j]
-            let i0 = Int(u0 >> 4)
-            let i1 = Int(u0 & 15)
-            f16[i] = palette[i0]
-            f16[i + 1] = palette[i1]
-            j += 1
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 2) {
-            let u0 = u8[j]
-            let i0 = Int(u0 >> 4)
-            let i1 = Int(u0 & 15)
-            f16[i] = palette[i0]
-            if i + 1 < nI {
-              f16[i + 1] = palette[i1]
-            }
-            j += 1
-          }
-        }
-      }
-    default:
-      return 0
-    }
-    decodedSize[0] = elementSize * numberOfElements
-    return 1
+    return q4pDecode(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
 
 // Quantize to 5-bit.
@@ -324,6 +336,277 @@ private let q5pEncode:
     return 1
   }
 
+private func q5pDecode(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e5b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  if tensorOut!.pointee == nil {
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+  }
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
+    let decodedSize = decodedSize, dimensionCount > 0
+  else { return 0 }
+  let elementSize: Int
+  switch dataType {
+  case Int32(CCV_64F):
+    elementSize = MemoryLayout<Double>.size
+  case Int32(CCV_32F):
+    elementSize = MemoryLayout<Float>.size
+  case Int32(CCV_16F):
+    elementSize = MemoryLayout<UInt16>.size
+  default:
+    return 0
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+  let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+  guard
+    dataSize >= (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize
+  else { return 0 }
+  precondition(blockSize % 8 == 0)
+  switch dataType {
+  case Int32(CCV_64F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Double.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
+      let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+      var j = 0
+      if nI % 8 == 0 {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let i0 = Int(u0 >> 3)
+          let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+          let i2 = Int((u1 >> 1) & 31)
+          let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+          let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+          let i5 = Int((u3 >> 2) & 31)
+          let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+          let i7 = Int(u4 & 31)
+          f64[i] = palette[i0]
+          f64[i + 1] = palette[i1]
+          f64[i + 2] = palette[i2]
+          f64[i + 3] = palette[i3]
+          f64[i + 4] = palette[i4]
+          f64[i + 5] = palette[i5]
+          f64[i + 6] = palette[i6]
+          f64[i + 7] = palette[i7]
+          j += 5
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let i0 = Int(u0 >> 3)
+          let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+          let i2 = Int((u1 >> 1) & 31)
+          let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+          let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+          let i5 = Int((u3 >> 2) & 31)
+          let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+          let i7 = Int(u4 & 31)
+          f64[i] = palette[i0]
+          if i + 1 < nI {
+            f64[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f64[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f64[i + 3] = palette[i3]
+          }
+          if i + 4 < nI {
+            f64[i + 4] = palette[i4]
+          }
+          if i + 5 < nI {
+            f64[i + 5] = palette[i5]
+          }
+          if i + 6 < nI {
+            f64[i + 6] = palette[i6]
+          }
+          if i + 7 < nI {
+            f64[i + 7] = palette[i7]
+          }
+          j += 5
+        }
+      }
+    }
+  case Int32(CCV_32F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Float.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
+      let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+      var j = 0
+      if nI % 8 == 0 {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let i0 = Int(u0 >> 3)
+          let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+          let i2 = Int((u1 >> 1) & 31)
+          let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+          let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+          let i5 = Int((u3 >> 2) & 31)
+          let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+          let i7 = Int(u4 & 31)
+          f32[i] = palette[i0]
+          f32[i + 1] = palette[i1]
+          f32[i + 2] = palette[i2]
+          f32[i + 3] = palette[i3]
+          f32[i + 4] = palette[i4]
+          f32[i + 5] = palette[i5]
+          f32[i + 6] = palette[i6]
+          f32[i + 7] = palette[i7]
+          j += 5
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let i0 = Int(u0 >> 3)
+          let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+          let i2 = Int((u1 >> 1) & 31)
+          let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+          let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+          let i5 = Int((u3 >> 2) & 31)
+          let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+          let i7 = Int(u4 & 31)
+          f32[i] = palette[i0]
+          if i + 1 < nI {
+            f32[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f32[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f32[i + 3] = palette[i3]
+          }
+          if i + 4 < nI {
+            f32[i + 4] = palette[i4]
+          }
+          if i + 5 < nI {
+            f32[i + 5] = palette[i5]
+          }
+          if i + 6 < nI {
+            f32[i + 6] = palette[i6]
+          }
+          if i + 7 < nI {
+            f32[i + 7] = palette[i7]
+          }
+          j += 5
+        }
+      }
+    }
+  case Int32(CCV_16F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
+      let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+      var j = 0
+      if nI % 8 == 0 {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let i0 = Int(u0 >> 3)
+          let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+          let i2 = Int((u1 >> 1) & 31)
+          let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+          let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+          let i5 = Int((u3 >> 2) & 31)
+          let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+          let i7 = Int(u4 & 31)
+          f16[i] = palette[i0]
+          f16[i + 1] = palette[i1]
+          f16[i + 2] = palette[i2]
+          f16[i + 3] = palette[i3]
+          f16[i + 4] = palette[i4]
+          f16[i + 5] = palette[i5]
+          f16[i + 6] = palette[i6]
+          f16[i + 7] = palette[i7]
+          j += 5
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let i0 = Int(u0 >> 3)
+          let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
+          let i2 = Int((u1 >> 1) & 31)
+          let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
+          let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
+          let i5 = Int((u3 >> 2) & 31)
+          let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
+          let i7 = Int(u4 & 31)
+          f16[i] = palette[i0]
+          if i + 1 < nI {
+            f16[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f16[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f16[i + 3] = palette[i3]
+          }
+          if i + 4 < nI {
+            f16[i + 4] = palette[i4]
+          }
+          if i + 5 < nI {
+            f16[i + 5] = palette[i5]
+          }
+          if i + 6 < nI {
+            f16[i + 6] = palette[i6]
+          }
+          if i + 7 < nI {
+            f16[i + 7] = palette[i7]
+          }
+          j += 5
+        }
+      }
+    }
+  default:
+    return 0
+  }
+  decodedSize[0] = elementSize * numberOfElements
+  return 1
+}
+
 private let q5pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -333,272 +616,12 @@ private let q5pDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e5b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    if tensorOut!.pointee == nil {
-      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-    }
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
-      let decodedSize = decodedSize, dimensionCount > 0
-    else { return 0 }
-    let elementSize: Int
-    switch dataType {
-    case Int32(CCV_64F):
-      elementSize = MemoryLayout<Double>.size
-    case Int32(CCV_32F):
-      elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
-      elementSize = MemoryLayout<UInt16>.size
-    default:
-      return 0
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     data += MemoryLayout<UInt32>.size
-    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
-    guard
-      dataSize >= (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize
-        + MemoryLayout<UInt32>.size
-    else { return 0 }
-    precondition(blockSize % 8 == 0)
-    switch dataType {
-    case Int32(CCV_64F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Double.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
-        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
-        var j = 0
-        if nI % 8 == 0 {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let i0 = Int(u0 >> 3)
-            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
-            let i2 = Int((u1 >> 1) & 31)
-            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
-            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
-            let i5 = Int((u3 >> 2) & 31)
-            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
-            let i7 = Int(u4 & 31)
-            f64[i] = palette[i0]
-            f64[i + 1] = palette[i1]
-            f64[i + 2] = palette[i2]
-            f64[i + 3] = palette[i3]
-            f64[i + 4] = palette[i4]
-            f64[i + 5] = palette[i5]
-            f64[i + 6] = palette[i6]
-            f64[i + 7] = palette[i7]
-            j += 5
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let i0 = Int(u0 >> 3)
-            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
-            let i2 = Int((u1 >> 1) & 31)
-            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
-            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
-            let i5 = Int((u3 >> 2) & 31)
-            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
-            let i7 = Int(u4 & 31)
-            f64[i] = palette[i0]
-            if i + 1 < nI {
-              f64[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f64[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f64[i + 3] = palette[i3]
-            }
-            if i + 4 < nI {
-              f64[i + 4] = palette[i4]
-            }
-            if i + 5 < nI {
-              f64[i + 5] = palette[i5]
-            }
-            if i + 6 < nI {
-              f64[i + 6] = palette[i6]
-            }
-            if i + 7 < nI {
-              f64[i + 7] = palette[i7]
-            }
-            j += 5
-          }
-        }
-      }
-    case Int32(CCV_32F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Float.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
-        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
-        var j = 0
-        if nI % 8 == 0 {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let i0 = Int(u0 >> 3)
-            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
-            let i2 = Int((u1 >> 1) & 31)
-            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
-            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
-            let i5 = Int((u3 >> 2) & 31)
-            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
-            let i7 = Int(u4 & 31)
-            f32[i] = palette[i0]
-            f32[i + 1] = palette[i1]
-            f32[i + 2] = palette[i2]
-            f32[i + 3] = palette[i3]
-            f32[i + 4] = palette[i4]
-            f32[i + 5] = palette[i5]
-            f32[i + 6] = palette[i6]
-            f32[i + 7] = palette[i7]
-            j += 5
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let i0 = Int(u0 >> 3)
-            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
-            let i2 = Int((u1 >> 1) & 31)
-            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
-            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
-            let i5 = Int((u3 >> 2) & 31)
-            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
-            let i7 = Int(u4 & 31)
-            f32[i] = palette[i0]
-            if i + 1 < nI {
-              f32[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f32[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f32[i + 3] = palette[i3]
-            }
-            if i + 4 < nI {
-              f32[i + 4] = palette[i4]
-            }
-            if i + 5 < nI {
-              f32[i + 5] = palette[i5]
-            }
-            if i + 6 < nI {
-              f32[i + 6] = palette[i6]
-            }
-            if i + 7 < nI {
-              f32[i + 7] = palette[i7]
-            }
-            j += 5
-          }
-        }
-      }
-    case Int32(CCV_16F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 32
-        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
-        var j = 0
-        if nI % 8 == 0 {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let i0 = Int(u0 >> 3)
-            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
-            let i2 = Int((u1 >> 1) & 31)
-            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
-            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
-            let i5 = Int((u3 >> 2) & 31)
-            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
-            let i7 = Int(u4 & 31)
-            f16[i] = palette[i0]
-            f16[i + 1] = palette[i1]
-            f16[i + 2] = palette[i2]
-            f16[i + 3] = palette[i3]
-            f16[i + 4] = palette[i4]
-            f16[i + 5] = palette[i5]
-            f16[i + 6] = palette[i6]
-            f16[i + 7] = palette[i7]
-            j += 5
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let i0 = Int(u0 >> 3)
-            let i1 = Int(((u0 & 7) << 2) | (u1 >> 6))
-            let i2 = Int((u1 >> 1) & 31)
-            let i3 = Int(((u1 & 1) << 4) | (u2 >> 4))
-            let i4 = Int(((u2 & 15) << 1) | (u3 >> 7))
-            let i5 = Int((u3 >> 2) & 31)
-            let i6 = Int(((u3 & 3) << 3) | (u4 >> 5))
-            let i7 = Int(u4 & 31)
-            f16[i] = palette[i0]
-            if i + 1 < nI {
-              f16[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f16[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f16[i + 3] = palette[i3]
-            }
-            if i + 4 < nI {
-              f16[i + 4] = palette[i4]
-            }
-            if i + 5 < nI {
-              f16[i + 5] = palette[i5]
-            }
-            if i + 6 < nI {
-              f16[i + 6] = palette[i6]
-            }
-            if i + 7 < nI {
-              f16[i + 7] = palette[i7]
-            }
-            j += 5
-          }
-        }
-      }
-    default:
-      return 0
-    }
-    decodedSize[0] = elementSize * numberOfElements
-    return 1
+    return q5pDecode(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
 
 // Quantize to 6-bit.
@@ -687,6 +710,193 @@ private let q6pEncode:
     return 1
   }
 
+private func q6pDecode(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e6b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  if tensorOut!.pointee == nil {
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+  }
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
+    let decodedSize = decodedSize, dimensionCount > 0
+  else { return 0 }
+  let elementSize: Int
+  switch dataType {
+  case Int32(CCV_64F):
+    elementSize = MemoryLayout<Double>.size
+  case Int32(CCV_32F):
+    elementSize = MemoryLayout<Float>.size
+  case Int32(CCV_16F):
+    elementSize = MemoryLayout<UInt16>.size
+  default:
+    return 0
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+  let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+  guard
+    dataSize >= (numberOfElements + 3) / 4 * 3 + numberOfBlocks * 64 * elementSize
+  else { return 0 }
+  precondition(blockSize % 4 == 0)
+  switch dataType {
+  case Int32(CCV_64F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Double.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+      let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+      var j = 0
+      if nI % 4 == 0 {
+        for i in stride(from: 0, to: nI, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f64[i] = palette[i0]
+          f64[i + 1] = palette[i1]
+          f64[i + 2] = palette[i2]
+          f64[i + 3] = palette[i3]
+          j += 3
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f64[i] = palette[i0]
+          if i + 1 < nI {
+            f64[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f64[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f64[i + 3] = palette[i3]
+          }
+          j += 3
+        }
+      }
+    }
+  case Int32(CCV_32F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Float.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+      let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+      var j = 0
+      if nI % 4 == 0 {
+        for i in stride(from: 0, to: nI, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f32[i] = palette[i0]
+          f32[i + 1] = palette[i1]
+          f32[i + 2] = palette[i2]
+          f32[i + 3] = palette[i3]
+          j += 3
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f32[i] = palette[i0]
+          if i + 1 < nI {
+            f32[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f32[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f32[i + 3] = palette[i3]
+          }
+          j += 3
+        }
+      }
+    }
+  case Int32(CCV_16F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
+      let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+      var j = 0
+      if nI % 4 == 0 {
+        for i in stride(from: 0, to: nI, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f16[i] = palette[i0]
+          f16[i + 1] = palette[i1]
+          f16[i + 2] = palette[i2]
+          f16[i + 3] = palette[i3]
+          j += 3
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 4) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let i0 = Int(u0 >> 2)
+          let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
+          let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
+          let i3 = Int(u2 & 63)
+          f16[i] = palette[i0]
+          if i + 1 < nI {
+            f16[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f16[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f16[i + 3] = palette[i3]
+          }
+          j += 3
+        }
+      }
+    }
+  default:
+    return 0
+  }
+  decodedSize[0] = elementSize * numberOfElements
+  return 1
+}
+
 private let q6pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -696,188 +906,12 @@ private let q6pDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e6b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    if tensorOut!.pointee == nil {
-      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-    }
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
-      let decodedSize = decodedSize, dimensionCount > 0
-    else { return 0 }
-    let elementSize: Int
-    switch dataType {
-    case Int32(CCV_64F):
-      elementSize = MemoryLayout<Double>.size
-    case Int32(CCV_32F):
-      elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
-      elementSize = MemoryLayout<UInt16>.size
-    default:
-      return 0
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     data += MemoryLayout<UInt32>.size
-    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
-    guard
-      dataSize >= (numberOfElements + 3) / 4 * 3 + numberOfBlocks * 64 * elementSize
-        + MemoryLayout<UInt32>.size
-    else { return 0 }
-    precondition(blockSize % 4 == 0)
-    switch dataType {
-    case Int32(CCV_64F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Double.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
-        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
-        var j = 0
-        if nI % 4 == 0 {
-          for i in stride(from: 0, to: nI, by: 4) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let i0 = Int(u0 >> 2)
-            let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
-            let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
-            let i3 = Int(u2 & 63)
-            f64[i] = palette[i0]
-            f64[i + 1] = palette[i1]
-            f64[i + 2] = palette[i2]
-            f64[i + 3] = palette[i3]
-            j += 3
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 4) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let i0 = Int(u0 >> 2)
-            let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
-            let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
-            let i3 = Int(u2 & 63)
-            f64[i] = palette[i0]
-            if i + 1 < nI {
-              f64[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f64[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f64[i + 3] = palette[i3]
-            }
-            j += 3
-          }
-        }
-      }
-    case Int32(CCV_32F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Float.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
-        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
-        var j = 0
-        if nI % 4 == 0 {
-          for i in stride(from: 0, to: nI, by: 4) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let i0 = Int(u0 >> 2)
-            let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
-            let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
-            let i3 = Int(u2 & 63)
-            f32[i] = palette[i0]
-            f32[i + 1] = palette[i1]
-            f32[i + 2] = palette[i2]
-            f32[i + 3] = palette[i3]
-            j += 3
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 4) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let i0 = Int(u0 >> 2)
-            let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
-            let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
-            let i3 = Int(u2 & 63)
-            f32[i] = palette[i0]
-            if i + 1 < nI {
-              f32[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f32[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f32[i + 3] = palette[i3]
-            }
-            j += 3
-          }
-        }
-      }
-    case Int32(CCV_16F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 64
-        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
-        var j = 0
-        if nI % 4 == 0 {
-          for i in stride(from: 0, to: nI, by: 4) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let i0 = Int(u0 >> 2)
-            let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
-            let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
-            let i3 = Int(u2 & 63)
-            f16[i] = palette[i0]
-            f16[i + 1] = palette[i1]
-            f16[i + 2] = palette[i2]
-            f16[i + 3] = palette[i3]
-            j += 3
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 4) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let i0 = Int(u0 >> 2)
-            let i1 = Int(((u0 & 3) << 4) | (u1 >> 4))
-            let i2 = Int(((u1 & 15) << 2) | (u2 >> 6))
-            let i3 = Int(u2 & 63)
-            f16[i] = palette[i0]
-            if i + 1 < nI {
-              f16[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f16[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f16[i + 3] = palette[i3]
-            }
-            j += 3
-          }
-        }
-      }
-    default:
-      return 0
-    }
-    decodedSize[0] = elementSize * numberOfElements
-    return 1
+    return q6pDecode(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
 
 // Quantize to 7-bit.
@@ -980,6 +1014,289 @@ private let q7pEncode:
     return 1
   }
 
+private func q7pDecode(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e7b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  if tensorOut!.pointee == nil {
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+  }
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
+    let decodedSize = decodedSize, dimensionCount > 0
+  else { return 0 }
+  let elementSize: Int
+  switch dataType {
+  case Int32(CCV_64F):
+    elementSize = MemoryLayout<Double>.size
+  case Int32(CCV_32F):
+    elementSize = MemoryLayout<Float>.size
+  case Int32(CCV_16F):
+    elementSize = MemoryLayout<UInt16>.size
+  default:
+    return 0
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+  let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+  guard
+    dataSize >= (numberOfElements + 7) / 8 * 7 + numberOfBlocks * 128 * elementSize
+  else { return 0 }
+  precondition(blockSize % 8 == 0)
+  switch dataType {
+  case Int32(CCV_64F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Double.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
+      let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+      var j = 0
+      if nI % 8 == 0 {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let u5 = u8[j + 5]
+          let u6 = u8[j + 6]
+          let i0 = Int(u0 >> 1)
+          let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+          let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+          let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+          let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+          let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+          let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+          let i7 = Int(u6 & 127)
+          f64[i] = palette[i0]
+          f64[i + 1] = palette[i1]
+          f64[i + 2] = palette[i2]
+          f64[i + 3] = palette[i3]
+          f64[i + 4] = palette[i4]
+          f64[i + 5] = palette[i5]
+          f64[i + 6] = palette[i6]
+          f64[i + 7] = palette[i7]
+          j += 7
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let u5 = u8[j + 5]
+          let u6 = u8[j + 6]
+          let i0 = Int(u0 >> 1)
+          let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+          let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+          let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+          let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+          let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+          let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+          let i7 = Int(u6 & 127)
+          f64[i] = palette[i0]
+          if i + 1 < nI {
+            f64[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f64[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f64[i + 3] = palette[i3]
+          }
+          if i + 4 < nI {
+            f64[i + 4] = palette[i4]
+          }
+          if i + 5 < nI {
+            f64[i + 5] = palette[i5]
+          }
+          if i + 6 < nI {
+            f64[i + 6] = palette[i6]
+          }
+          if i + 7 < nI {
+            f64[i + 7] = palette[i7]
+          }
+          j += 7
+        }
+      }
+    }
+  case Int32(CCV_32F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Float.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
+      let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+      var j = 0
+      if nI % 8 == 0 {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let u5 = u8[j + 5]
+          let u6 = u8[j + 6]
+          let i0 = Int(u0 >> 1)
+          let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+          let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+          let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+          let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+          let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+          let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+          let i7 = Int(u6 & 127)
+          f32[i] = palette[i0]
+          f32[i + 1] = palette[i1]
+          f32[i + 2] = palette[i2]
+          f32[i + 3] = palette[i3]
+          f32[i + 4] = palette[i4]
+          f32[i + 5] = palette[i5]
+          f32[i + 6] = palette[i6]
+          f32[i + 7] = palette[i7]
+          j += 7
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let u5 = u8[j + 5]
+          let u6 = u8[j + 6]
+          let i0 = Int(u0 >> 1)
+          let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+          let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+          let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+          let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+          let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+          let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+          let i7 = Int(u6 & 127)
+          f32[i] = palette[i0]
+          if i + 1 < nI {
+            f32[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f32[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f32[i + 3] = palette[i3]
+          }
+          if i + 4 < nI {
+            f32[i + 4] = palette[i4]
+          }
+          if i + 5 < nI {
+            f32[i + 5] = palette[i5]
+          }
+          if i + 6 < nI {
+            f32[i + 6] = palette[i6]
+          }
+          if i + 7 < nI {
+            f32[i + 7] = palette[i7]
+          }
+          j += 7
+        }
+      }
+    }
+  case Int32(CCV_16F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
+      let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+      var j = 0
+      if nI % 8 == 0 {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let u5 = u8[j + 5]
+          let u6 = u8[j + 6]
+          let i0 = Int(u0 >> 1)
+          let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+          let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+          let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+          let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+          let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+          let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+          let i7 = Int(u6 & 127)
+          f16[i] = palette[i0]
+          f16[i + 1] = palette[i1]
+          f16[i + 2] = palette[i2]
+          f16[i + 3] = palette[i3]
+          f16[i + 4] = palette[i4]
+          f16[i + 5] = palette[i5]
+          f16[i + 6] = palette[i6]
+          f16[i + 7] = palette[i7]
+          j += 7
+        }
+      } else {
+        for i in stride(from: 0, to: nI, by: 8) {
+          let u0 = u8[j]
+          let u1 = u8[j + 1]
+          let u2 = u8[j + 2]
+          let u3 = u8[j + 3]
+          let u4 = u8[j + 4]
+          let u5 = u8[j + 5]
+          let u6 = u8[j + 6]
+          let i0 = Int(u0 >> 1)
+          let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
+          let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
+          let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
+          let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
+          let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
+          let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
+          let i7 = Int(u6 & 127)
+          f16[i] = palette[i0]
+          if i + 1 < nI {
+            f16[i + 1] = palette[i1]
+          }
+          if i + 2 < nI {
+            f16[i + 2] = palette[i2]
+          }
+          if i + 3 < nI {
+            f16[i + 3] = palette[i3]
+          }
+          if i + 4 < nI {
+            f16[i + 4] = palette[i4]
+          }
+          if i + 5 < nI {
+            f16[i + 5] = palette[i5]
+          }
+          if i + 6 < nI {
+            f16[i + 6] = palette[i6]
+          }
+          if i + 7 < nI {
+            f16[i + 7] = palette[i7]
+          }
+          j += 7
+        }
+      }
+    }
+  default:
+    return 0
+  }
+  decodedSize[0] = elementSize * numberOfElements
+  return 1
+}
+
 private let q7pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -989,284 +1306,12 @@ private let q7pDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e7b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    if tensorOut!.pointee == nil {
-      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-    }
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
-      let decodedSize = decodedSize, dimensionCount > 0
-    else { return 0 }
-    let elementSize: Int
-    switch dataType {
-    case Int32(CCV_64F):
-      elementSize = MemoryLayout<Double>.size
-    case Int32(CCV_32F):
-      elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
-      elementSize = MemoryLayout<UInt16>.size
-    default:
-      return 0
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     data += MemoryLayout<UInt32>.size
-    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
-    guard
-      dataSize >= (numberOfElements + 7) / 8 * 7 + numberOfBlocks * 128 * elementSize
-        + MemoryLayout<UInt32>.size
-    else { return 0 }
-    precondition(blockSize % 8 == 0)
-    switch dataType {
-    case Int32(CCV_64F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Double.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
-        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
-        var j = 0
-        if nI % 8 == 0 {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let u5 = u8[j + 5]
-            let u6 = u8[j + 6]
-            let i0 = Int(u0 >> 1)
-            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
-            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
-            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
-            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
-            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
-            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
-            let i7 = Int(u6 & 127)
-            f64[i] = palette[i0]
-            f64[i + 1] = palette[i1]
-            f64[i + 2] = palette[i2]
-            f64[i + 3] = palette[i3]
-            f64[i + 4] = palette[i4]
-            f64[i + 5] = palette[i5]
-            f64[i + 6] = palette[i6]
-            f64[i + 7] = palette[i7]
-            j += 7
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let u5 = u8[j + 5]
-            let u6 = u8[j + 6]
-            let i0 = Int(u0 >> 1)
-            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
-            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
-            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
-            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
-            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
-            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
-            let i7 = Int(u6 & 127)
-            f64[i] = palette[i0]
-            if i + 1 < nI {
-              f64[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f64[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f64[i + 3] = palette[i3]
-            }
-            if i + 4 < nI {
-              f64[i + 4] = palette[i4]
-            }
-            if i + 5 < nI {
-              f64[i + 5] = palette[i5]
-            }
-            if i + 6 < nI {
-              f64[i + 6] = palette[i6]
-            }
-            if i + 7 < nI {
-              f64[i + 7] = palette[i7]
-            }
-            j += 7
-          }
-        }
-      }
-    case Int32(CCV_32F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Float.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
-        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
-        var j = 0
-        if nI % 8 == 0 {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let u5 = u8[j + 5]
-            let u6 = u8[j + 6]
-            let i0 = Int(u0 >> 1)
-            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
-            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
-            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
-            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
-            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
-            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
-            let i7 = Int(u6 & 127)
-            f32[i] = palette[i0]
-            f32[i + 1] = palette[i1]
-            f32[i + 2] = palette[i2]
-            f32[i + 3] = palette[i3]
-            f32[i + 4] = palette[i4]
-            f32[i + 5] = palette[i5]
-            f32[i + 6] = palette[i6]
-            f32[i + 7] = palette[i7]
-            j += 7
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let u5 = u8[j + 5]
-            let u6 = u8[j + 6]
-            let i0 = Int(u0 >> 1)
-            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
-            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
-            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
-            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
-            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
-            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
-            let i7 = Int(u6 & 127)
-            f32[i] = palette[i0]
-            if i + 1 < nI {
-              f32[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f32[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f32[i + 3] = palette[i3]
-            }
-            if i + 4 < nI {
-              f32[i + 4] = palette[i4]
-            }
-            if i + 5 < nI {
-              f32[i + 5] = palette[i5]
-            }
-            if i + 6 < nI {
-              f32[i + 6] = palette[i6]
-            }
-            if i + 7 < nI {
-              f32[i + 7] = palette[i7]
-            }
-            j += 7
-          }
-        }
-      }
-    case Int32(CCV_16F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 128
-        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
-        var j = 0
-        if nI % 8 == 0 {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let u5 = u8[j + 5]
-            let u6 = u8[j + 6]
-            let i0 = Int(u0 >> 1)
-            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
-            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
-            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
-            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
-            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
-            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
-            let i7 = Int(u6 & 127)
-            f16[i] = palette[i0]
-            f16[i + 1] = palette[i1]
-            f16[i + 2] = palette[i2]
-            f16[i + 3] = palette[i3]
-            f16[i + 4] = palette[i4]
-            f16[i + 5] = palette[i5]
-            f16[i + 6] = palette[i6]
-            f16[i + 7] = palette[i7]
-            j += 7
-          }
-        } else {
-          for i in stride(from: 0, to: nI, by: 8) {
-            let u0 = u8[j]
-            let u1 = u8[j + 1]
-            let u2 = u8[j + 2]
-            let u3 = u8[j + 3]
-            let u4 = u8[j + 4]
-            let u5 = u8[j + 5]
-            let u6 = u8[j + 6]
-            let i0 = Int(u0 >> 1)
-            let i1 = Int(((u0 & 1) << 6) | (u1 >> 2))
-            let i2 = Int(((u1 & 3) << 5) | (u2 >> 3))
-            let i3 = Int(((u2 & 7) << 4) | (u3 >> 4))
-            let i4 = Int(((u3 & 15) << 3) | (u4 >> 5))
-            let i5 = Int(((u4 & 31) << 2) | (u5 >> 6))
-            let i6 = Int(((u5 & 63) << 1) | (u6 >> 7))
-            let i7 = Int(u6 & 127)
-            f16[i] = palette[i0]
-            if i + 1 < nI {
-              f16[i + 1] = palette[i1]
-            }
-            if i + 2 < nI {
-              f16[i + 2] = palette[i2]
-            }
-            if i + 3 < nI {
-              f16[i + 3] = palette[i3]
-            }
-            if i + 4 < nI {
-              f16[i + 4] = palette[i4]
-            }
-            if i + 5 < nI {
-              f16[i + 5] = palette[i5]
-            }
-            if i + 6 < nI {
-              f16[i + 6] = palette[i6]
-            }
-            if i + 7 < nI {
-              f16[i + 7] = palette[i7]
-            }
-            j += 7
-          }
-        }
-      }
-    default:
-      return 0
-    }
-    decodedSize[0] = elementSize * numberOfElements
-    return 1
+    return q7pDecode(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
 
 // Quantize to 8-bit.
@@ -1344,6 +1389,87 @@ private let q8pEncode:
     return 1
   }
 
+private func q8pDecode(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e8b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  if tensorOut!.pointee == nil {
+    tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+  }
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
+    let decodedSize = decodedSize, dimensionCount > 0
+  else { return 0 }
+  let elementSize: Int
+  switch dataType {
+  case Int32(CCV_64F):
+    elementSize = MemoryLayout<Double>.size
+  case Int32(CCV_32F):
+    elementSize = MemoryLayout<Float>.size
+  case Int32(CCV_16F):
+    elementSize = MemoryLayout<UInt16>.size
+  default:
+    return 0
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
+  let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
+  guard
+    dataSize >= numberOfElements + numberOfBlocks * 256 * elementSize
+  else { return 0 }
+  switch dataType {
+  case Int32(CCV_64F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Double.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
+      let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
+      for i in 0..<nI {
+        f64[i] = palette[Int(u8[i])]
+      }
+    }
+  case Int32(CCV_32F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: Float.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
+      let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
+      for i in 0..<nI {
+        f32[i] = palette[Int(u8[i])]
+      }
+    }
+  case Int32(CCV_16F):
+    DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
+      let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
+      let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
+      let decodedBlock = decoded + blockSize * elementSize * blockIdx
+      let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
+      let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
+      let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
+      for i in 0..<nI {
+        f16[i] = palette[Int(u8[i])]
+      }
+    }
+  default:
+    return 0
+  }
+  decodedSize[0] = elementSize * numberOfElements
+  return 1
+}
+
 private let q8pDecode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -1353,81 +1479,12 @@ private let q8pDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e8b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    if tensorOut!.pointee == nil {
-      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-    }
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    guard var data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
-      let decodedSize = decodedSize, dimensionCount > 0
-    else { return 0 }
-    let elementSize: Int
-    switch dataType {
-    case Int32(CCV_64F):
-      elementSize = MemoryLayout<Double>.size
-    case Int32(CCV_32F):
-      elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
-      elementSize = MemoryLayout<UInt16>.size
-    default:
-      return 0
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    numberOfElements = min(decodedSize[0] / elementSize, numberOfElements)
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     data += MemoryLayout<UInt32>.size
-    let numberOfBlocks = (numberOfElements + blockSize - 1) / blockSize
-    guard
-      dataSize >= numberOfElements + numberOfBlocks * 256 * elementSize + MemoryLayout<UInt32>.size
-    else { return 0 }
-    switch dataType {
-    case Int32(CCV_64F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Double.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
-        let f64 = decodedBlock.assumingMemoryBound(to: Double.self)
-        for i in 0..<nI {
-          f64[i] = palette[Int(u8[i])]
-        }
-      }
-    case Int32(CCV_32F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: Float.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
-        let f32 = decodedBlock.assumingMemoryBound(to: Float.self)
-        for i in 0..<nI {
-          f32[i] = palette[Int(u8[i])]
-        }
-      }
-    case Int32(CCV_16F):
-      DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-        let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
-        let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
-        let decodedBlock = decoded + blockSize * elementSize * blockIdx
-        let palette = dataBlock.assumingMemoryBound(to: UInt16.self)
-        let u8 = dataBlock.assumingMemoryBound(to: UInt8.self) + elementSize * 256
-        let f16 = decodedBlock.assumingMemoryBound(to: UInt16.self)
-        for i in 0..<nI {
-          f16[i] = palette[Int(u8[i])]
-        }
-      }
-    default:
-      return 0
-    }
-    decodedSize[0] = elementSize * numberOfElements
-    return 1
+    return q8pDecode(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
 
 private let fpzipEncode:
@@ -1955,6 +2012,389 @@ private let fpzipAndZipEncode:
       identifier)
   }
 
+private let q4pAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q4pEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7EncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let q5pAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q5pEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7EncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let q6pAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q6pEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7EncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let q7pAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q7pEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7EncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let q8pAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard
+      q8pEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) == 0
+    else { return 1 }
+    return ezm7EncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let ezm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      ezm7Encode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0]
+    let offset = store.writeBytes(encoded, length: length)
+    guard offset >= 0 else { return 1 }
+    encodedSize[0] = 8 + 8  // Start offset, length.
+    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
+    return 1
+  }
+
+private let q4pEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      q4pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0] - MemoryLayout<UInt32>.size
+    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
+    encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let q5pEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      q5pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0] - MemoryLayout<UInt32>.size
+    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
+    encoded.storeBytes(of: UInt32(2048), as: UInt32.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let q6pEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      q6pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0] - MemoryLayout<UInt32>.size
+    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
+    encoded.storeBytes(of: UInt32(4096), as: UInt32.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let q7pEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      q7pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0] - MemoryLayout<UInt32>.size
+    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
+    encoded.storeBytes(of: UInt32(8192), as: UInt32.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let q8pEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      q8pEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0] - MemoryLayout<UInt32>.size
+    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
+    encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let fpzipAndZipEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    // Floating point to use fpzip
+    if dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F) {
+      return fpzipEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier)
+    }
+    return zipEncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      identifier)
+  }
+
+private let fpzipEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      fpzipEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0]
+    let offset = store.writeBytes(encoded, length: length)
+    guard offset >= 0 else { return 1 }
+    encodedSize[0] = 8 + 8  // Start offset, length.
+    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let zipEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let encoded = encoded, let encodedSize = encodedSize,
+      zipEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        identifier) != 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = encodedSize[0]
+    let offset = store.writeBytes(encoded, length: length)
+    guard offset >= 0 else { return 1 }
+    encodedSize[0] = 8 + 8  // Start offset, length.
+    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
+    return 1
+  }
+
+private let encodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    in
+    guard let data = data, let dimensions = dimensions, var encoded = encoded,
+      let encodedSize = encodedSize, dimensionCount > 0
+    else { return 0 }
+    guard MemoryLayout<UInt64>.size * 2 < encodedSize[0] else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let length = dataSize
+    let offset = store.writeBytes(data, length: length)
+    guard offset >= 0 else { return 1 }
+    encodedSize[0] = 8 + 8  // Start offset, length.
+    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = 0x1000_0000
+    }
+    return 1
+  }
+
+private func q4pDecodeJit(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e4b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+    dimensionCount > 0
+  else { return 0 }
+  guard tensorOut!.pointee == nil else {
+    guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      let decodedDataSize = dataSize
+      guard decodedDataSize > 0, let decoded = decoded else {
+        return 0
+      }
+      memcpy(decoded, data, decodedDataSize)
+      decodedSize[0] = decodedDataSize
+      return 1
+    }
+    return q4pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  guard
+    TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && (numberOfElements % blockSize) == 0
+  else {
+    return q4pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+  let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+  guard
+    dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+  else {
+    return q4pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  let decoded = decoded ?? tensorData!
+  memcpy(decoded, data, decodedDataSize)
+  decodedSize[0] = decodedDataSize
+  return 1
+}
+
 private let q4pDecodeJit:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -1964,58 +2404,72 @@ private let q4pDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e4b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decodedSize = decodedSize,
-      dimensionCount > 0
-    else { return 0 }
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    guard tensorOut!.pointee == nil else {
-      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
-        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
-        guard decodedDataSize > 0, let decoded = decoded else {
-          return 0
-        }
-        data += MemoryLayout<UInt32>.size
-        memcpy(decoded, data, decodedDataSize)
-        decodedSize[0] = decodedDataSize
-        return 1
-      }
-      return q4pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    guard
-      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % blockSize) == 0
-    else {
-      return q4pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
-    guard
-      dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
-    else {
-      return q4pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    let decoded = decoded ?? tensorData!
     data += MemoryLayout<UInt32>.size
-    memcpy(decoded, data, decodedDataSize)
-    decodedSize[0] = decodedDataSize
-    return 1
+    return q4pDecodeJit(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
+
+private func q5pDecodeJit(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e5b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+    dimensionCount > 0
+  else { return 0 }
+  guard tensorOut!.pointee == nil else {
+    guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      let decodedDataSize = dataSize
+      guard decodedDataSize > 0, let decoded = decoded else {
+        return 0
+      }
+      memcpy(decoded, data, decodedDataSize)
+      decodedSize[0] = decodedDataSize
+      return 1
+    }
+    return q5pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  guard
+    TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && (numberOfElements % blockSize) == 0
+  else {
+    return q5pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  let palettizeParams = ccv_nnc_tensor_palettize(params, 5, Int32(blockSize))
+  let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+  guard
+    dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+  else {
+    return q5pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  let decoded = decoded ?? tensorData!
+  memcpy(decoded, data, decodedDataSize)
+  decodedSize[0] = decodedDataSize
+  return 1
+}
 
 private let q5pDecodeJit:
   @convention(c) (
@@ -2026,58 +2480,72 @@ private let q5pDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e5b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decodedSize = decodedSize,
-      dimensionCount > 0
-    else { return 0 }
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    guard tensorOut!.pointee == nil else {
-      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
-        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
-        guard decodedDataSize > 0, let decoded = decoded else {
-          return 0
-        }
-        data += MemoryLayout<UInt32>.size
-        memcpy(decoded, data, decodedDataSize)
-        decodedSize[0] = decodedDataSize
-        return 1
-      }
-      return q5pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    guard
-      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % blockSize) == 0
-    else {
-      return q5pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 5, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
-    guard
-      dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
-    else {
-      return q5pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    let decoded = decoded ?? tensorData!
     data += MemoryLayout<UInt32>.size
-    memcpy(decoded, data, decodedDataSize)
-    decodedSize[0] = decodedDataSize
-    return 1
+    return q5pDecodeJit(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
+
+private func q6pDecodeJit(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e6b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+    dimensionCount > 0
+  else { return 0 }
+  guard tensorOut!.pointee == nil else {
+    guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      let decodedDataSize = dataSize
+      guard decodedDataSize > 0, let decoded = decoded else {
+        return 0
+      }
+      memcpy(decoded, data, decodedDataSize)
+      decodedSize[0] = decodedDataSize
+      return 1
+    }
+    return q6pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  guard
+    TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && (numberOfElements % blockSize) == 0
+  else {
+    return q6pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  let palettizeParams = ccv_nnc_tensor_palettize(params, 6, Int32(blockSize))
+  let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+  guard
+    dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+  else {
+    return q6pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  let decoded = decoded ?? tensorData!
+  memcpy(decoded, data, decodedDataSize)
+  decodedSize[0] = decodedDataSize
+  return 1
+}
 
 private let q6pDecodeJit:
   @convention(c) (
@@ -2088,58 +2556,72 @@ private let q6pDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e6b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decodedSize = decodedSize,
-      dimensionCount > 0
-    else { return 0 }
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    guard tensorOut!.pointee == nil else {
-      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
-        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
-        guard decodedDataSize > 0, let decoded = decoded else {
-          return 0
-        }
-        data += MemoryLayout<UInt32>.size
-        memcpy(decoded, data, decodedDataSize)
-        decodedSize[0] = decodedDataSize
-        return 1
-      }
-      return q6pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    guard
-      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % blockSize) == 0
-    else {
-      return q6pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 6, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
-    guard
-      dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
-    else {
-      return q6pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    let decoded = decoded ?? tensorData!
     data += MemoryLayout<UInt32>.size
-    memcpy(decoded, data, decodedDataSize)
-    decodedSize[0] = decodedDataSize
-    return 1
+    return q6pDecodeJit(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
+
+private func q7pDecodeJit(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e7b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+    dimensionCount > 0
+  else { return 0 }
+  guard tensorOut!.pointee == nil else {
+    guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      let decodedDataSize = dataSize
+      guard decodedDataSize > 0, let decoded = decoded else {
+        return 0
+      }
+      memcpy(decoded, data, decodedDataSize)
+      decodedSize[0] = decodedDataSize
+      return 1
+    }
+    return q7pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  guard
+    TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && (numberOfElements % blockSize) == 0
+  else {
+    return q7pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  let palettizeParams = ccv_nnc_tensor_palettize(params, 7, Int32(blockSize))
+  let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+  guard
+    dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+  else {
+    return q7pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  let decoded = decoded ?? tensorData!
+  memcpy(decoded, data, decodedDataSize)
+  decodedSize[0] = decodedDataSize
+  return 1
+}
 
 private let q7pDecodeJit:
   @convention(c) (
@@ -2150,58 +2632,72 @@ private let q7pDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e7b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decodedSize = decodedSize,
-      dimensionCount > 0
-    else { return 0 }
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    guard tensorOut!.pointee == nil else {
-      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
-        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
-        guard decodedDataSize > 0, let decoded = decoded else {
-          return 0
-        }
-        data += MemoryLayout<UInt32>.size
-        memcpy(decoded, data, decodedDataSize)
-        decodedSize[0] = decodedDataSize
-        return 1
-      }
-      return q7pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    guard
-      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % blockSize) == 0
-    else {
-      return q7pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 7, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
-    guard
-      dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
-    else {
-      return q7pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    let decoded = decoded ?? tensorData!
     data += MemoryLayout<UInt32>.size
-    memcpy(decoded, data, decodedDataSize)
-    decodedSize[0] = decodedDataSize
-    return 1
+    return q7pDecodeJit(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
+
+private func q8pDecodeJit(
+  blockSize: Int, _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
+) -> Int32 {
+  guard identifier == 0x8a1e8b else { return 0 }
+  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  else { return 0 }
+  guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+    dimensionCount > 0
+  else { return 0 }
+  guard tensorOut!.pointee == nil else {
+    guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      let decodedDataSize = dataSize
+      guard decodedDataSize > 0, let decoded = decoded else {
+        return 0
+      }
+      memcpy(decoded, data, decodedDataSize)
+      decodedSize[0] = decodedDataSize
+      return 1
+    }
+    return q8pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  var numberOfElements = Int(dimensions[0])
+  for i in 1..<Int(dimensionCount) {
+    numberOfElements *= Int(dimensions[i])
+  }
+  guard
+    TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && (numberOfElements % blockSize) == 0
+  else {
+    return q8pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  let palettizeParams = ccv_nnc_tensor_palettize(params, 8, Int32(blockSize))
+  let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+  guard
+    dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+  else {
+    return q8pDecode(
+      blockSize: blockSize,
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+  tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
+  let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+  let decoded = decoded ?? tensorData!
+  memcpy(decoded, data, decodedDataSize)
+  decodedSize[0] = decodedDataSize
+  return 1
+}
 
 private let q8pDecodeJit:
   @convention(c) (
@@ -2212,57 +2708,12 @@ private let q8pDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard identifier == 0x8a1e8b else { return 0 }
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
-    guard var data = data, let dimensions = dimensions, let decodedSize = decodedSize,
-      dimensionCount > 0
-    else { return 0 }
-    guard dataSize > MemoryLayout<UInt32>.size else { return 0 }
+    guard var data = data, dataSize > MemoryLayout<UInt32>.size else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    guard tensorOut!.pointee == nil else {
-      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
-        let decodedDataSize = dataSize - MemoryLayout<UInt32>.size
-        guard decodedDataSize > 0, let decoded = decoded else {
-          return 0
-        }
-        data += MemoryLayout<UInt32>.size
-        memcpy(decoded, data, decodedDataSize)
-        decodedSize[0] = decodedDataSize
-        return 1
-      }
-      return q8pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    var numberOfElements = Int(dimensions[0])
-    for i in 1..<Int(dimensionCount) {
-      numberOfElements *= Int(dimensions[i])
-    }
-    guard
-      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % blockSize) == 0
-    else {
-      return q8pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 8, Int32(blockSize))
-    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
-    guard
-      dataSize >= MemoryLayout<UInt32>.size + decodedDataSize && decodedSize[0] >= decodedDataSize
-    else {
-      return q8pDecode(
-        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
-    }
-    tensorOut!.pointee = ccv_nnc_tensor_new(nil, palettizeParams, 0)
-    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
-    let decoded = decoded ?? tensorData!
     data += MemoryLayout<UInt32>.size
-    memcpy(decoded, data, decodedDataSize)
-    decodedSize[0] = decodedDataSize
-    return 1
+    return q8pDecodeJit(
+      blockSize: blockSize, data, dataSize - MemoryLayout<UInt32>.size, dataType, dimensions,
+      dimensionCount, identifier, context, params, tensorOut, decoded, decodedSize)
   }
 
 private let uDecodeJit:
@@ -2309,6 +2760,850 @@ private let uDecodeJit:
         tensorOut, decoded, decodedSize)
     default:
       return 0
+    }
+  }
+
+private let fpzipDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let offset = Int(data.load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    let fileData = UnsafeRawPointer(mappedData)
+    defer { store.offloadBytes(mappedData, length: length) }
+    return fpzipDecode(
+      fileData, length, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+
+private let zipDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let offset = Int(data.load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    let fileData = UnsafeRawPointer(mappedData)
+    defer { store.offloadBytes(mappedData, length: length) }
+    return zipDecode(
+      fileData, length, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+
+private let ezm7DecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let offset = Int(data.load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    let fileData = UnsafeRawPointer(mappedData)
+    defer { store.offloadBytes(mappedData, length: length) }
+    return ezm7Decode(
+      fileData, length, dataType, dimensions, dimensionCount, identifier, context, params,
+      tensorOut, decoded, decodedSize)
+  }
+
+private let decodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    if tensorOut!.pointee == nil {
+      tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+    }
+    let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
+    guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
+      let decodedSize = decodedSize, dimensionCount > 0
+    else { return 0 }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let offset = Int(data.load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    guard let bytes = store.loadBytes(offset: offset, length: length) else { return 0 }
+    defer { store.offloadBytes(bytes, length: length) }
+    let copiedSize = min(Int(length), decodedSize[0])
+    memcpy(decoded, bytes, copiedSize)
+    decodedSize[0] = copiedSize
+    return 1
+  }
+
+private let q4pDecodeJitWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q4pDecodeJit(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q5pDecodeJitWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q5pDecodeJit(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q6pDecodeJitWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q6pDecodeJit(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q7pDecodeJitWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q7pDecodeJit(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q8pDecodeJitWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q8pDecodeJit(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let uDecodeJitWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard (identifier & 0x1000_0000) != 0 else {
+      return uDecodeJit(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    switch identifier & 0x0fff_ffff {
+    case 0xf7217:
+      return fpzipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x217:
+      return zipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x511:
+      return ezm7DecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e4b:
+      return q4pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e5b:
+      return q5pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e6b:
+      return q6pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e7b:
+      return q7pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e8b:
+      return q8pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    default:
+      return decodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+  }
+
+private let q4pDecodeJitWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q4pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      return q4pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      return q4pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    decodedSize[0] = decodedDataSize
+    return 1
+  }
+
+private let q5pDecodeJitWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q5pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      return q5pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      return q5pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    decodedSize[0] = decodedDataSize
+    return 1
+  }
+
+private let q6pDecodeJitWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q6pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      return q6pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      return q6pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    decodedSize[0] = decodedDataSize
+    return 1
+  }
+
+private let q7pDecodeJitWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q7pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      return q7pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      return q7pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    decodedSize[0] = decodedDataSize
+    return 1
+  }
+
+private let q8pDecodeJitWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q8pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      return q8pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      return q8pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    decodedSize[0] = decodedDataSize
+    return 1
+  }
+
+private let decodeWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, dimensionCount > 0 else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return decodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    let offset = Int(data.load(as: UInt64.self))
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      params, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    return 1
+  }
+
+private let uDecodeJitWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard (identifier & 0x1000_0000) != 0 else {
+      return uDecodeJit(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    switch identifier & 0x0fff_ffff {
+    case 0xf7217:
+      return fpzipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x217:
+      return zipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x511:
+      return ezm7DecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e4b:
+      return q4pDecodeJitWithExternalOnDemand(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e5b:
+      return q5pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e6b:
+      return q6pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e7b:
+      return q7pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e8b:
+      return q8pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    default:
+      return decodeWithExternalOnDemand(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+  }
+
+private let q4pDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q4pDecode(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q5pDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q5pDecode(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q6pDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q6pDecode(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q7pDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q7pDecode(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let q8pDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let mappedData = store.loadBytes(offset: offset, length: length)
+    defer {
+      store.offloadBytes(mappedData, length: length)
+    }
+    return q8pDecode(
+      blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+      context, params, tensorOut, decoded, decodedSize)
+  }
+
+private let uDecodeWithExternalOnDemand:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard (identifier & 0x1000_0000) != 0 else {
+      return uDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    switch identifier & 0x0fff_ffff {
+    case 0xf7217:
+      return fpzipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x217:
+      return zipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x511:
+      return ezm7DecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e4b:
+      return q4pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e5b:
+      return q5pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e6b:
+      return q6pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e7b:
+      return q7pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e8b:
+      return q8pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    default:
+      return decodeWithExternalOnDemand(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+  }
+
+private let uDecodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard (identifier & 0x1000_0000) != 0 else {
+      return uDecode(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    switch identifier & 0x0fff_ffff {
+    case 0xf7217:
+      return fpzipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x217:
+      return zipDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x511:
+      return ezm7DecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e4b:
+      return q4pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e5b:
+      return q5pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e6b:
+      return q6pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e7b:
+      return q7pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    case 0x8a1e8b:
+      return q8pDecodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    default:
+      return decodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
     }
   }
 
@@ -2364,17 +3659,61 @@ extension DynamicGraph {
   final class _Store {
     let sqlite: UnsafeMutableRawPointer
     let flags: Store.OpenFlag
-    init(sqlite: OpaquePointer, flags: Store.OpenFlag) {
+    let externalStore: String?
+    let chunkSize: Int
+    var externalFile: UnsafeMutablePointer<FILE>?
+    init(sqlite: OpaquePointer, flags: Store.OpenFlag, externalStore: String?, chunkSize: Int) {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
       self.flags = flags
+      self.externalStore = externalStore
+      self.chunkSize = chunkSize
+      externalFile = nil
     }
     deinit {
+      if let externalFile = externalFile {
+        fflush(externalFile)
+        fsync(fileno(externalFile))
+        fclose(externalFile)
+      }
       // If the database is opened with WAL mode, this makes sure everything write back to the main
       // database, much easier to operate without worrying the data left in the wal log.
       if flags.contains(.truncateWhenClose) {
         sqlite3_wal_checkpoint_v2(OpaquePointer(sqlite), nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil)
       }
       sqlite3_close(OpaquePointer(sqlite))
+    }
+    // Return offset of where the bytes written to.
+    func writeBytes(_ bytes: UnsafeRawPointer, length: Int) -> Int {
+      let externalFile = externalFile ?? fopen(externalStore, "w+")
+      guard let externalFile = externalFile else { return -1 }
+      self.externalFile = externalFile
+      let offset = ftell(externalFile)
+      let alignedOffset = (offset + chunkSize - 1) / chunkSize * chunkSize
+      fseek(externalFile, alignedOffset, SEEK_SET)
+      fwrite(bytes, 1, length, externalFile)
+      return alignedOffset
+    }
+    // Return a pointer that later can be munmap.
+    func loadBytes(offset: Int, length: Int) -> UnsafeMutableRawPointer? {
+      guard let externalStore = externalStore else { return nil }
+      if let externalFile = externalFile {
+        fflush(externalFile)
+        fsync(fileno(externalFile))
+      }
+      let fd = open(externalStore, O_RDONLY, 0)
+      let bufptr = mmap(nil, length, PROT_READ, MAP_PRIVATE, fd, offset)
+      close(fd)
+      madvise(bufptr, length, MADV_SEQUENTIAL | MADV_WILLNEED)
+      return bufptr
+    }
+    func offloadBytes(_ bytes: UnsafeMutableRawPointer?, length: Int) {
+      guard let bytes = bytes else { return }
+      munmap(bytes, length)
+    }
+    func flush() {
+      guard let externalFile = externalFile else { return }
+      fflush(externalFile)
+      fsync(fileno(externalFile))
     }
   }
 
@@ -2404,6 +3743,8 @@ extension DynamicGraph {
       public static let q7p = Codec(rawValue: 1 << 6)
       public static let q8p = Codec(rawValue: 1 << 7)
       public static let jit = Codec(rawValue: 1 << 8)
+      public static let externalData = Codec(rawValue: 1 << 9)
+      public static let externalOnDemand = Codec(rawValue: 1 << 10)
       var encode:
         (
           @convention(c) (
@@ -2412,46 +3753,80 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        if contains(.ezm7) && contains(.q4p) {
-          return q4pAndEzm7Encode  // Prefer q4p, if it is longer (because 16 palette), use ezm7.
-        } else if contains(.ezm7) && contains(.q5p) {
-          return q5pAndEzm7Encode  // Prefer q5p, if it is longer (because 32 palette), use ezm7.
-        } else if contains(.ezm7) && contains(.q6p) {
-          return q6pAndEzm7Encode  // Prefer q6p, if it is longer (because 64 palette), use ezm7.
-        } else if contains(.ezm7) && contains(.q7p) {
-          return q7pAndEzm7Encode  // Prefer q7p, if it is longer (because 256 palette), use ezm7.
-        } else if contains(.ezm7) && contains(.q8p) {
-          return q8pAndEzm7Encode  // Prefer q8p, if it is longer (because 256 palette), use ezm7.
-        } else if contains(.ezm7) {
-          // .ezm7 is not supported with other lossless formats
-          guard self == .ezm7 else { return nil }
-          return ezm7Encode
-        } else if contains(.q4p) {
-          // .q4p is not supported with other lossless formats
-          guard self == .q4p else { return nil }
-          return q4pEncode
-        } else if contains(.q5p) {
-          // .q5p is not supported with other lossless formats
-          guard self == .q5p else { return nil }
-          return q5pEncode
-        } else if contains(.q6p) {
-          // .q6p is not supported with other lossless formats
-          guard self == .q6p else { return nil }
-          return q6pEncode
-        } else if contains(.q7p) {
-          // .q7p is not supported with other lossless formats
-          guard self == .q7p else { return nil }
-          return q7pEncode
-        } else if contains(.q8p) {
-          // .q8p is not supported with other lossless formats
-          guard self == .q8p else { return nil }
-          return q8pEncode
-        } else if contains(.fpzip) && contains(.zip) {
-          return fpzipAndZipEncode
-        } else if contains(.fpzip) {
-          return fpzipEncode
-        } else if contains(.zip) {
-          return zipEncode
+        let externalData = contains(.externalOnDemand) || contains(.externalData)
+        if externalData {
+          if contains(.ezm7) && contains(.q4p) {
+            return q4pAndEzm7EncodeWithExternalStore
+          } else if contains(.ezm7) && contains(.q5p) {
+            return q5pAndEzm7EncodeWithExternalStore
+          } else if contains(.ezm7) && contains(.q6p) {
+            return q6pAndEzm7EncodeWithExternalStore
+          } else if contains(.ezm7) && contains(.q7p) {
+            return q7pAndEzm7EncodeWithExternalStore
+          } else if contains(.ezm7) && contains(.q8p) {
+            return q8pAndEzm7EncodeWithExternalStore
+          } else if contains(.ezm7) {
+            return ezm7EncodeWithExternalStore
+          } else if contains(.q4p) {
+            return q4pEncodeWithExternalStore
+          } else if contains(.q5p) {
+            return q5pEncodeWithExternalStore
+          } else if contains(.q6p) {
+            return q6pEncodeWithExternalStore
+          } else if contains(.q7p) {
+            return q7pEncodeWithExternalStore
+          } else if contains(.q8p) {
+            return q8pEncodeWithExternalStore
+          } else if contains(.fpzip) && contains(.zip) {
+            return fpzipAndZipEncodeWithExternalStore
+          } else if contains(.fpzip) {
+            return fpzipEncodeWithExternalStore
+          } else if contains(.zip) {
+            return zipEncodeWithExternalStore
+          }
+          return encodeWithExternalStore
+        } else {
+          if contains(.ezm7) && contains(.q4p) {
+            return q4pAndEzm7Encode  // Prefer q4p, if it is longer (because 16 palette), use ezm7.
+          } else if contains(.ezm7) && contains(.q5p) {
+            return q5pAndEzm7Encode  // Prefer q5p, if it is longer (because 32 palette), use ezm7.
+          } else if contains(.ezm7) && contains(.q6p) {
+            return q6pAndEzm7Encode  // Prefer q6p, if it is longer (because 64 palette), use ezm7.
+          } else if contains(.ezm7) && contains(.q7p) {
+            return q7pAndEzm7Encode  // Prefer q7p, if it is longer (because 256 palette), use ezm7.
+          } else if contains(.ezm7) && contains(.q8p) {
+            return q8pAndEzm7Encode  // Prefer q8p, if it is longer (because 256 palette), use ezm7.
+          } else if contains(.ezm7) {
+            // .ezm7 is not supported with other lossless formats
+            guard self == .ezm7 else { return nil }
+            return ezm7Encode
+          } else if contains(.q4p) {
+            // .q4p is not supported with other lossless formats
+            guard self == .q4p else { return nil }
+            return q4pEncode
+          } else if contains(.q5p) {
+            // .q5p is not supported with other lossless formats
+            guard self == .q5p else { return nil }
+            return q5pEncode
+          } else if contains(.q6p) {
+            // .q6p is not supported with other lossless formats
+            guard self == .q6p else { return nil }
+            return q6pEncode
+          } else if contains(.q7p) {
+            // .q7p is not supported with other lossless formats
+            guard self == .q7p else { return nil }
+            return q7pEncode
+          } else if contains(.q8p) {
+            // .q8p is not supported with other lossless formats
+            guard self == .q8p else { return nil }
+            return q8pEncode
+          } else if contains(.fpzip) && contains(.zip) {
+            return fpzipAndZipEncode
+          } else if contains(.fpzip) {
+            return fpzipEncode
+          } else if contains(.zip) {
+            return zipEncode
+          }
         }
         return nil
       }
@@ -2469,6 +3844,8 @@ extension DynamicGraph {
           return nil
         }
         let isJit = contains(.jit)
+        let externalData = contains(.externalData)
+        let externalOnDemand = contains(.externalOnDemand)
         switch self {
         case .ezm7:
           return ezm7Decode
@@ -2487,7 +3864,19 @@ extension DynamicGraph {
         case .zip:
           return zipDecode
         default:
-          return isJit ? uDecodeJit : uDecode
+          if isJit && externalOnDemand {
+            return uDecodeJitWithExternalOnDemand
+          } else if isJit && externalData {
+            return uDecodeJitWithExternalStore
+          } else if isJit {
+            return uDecodeJit
+          } else if externalOnDemand {
+            return uDecodeWithExternalOnDemand
+          } else if externalData {
+            return uDecodeWithExternalStore
+          } else {
+            return uDecode
+          }
         }
       }
     }
@@ -2507,6 +3896,7 @@ extension DynamicGraph {
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.decode = codec.decode
+        option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
         result = ccv_nnc_tensor_read(store.sqlite, key, &option, 0, nil, &underlying)
       }
       guard result == CCV_IO_FINAL else { return nil }
@@ -2551,26 +3941,31 @@ extension DynamicGraph {
       if sqlite3_step(selectCodec) == SQLITE_ROW {
         let type = sqlite3_column_int64(selectCodec, 0)
         let identifier = (type >> 32) & 0xffff_ffff
-        switch identifier {
+        var detected: Codec
+        switch identifier & 0x0fff_ffff {
         case 0x217:
-          codec = .zip
+          detected = .zip
         case 0xf7217:
-          codec = .fpzip
+          detected = .fpzip
         case 0x511:
-          codec = .ezm7
+          detected = .ezm7
         case 0x8a1e4b:
-          codec = .q4p
+          detected = .q4p
         case 0x8a1e5b:
-          codec = .q5p
+          detected = .q5p
         case 0x8a1e6b:
-          codec = .q6p
+          detected = .q6p
         case 0x8a1e7b:
-          codec = .q7p
+          detected = .q7p
         case 0x8a1e8b:
-          codec = .q8p
+          detected = .q8p
         default:
-          codec = []
+          detected = []
         }
+        if (identifier & 0x1000_0000) != 0 {
+          detected.formUnion(.externalData)
+        }
+        codec = detected
       } else {
         codec = nil
       }
@@ -2602,6 +3997,7 @@ extension DynamicGraph {
           } else {
             var option = ccv_nnc_tensor_io_option_t()
             option.decode = codec.decode
+            option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
             result = ccv_nnc_tensor_read(store.sqlite, key, &option, 0, nil, &underlying)
           }
           if result == CCV_IO_FINAL {
@@ -2616,6 +4012,7 @@ extension DynamicGraph {
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.decode = codec.decode
+          option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
           result = ccv_nnc_tensor_read(store.sqlite, key, &option, 0, nil, &underlying)
         }
         guard result == CCV_IO_FINAL else { return false }
@@ -2676,6 +4073,7 @@ extension DynamicGraph {
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.decode = codec.decode
+          option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
           ccv_cnnp_model_read(store.sqlite, key, &option, model.cModel)
         }
         return
@@ -2715,6 +4113,7 @@ extension DynamicGraph {
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.decode = codec.decode
+        option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
         ccv_cnnp_model_read(unmanaged.toOpaque(), key, &option, model.cModel)
       }
       ccv_cnnp_model_set_io(model.cModel, nil, nil)
@@ -2748,6 +4147,7 @@ extension DynamicGraph {
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.encode = codec.encode
+        option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
         ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, &option)
       }
     }
@@ -2770,6 +4170,7 @@ extension DynamicGraph {
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.encode = codec.encode
+          option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
           ccv_nnc_tensor_write(raw, store.sqlite, key, &option)
         }
       case let group as DynamicGraph.AnyGroup:
@@ -2815,6 +4216,7 @@ extension DynamicGraph {
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.encode = codec.encode
+          option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
           ccv_cnnp_model_write(model.cModel, store.sqlite, key, &option)
         }
         return
@@ -2845,6 +4247,7 @@ extension DynamicGraph {
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.encode = codec.encode
+        option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
         ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, &option)
       }
       ccv_cnnp_model_set_io(model.cModel, nil, nil)
@@ -2908,6 +4311,23 @@ extension DynamicGraph {
       sqlite3_exec(OpaquePointer(store.sqlite), "VACUUM", nil, nil, nil)
     }
 
+    /**
+     * Explicit vacuum the database.
+     */
+    public func vacuum() {
+      sqlite3_exec(OpaquePointer(store.sqlite), "VACUUM", nil, nil, nil)
+    }
+
+    /**
+     * Wrap the database ops in a transaction.
+     */
+    public func withTransaction<Result>(_ closure: () throws -> Result) rethrows -> Result {
+      sqlite3_exec(OpaquePointer(store.sqlite), "BEGIN", nil, nil, nil)
+      let result = try closure()
+      store.flush()
+      sqlite3_exec(OpaquePointer(store.sqlite), "COMMIT", nil, nil, nil)
+      return result
+    }
   }
 
   public enum OpenError: Error {
@@ -2920,12 +4340,15 @@ extension DynamicGraph {
    * - Parameters:
    *   - filePath: The file path for the store.
    *   - flags: The flags for the opening store. Default to truncateWhenClose.
+   *   - externalStore: The external store for tensor data, in case we have tensors stored externally (a.k.a. outside of the SQLite database).
+   *   - chunkSize: Align each tensor to a certain chunk size.
    *   - procedure: When the store is open, you can access it from this closure.
    * - Returns: Wether this store can be successfully open or not.
    */
   @discardableResult
   public func openStore<SuccessResult>(
     _ filePath: String, flags: Store.OpenFlag = .truncateWhenClose,
+    externalStore: String? = nil, chunkSize: Int = 16_384,
     procedure: (_ store: Store) throws -> SuccessResult
   ) rethrows -> Result<SuccessResult, OpenError> {
     var _sqlite: OpaquePointer? = nil
@@ -2940,7 +4363,9 @@ extension DynamicGraph {
     }
     guard let sqlite = _sqlite else { return .failure(.cannotOpen) }
     sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
-    let store = Store(_Store(sqlite: sqlite, flags: flags), graph: self)
+    let store = Store(
+      _Store(sqlite: sqlite, flags: flags, externalStore: externalStore, chunkSize: chunkSize),
+      graph: self)
     return .success(try procedure(store))
   }
 

@@ -574,6 +574,26 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(readoutCodecD!, .ezm7)
   }
 
+  func testWriteTensorAndReadBackWithQ8PAndExternalStore() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .C(768))
+    for i in 0..<768 {
+      tensor[i] = 1.1 * Float16(i)
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
+      store.write("a", tensor: tensor, codec: [.externalData, .q8p])
+      readout = store.read("a", codec: [.externalData, .q8p])
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, [.q8p, .externalData])
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<768 {
+      XCTAssertEqual(varf[i], tensor[i], accuracy: 1.8)
+    }
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -608,6 +628,10 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackPartialWithQ7P", testWriteTensorAndReadBackPartialWithQ7P),
     ("testWriteTensorAndReadBackWithQ8P", testWriteTensorAndReadBackWithQ8P),
     ("testWriteTensorAndReadBackPartialWithQ8P", testWriteTensorAndReadBackPartialWithQ8P),
+    (
+      "testWriteTensorAndReadBackWithQ8PAndExternalStore",
+      testWriteTensorAndReadBackWithQ8PAndExternalStore
+    ),
     ("testWriteTensorAndReadBackCodec", testWriteTensorAndReadBackCodec),
   ]
 }
