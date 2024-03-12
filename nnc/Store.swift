@@ -10,12 +10,33 @@ import SQLite3
 private let q4pEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
+    else {
+      guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
+        var encoded = encoded, let encodedSize = encodedSize, let params = params,
+        dimensionCount > 0
+      else { return 0 }
+      let qbits = (dataType & 0xF00) >> 8
+      guard qbits == 4 else { return 0 }
+      let originalDataType = (dataType & 0xFF) << 12
+      let numberInBlocks = params.pointee.reserved
+      encoded.storeBytes(of: UInt32(numberInBlocks), as: UInt32.self)
+      encoded += MemoryLayout<UInt32>.size
+      memcpy(encoded, data, min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize))
+      encodedSize[0] =
+        min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize) + MemoryLayout<UInt32>.size
+      // Restore parameters to be ordinary one.
+      params.pointee.datatype = originalDataType
+      params.pointee.reserved = 0
+      identifier?[0] = 0x8a1e4b
+      return 1
+    }
     guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
@@ -37,7 +58,7 @@ private let q4pEncode:
     let numberOfBlocks = (numberOfElements + 1023) / 1024
     guard
       (numberOfElements + 1) / 2 + numberOfBlocks * 16 * elementSize + MemoryLayout<UInt32>.size
-        < encodedSize[0]
+        <= encodedSize[0]
     else { return 0 }
     encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
@@ -246,12 +267,33 @@ private let q4pDecode:
 private let q5pEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
+    else {
+      guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
+        var encoded = encoded, let encodedSize = encodedSize, let params = params,
+        dimensionCount > 0
+      else { return 0 }
+      let qbits = (dataType & 0xF00) >> 8
+      guard qbits == 5 else { return 0 }
+      let originalDataType = (dataType & 0xFF) << 12
+      let numberInBlocks = params.pointee.reserved
+      encoded.storeBytes(of: UInt32(numberInBlocks), as: UInt32.self)
+      encoded += MemoryLayout<UInt32>.size
+      memcpy(encoded, data, min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize))
+      encodedSize[0] =
+        min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize) + MemoryLayout<UInt32>.size
+      // Restore parameters to be ordinary one.
+      params.pointee.datatype = originalDataType
+      params.pointee.reserved = 0
+      identifier?[0] = 0x8a1e5b
+      return 1
+    }
     guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
@@ -273,7 +315,7 @@ private let q5pEncode:
     let numberOfBlocks = (numberOfElements + 2047) / 2048
     guard
       (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize + MemoryLayout<UInt32>.size
-        < encodedSize[0]
+        <= encodedSize[0]
     else { return 0 }
     encoded.storeBytes(of: UInt32(2048), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
@@ -628,12 +670,33 @@ private let q5pDecode:
 private let q6pEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
+    else {
+      guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
+        var encoded = encoded, let encodedSize = encodedSize, let params = params,
+        dimensionCount > 0
+      else { return 0 }
+      let qbits = (dataType & 0xF00) >> 8
+      guard qbits == 6 else { return 0 }
+      let originalDataType = (dataType & 0xFF) << 12
+      let numberInBlocks = params.pointee.reserved
+      encoded.storeBytes(of: UInt32(numberInBlocks), as: UInt32.self)
+      encoded += MemoryLayout<UInt32>.size
+      memcpy(encoded, data, min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize))
+      encodedSize[0] =
+        min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize) + MemoryLayout<UInt32>.size
+      // Restore parameters to be ordinary one.
+      params.pointee.datatype = originalDataType
+      params.pointee.reserved = 0
+      identifier?[0] = 0x8a1e6b
+      return 1
+    }
     guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
@@ -655,7 +718,7 @@ private let q6pEncode:
     let numberOfBlocks = (numberOfElements + 4095) / 4096
     guard
       (numberOfElements + 3) / 4 * 3 + numberOfBlocks * 64 * elementSize + MemoryLayout<UInt32>.size
-        < encodedSize[0]
+        <= encodedSize[0]
     else { return 0 }
     encoded.storeBytes(of: UInt32(4096), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
@@ -918,12 +981,33 @@ private let q6pDecode:
 private let q7pEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
+    else {
+      guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
+        var encoded = encoded, let encodedSize = encodedSize, let params = params,
+        dimensionCount > 0
+      else { return 0 }
+      let qbits = (dataType & 0xF00) >> 8
+      guard qbits == 7 else { return 0 }
+      let originalDataType = (dataType & 0xFF) << 12
+      let numberInBlocks = params.pointee.reserved
+      encoded.storeBytes(of: UInt32(numberInBlocks), as: UInt32.self)
+      encoded += MemoryLayout<UInt32>.size
+      memcpy(encoded, data, min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize))
+      encodedSize[0] =
+        min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize) + MemoryLayout<UInt32>.size
+      // Restore parameters to be ordinary one.
+      params.pointee.datatype = originalDataType
+      params.pointee.reserved = 0
+      identifier?[0] = 0x8a1e7b
+      return 1
+    }
     guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
@@ -946,7 +1030,7 @@ private let q7pEncode:
     guard
       (numberOfElements + 7) / 8 * 7 + numberOfBlocks * 128 * elementSize
         + MemoryLayout<UInt32>.size
-        < encodedSize[0]
+        <= encodedSize[0]
     else { return 0 }
     encoded.storeBytes(of: UInt32(8192), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
@@ -1318,12 +1402,33 @@ private let q7pDecode:
 private let q8pEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
-    else { return 0 }
+    else {
+      guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
+        var encoded = encoded, let encodedSize = encodedSize, let params = params,
+        dimensionCount > 0
+      else { return 0 }
+      let qbits = (dataType & 0xF00) >> 8
+      guard qbits == 8 else { return 0 }
+      let originalDataType = (dataType & 0xFF) << 12
+      let numberInBlocks = params.pointee.reserved
+      encoded.storeBytes(of: UInt32(numberInBlocks), as: UInt32.self)
+      encoded += MemoryLayout<UInt32>.size
+      memcpy(encoded, data, min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize))
+      encodedSize[0] =
+        min(encodedSize[0] - MemoryLayout<UInt32>.size, dataSize) + MemoryLayout<UInt32>.size
+      // Restore parameters to be ordinary one.
+      params.pointee.datatype = originalDataType
+      params.pointee.reserved = 0
+      identifier?[0] = 0x8a1e8b
+      return 1
+    }
     guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
@@ -1343,7 +1448,7 @@ private let q8pEncode:
       numberOfElements *= Int(dimensions[i])
     }
     let numberOfBlocks = (numberOfElements + 16_383) / 16_384
-    guard numberOfElements + 256 * elementSize + MemoryLayout<UInt32>.size < encodedSize[0] else {
+    guard numberOfElements + 256 * elementSize + MemoryLayout<UInt32>.size <= encodedSize[0] else {
       return 0
     }
     encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
@@ -1490,9 +1595,11 @@ private let q8pDecode:
 private let fpzipEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
     else { return 0 }
@@ -1626,9 +1733,10 @@ private let fpzipDecode:
 private let zipEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
     guard let data = data, let dimensions = dimensions, let encoded = encoded,
@@ -1686,9 +1794,10 @@ func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
 private let ezm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
     guard let data = data, let dimensions = dimensions, let encoded = encoded,
@@ -1912,207 +2021,231 @@ private let ezm7Decode:
 private let q4pAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q4pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7Encode(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q5pAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q5pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7Encode(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q6pAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q6pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7Encode(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q7pAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q7pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7Encode(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q8pAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q8pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7Encode(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let fpzipAndZipEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     // Floating point to use fpzip
     if dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F) {
       return fpzipEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier)
     }
     return zipEncode(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q4pAndEzm7EncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q4pEncodeWithExternalStore(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7EncodeWithExternalStore(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q5pAndEzm7EncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q5pEncodeWithExternalStore(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7EncodeWithExternalStore(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q6pAndEzm7EncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q6pEncodeWithExternalStore(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7EncodeWithExternalStore(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q7pAndEzm7EncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q7pEncodeWithExternalStore(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7EncodeWithExternalStore(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let q8pAndEzm7EncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard
       q8pEncodeWithExternalStore(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
     return ezm7EncodeWithExternalStore(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let ezm7EncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       ezm7Encode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
     let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 1 }
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
     encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
@@ -2122,13 +2255,15 @@ private let ezm7EncodeWithExternalStore:
 private let q4pEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       q4pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
@@ -2147,13 +2282,15 @@ private let q4pEncodeWithExternalStore:
 private let q5pEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       q5pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
@@ -2172,13 +2309,15 @@ private let q5pEncodeWithExternalStore:
 private let q6pEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       q6pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
@@ -2197,13 +2336,15 @@ private let q6pEncodeWithExternalStore:
 private let q7pEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       q7pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
@@ -2222,13 +2363,15 @@ private let q7pEncodeWithExternalStore:
 private let q8pEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       q8pEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
@@ -2247,37 +2390,41 @@ private let q8pEncodeWithExternalStore:
 private let fpzipAndZipEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     // Floating point to use fpzip
     if dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F) {
       return fpzipEncodeWithExternalStore(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier)
     }
     return zipEncodeWithExternalStore(
-      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
       identifier)
   }
 
 private let fpzipEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       fpzipEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
     let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 1 }
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
     encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
@@ -2290,19 +2437,21 @@ private let fpzipEncodeWithExternalStore:
 private let zipEncodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let encoded = encoded, let encodedSize = encodedSize,
       zipEncode(
-        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize,
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) != 0
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
     let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 1 }
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
     encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
@@ -2315,18 +2464,20 @@ private let zipEncodeWithExternalStore:
 private let encodeWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
   ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, identifier
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
     in
     guard let data = data, let dimensions = dimensions, var encoded = encoded,
       let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
-    guard MemoryLayout<UInt64>.size * 2 < encodedSize[0] else { return 0 }
+    guard MemoryLayout<UInt64>.size * 2 <= encodedSize[0] else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = dataSize
     let offset = store.writeBytes(data, length: length)
-    guard offset >= 0 else { return 1 }
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
     encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
@@ -2674,7 +2825,7 @@ private func q8pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-      && (numberOfElements % blockSize) == 0
+      && (numberOfElements % 4) == 0  // We support non-block size length for q8p only.
   else {
     return q8pDecode(
       blockSize: blockSize,
@@ -2775,7 +2926,7 @@ private let fpzipDecodeWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 else { return 0 }
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
@@ -2798,7 +2949,7 @@ private let zipDecodeWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 else { return 0 }
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
@@ -2821,7 +2972,7 @@ private let ezm7DecodeWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 else { return 0 }
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
@@ -2846,7 +2997,7 @@ private let decodeWithExternalStore:
     }
     let tensorData = tensorOut?.pointee?.pointee.data.u8.map { UnsafeMutableRawPointer($0) }
     guard let data = data, let dimensions = dimensions, let decoded = decoded ?? tensorData,
-      let decodedSize = decodedSize, dimensionCount > 0
+      let decodedSize = decodedSize, dimensionCount > 0, dataSize >= 8 + 8
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let offset = Int(data.load(as: UInt64.self))
@@ -2871,10 +3022,10 @@ private let q4pDecodeJitWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
-    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     defer {
       store.offloadBytes(mappedData, length: length)
@@ -2896,10 +3047,10 @@ private let q5pDecodeJitWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
-    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     defer {
       store.offloadBytes(mappedData, length: length)
@@ -2921,10 +3072,10 @@ private let q6pDecodeJitWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
-    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     defer {
       store.offloadBytes(mappedData, length: length)
@@ -2946,10 +3097,10 @@ private let q7pDecodeJitWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
-    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     defer {
       store.offloadBytes(mappedData, length: length)
@@ -2971,10 +3122,10 @@ private let q8pDecodeJitWithExternalStore:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    guard let data = data else { return 0 }
+    guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
-    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     defer {
       store.offloadBytes(mappedData, length: length)
@@ -3085,7 +3236,8 @@ private let q4pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3137,7 +3289,8 @@ private let q5pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3189,7 +3342,8 @@ private let q6pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3241,7 +3395,8 @@ private let q7pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3293,7 +3448,8 @@ private let q8pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3749,7 +3905,8 @@ extension DynamicGraph {
         (
           @convention(c) (
             UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
-            UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?, UnsafeMutablePointer<UInt32>?
+            UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+            UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
           ) -> Int32
         )?
       {
