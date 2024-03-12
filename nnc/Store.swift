@@ -3085,7 +3085,7 @@ private let q4pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3137,7 +3137,7 @@ private let q5pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3189,7 +3189,7 @@ private let q6pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3241,7 +3241,7 @@ private let q7pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3293,7 +3293,7 @@ private let q8pDecodeJitWithExternalOnDemand:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      palettizeParams, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = decodedDataSize
     return 1
   }
@@ -3316,7 +3316,7 @@ private let decodeWithExternalOnDemand:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let offset = Int(data.load(as: UInt64.self))
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      params, store.externalStore, offset, Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     return 1
   }
 
@@ -3701,7 +3701,7 @@ extension DynamicGraph {
         fsync(fileno(externalFile))
       }
       let fd = open(externalStore, O_RDONLY, 0)
-      let bufptr = mmap(nil, length, PROT_READ, MAP_PRIVATE, fd, offset)
+      let bufptr = mmap(nil, length, PROT_READ, MAP_PRIVATE, fd, off_t(offset))
       close(fd)
       madvise(bufptr, length, MADV_SEQUENTIAL | MADV_WILLNEED)
       return bufptr
