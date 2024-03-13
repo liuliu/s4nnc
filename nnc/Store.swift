@@ -3439,7 +3439,7 @@ private let decodeWithExternalEager:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard let data = data, dimensionCount > 0 else { return 0 }
+    guard let data = data, let decodedSize = decodedSize, dimensionCount > 0 else { return 0 }
     guard tensorOut!.pointee == nil else {
       return decodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -3449,6 +3449,7 @@ private let decodeWithExternalEager:
     let offset = Int(data.load(as: UInt64.self))
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3810,7 +3811,7 @@ private let decodeWithExternalOnDemand:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard let data = data, dimensionCount > 0 else { return 0 }
+    guard let data = data, let decodedSize = decodedSize, dimensionCount > 0 else { return 0 }
     guard tensorOut!.pointee == nil else {
       return decodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -3820,6 +3821,7 @@ private let decodeWithExternalOnDemand:
     let offset = Int(data.load(as: UInt64.self))
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
