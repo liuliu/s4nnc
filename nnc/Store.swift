@@ -3206,14 +3206,12 @@ private let q4pDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -3222,6 +3220,10 @@ private let q4pDecodeJitWithExternalOnDemand:
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % blockSize) == 0
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q4pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3229,8 +3231,12 @@ private let q4pDecodeJitWithExternalOnDemand:
     let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
-      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q4pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3259,14 +3265,12 @@ private let q5pDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -3275,6 +3279,10 @@ private let q5pDecodeJitWithExternalOnDemand:
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % blockSize) == 0
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q5pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3282,8 +3290,12 @@ private let q5pDecodeJitWithExternalOnDemand:
     let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
-      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q5pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3312,14 +3324,12 @@ private let q6pDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -3328,6 +3338,10 @@ private let q6pDecodeJitWithExternalOnDemand:
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % blockSize) == 0
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q6pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3335,8 +3349,12 @@ private let q6pDecodeJitWithExternalOnDemand:
     let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
-      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q6pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3365,14 +3383,12 @@ private let q7pDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -3381,6 +3397,10 @@ private let q7pDecodeJitWithExternalOnDemand:
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % blockSize) == 0
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q7pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3388,8 +3408,12 @@ private let q7pDecodeJitWithExternalOnDemand:
     let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
-      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q7pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3418,14 +3442,12 @@ private let q8pDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -3434,6 +3456,10 @@ private let q8pDecodeJitWithExternalOnDemand:
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % blockSize) == 0
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q8pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3441,8 +3467,12 @@ private let q8pDecodeJitWithExternalOnDemand:
     let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
-      dataSize >= decodedDataSize && decodedSize[0] >= decodedDataSize
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
       return q8pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3508,19 +3538,19 @@ private let uDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e5b:
-      return q5pDecodeJitWithExternalStore(
+      return q5pDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e6b:
-      return q6pDecodeJitWithExternalStore(
+      return q6pDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e7b:
-      return q7pDecodeJitWithExternalStore(
+      return q7pDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e8b:
-      return q8pDecodeJitWithExternalStore(
+      return q8pDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     default:
