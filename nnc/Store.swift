@@ -3135,6 +3135,301 @@ private let q8pDecodeJitWithExternalStore:
       context, params, tensorOut, decoded, decodedSize)
   }
 
+private let q4pDecodeJitWithExternalEager:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q4pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q4pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q4pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    return 1
+  }
+
+private let q5pDecodeJitWithExternalEager:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q5pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q5pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 5, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q5pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    return 1
+  }
+
+private let q6pDecodeJitWithExternalEager:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q6pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q6pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 6, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q6pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    return 1
+  }
+
+private let q7pDecodeJitWithExternalEager:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q7pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q7pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 7, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q7pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    return 1
+  }
+
+private let q8pDecodeJitWithExternalEager:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
+      dimensionCount > 0, dataSize >= 8 + 8 + 8
+    else { return 0 }
+    guard tensorOut!.pointee == nil else {
+      return q8pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
+    assert((identifier & 0x1000_0000) != 0)
+    let identifier = identifier & 0x0fff_ffff
+    let blockSize = Int(data.load(as: UInt32.self))
+    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
+    let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    var numberOfElements = Int(dimensions[0])
+    for i in 1..<Int(dimensionCount) {
+      numberOfElements *= Int(dimensions[i])
+    }
+    guard
+      TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && (numberOfElements % blockSize) == 0
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q8pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 8, Int32(blockSize))
+    let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
+    guard
+      length >= decodedDataSize && decodedSize[0] >= decodedDataSize
+    else {
+      let mappedData = store.loadBytes(offset: offset, length: length)
+      defer {
+        store.offloadBytes(mappedData, length: length)
+      }
+      return q8pDecodeJit(
+        blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
+        context, params, tensorOut, decoded, decodedSize)
+    }
+    tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
+      palettizeParams, store.externalStore, off_t(offset),
+      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    return 1
+  }
+
 private let uDecodeJitWithExternalStore:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
@@ -3163,23 +3458,23 @@ private let uDecodeJitWithExternalStore:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e4b:
-      return q4pDecodeJitWithExternalStore(
+      return q4pDecodeJitWithExternalEager(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e5b:
-      return q5pDecodeJitWithExternalStore(
+      return q5pDecodeJitWithExternalEager(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e6b:
-      return q6pDecodeJitWithExternalStore(
+      return q6pDecodeJitWithExternalEager(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e7b:
-      return q7pDecodeJitWithExternalStore(
+      return q7pDecodeJitWithExternalEager(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e8b:
-      return q8pDecodeJitWithExternalStore(
+      return q8pDecodeJitWithExternalEager(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     default:
@@ -3244,7 +3539,7 @@ private let q4pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = decodedDataSize
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3287,7 +3582,7 @@ private let q5pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 5, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
@@ -3303,7 +3598,7 @@ private let q5pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = decodedDataSize
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3346,7 +3641,7 @@ private let q6pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 6, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
@@ -3362,7 +3657,7 @@ private let q6pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = decodedDataSize
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3405,7 +3700,7 @@ private let q7pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 7, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
@@ -3421,7 +3716,7 @@ private let q7pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = decodedDataSize
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3464,7 +3759,7 @@ private let q8pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
-    let palettizeParams = ccv_nnc_tensor_palettize(params, 4, Int32(blockSize))
+    let palettizeParams = ccv_nnc_tensor_palettize(params, 8, Int32(blockSize))
     let decodedDataSize = ccv_nnc_tensor_data_size_without_padding(palettizeParams)
     guard
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
@@ -3480,7 +3775,7 @@ private let q8pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = decodedDataSize
+    decodedSize[0] = 0 // Mark that there is nothing to be copied.
     return 1
   }
 
