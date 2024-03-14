@@ -186,9 +186,12 @@ final class StoreTests: XCTestCase {
 
   func testWriteTensorAndReadBackWithFPZIP() throws {
     let graph = DynamicGraph()
-    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(128))
     tensor[0] = 2.2
     tensor[1] = 1.1
+    for i in 2..<128 {
+      tensor[i] = 3.3
+    }
     var readout: AnyTensor? = nil
     var readoutCodec: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmp.db") { store in
@@ -205,9 +208,12 @@ final class StoreTests: XCTestCase {
   #if !((os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))) && (arch(i386) || arch(x86_64)))
     func testWriteTensorAndReadBackWithFPZIPFloat16() throws {
       let graph = DynamicGraph()
-      var tensor: Tensor<Float16> = Tensor(.CPU, .C(2))
+      var tensor: Tensor<Float16> = Tensor(.CPU, .C(64))
       tensor[0] = 2.2
       tensor[1] = 1.1
+      for i in 2..<64 {
+        tensor[i] = 3.3
+      }
       var readout: AnyTensor? = nil
       var readoutCodec: DynamicGraph.Store.Codec? = nil
       graph.openStore("test/tmp.db") { store in
@@ -250,9 +256,12 @@ final class StoreTests: XCTestCase {
 
   func testWriteTensorAndReadBackWithFPZIPDouble() throws {
     let graph = DynamicGraph()
-    var tensor: Tensor<Double> = Tensor(.CPU, .C(2))
+    var tensor: Tensor<Double> = Tensor(.CPU, .C(32))
     tensor[0] = 2.2
     tensor[1] = 1.1
+    for i in 2..<32 {
+      tensor[i] = 3.3
+    }
     var readout: AnyTensor? = nil
     var readoutCodec: DynamicGraph.Store.Codec? = nil
     graph.openStore("test/tmp.db") { store in
@@ -541,12 +550,18 @@ final class StoreTests: XCTestCase {
 
   func testWriteTensorAndReadBackCodec() throws {
     let graph = DynamicGraph()
-    var tensor: Tensor<Float32> = Tensor(.CPU, .C(2))
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(128))
     tensor[0] = 2.2
     tensor[1] = 1.1
-    var tensor16: Tensor<Float16> = Tensor(.CPU, .C(2))
+    for i in 2..<128 {
+      tensor[i] = 3.3
+    }
+    var tensor16: Tensor<Float16> = Tensor(.CPU, .C(128))
     tensor16[0] = 2.2
     tensor16[1] = 1.1
+    for i in 2..<128 {
+      tensor16[i] = 3.3
+    }
     var intTensor: Tensor<Int32> = Tensor(.CPU, .C(2048))
     for i in 0..<2048 {
       intTensor[i] = Int32(i)
