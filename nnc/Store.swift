@@ -3401,7 +3401,8 @@ private let q8pDecodeJitWithExternalEager:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % 4) == 0  // We support non-block size length for q8p only.
+        && (numberOfElements % (256 * 4)) == 0
+        && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       defer {
@@ -3773,7 +3774,8 @@ private let q8pDecodeJitWithExternalOnDemand:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-        && (numberOfElements % 4) == 0  // We support non-block size length for q8p only.
+        && (numberOfElements % (256 * 4)) == 0
+        && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       defer {
