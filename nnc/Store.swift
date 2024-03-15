@@ -1448,7 +1448,7 @@ private let q8pEncode:
       numberOfElements *= Int(dimensions[i])
     }
     let numberOfBlocks = (numberOfElements + 16_383) / 16_384
-    guard numberOfElements + 256 * elementSize + MemoryLayout<UInt32>.size <= encodedSize[0] else {
+    guard numberOfElements + numberOfBlocks * 256 * elementSize + MemoryLayout<UInt32>.size <= encodedSize[0] else {
       return 0
     }
     encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
@@ -2825,7 +2825,8 @@ private func q8pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
-      && (numberOfElements % 4) == 0  // We support non-block size length for q8p only.
+      && (numberOfElements % (256 * 4)) == 0
+      && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
   else {
     return q8pDecode(
       blockSize: blockSize,
