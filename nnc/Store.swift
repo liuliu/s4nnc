@@ -2932,7 +2932,6 @@ private let fpzipDecodeWithExternalStore:
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     let fileData = UnsafeRawPointer(mappedData)
-    defer { store.offloadBytes(mappedData, length: length) }
     return fpzipDecode(
       fileData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
@@ -2955,7 +2954,6 @@ private let zipDecodeWithExternalStore:
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     let fileData = UnsafeRawPointer(mappedData)
-    defer { store.offloadBytes(mappedData, length: length) }
     return zipDecode(
       fileData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
@@ -2978,7 +2976,6 @@ private let ezm7DecodeWithExternalStore:
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     let fileData = UnsafeRawPointer(mappedData)
-    defer { store.offloadBytes(mappedData, length: length) }
     return ezm7Decode(
       fileData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
@@ -3004,7 +3001,6 @@ private let decodeWithExternalStore:
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     guard let bytes = store.loadBytes(offset: offset, length: length) else { return 0 }
-    defer { store.offloadBytes(bytes, length: length) }
     let copiedSize = min(Int(length), decodedSize[0])
     memcpy(decoded, bytes, copiedSize)
     decodedSize[0] = copiedSize
@@ -3028,9 +3024,6 @@ private let q4pDecodeJitWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q4pDecodeJit(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3053,9 +3046,6 @@ private let q5pDecodeJitWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q5pDecodeJit(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3078,9 +3068,6 @@ private let q6pDecodeJitWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q6pDecodeJit(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3103,9 +3090,6 @@ private let q7pDecodeJitWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q7pDecodeJit(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3128,9 +3112,6 @@ private let q8pDecodeJitWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q8pDecodeJit(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3168,9 +3149,6 @@ private let q4pDecodeJitWithExternalEager:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q4pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3181,9 +3159,6 @@ private let q4pDecodeJitWithExternalEager:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q4pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3227,9 +3202,6 @@ private let q5pDecodeJitWithExternalEager:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q5pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3240,9 +3212,6 @@ private let q5pDecodeJitWithExternalEager:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q5pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3286,9 +3255,6 @@ private let q6pDecodeJitWithExternalEager:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q6pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3299,9 +3265,6 @@ private let q6pDecodeJitWithExternalEager:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q6pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3345,9 +3308,6 @@ private let q7pDecodeJitWithExternalEager:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q7pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3358,9 +3318,6 @@ private let q7pDecodeJitWithExternalEager:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q7pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3405,9 +3362,6 @@ private let q8pDecodeJitWithExternalEager:
         && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q8pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3418,9 +3372,6 @@ private let q8pDecodeJitWithExternalEager:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q8pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3541,9 +3492,6 @@ private let q4pDecodeJitWithExternalOnDemand:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q4pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3554,9 +3502,6 @@ private let q4pDecodeJitWithExternalOnDemand:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q4pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3600,9 +3545,6 @@ private let q5pDecodeJitWithExternalOnDemand:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q5pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3613,9 +3555,6 @@ private let q5pDecodeJitWithExternalOnDemand:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q5pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3659,9 +3598,6 @@ private let q6pDecodeJitWithExternalOnDemand:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q6pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3672,9 +3608,6 @@ private let q6pDecodeJitWithExternalOnDemand:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q6pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3718,9 +3651,6 @@ private let q7pDecodeJitWithExternalOnDemand:
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q7pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3731,9 +3661,6 @@ private let q7pDecodeJitWithExternalOnDemand:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q7pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3778,9 +3705,6 @@ private let q8pDecodeJitWithExternalOnDemand:
         && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q8pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3791,9 +3715,6 @@ private let q8pDecodeJitWithExternalOnDemand:
       length >= decodedDataSize && decodedSize[0] >= decodedDataSize
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
-      defer {
-        store.offloadBytes(mappedData, length: length)
-      }
       return q8pDecodeJit(
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
@@ -3899,9 +3820,6 @@ private let q4pDecodeWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q4pDecode(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3924,9 +3842,6 @@ private let q5pDecodeWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q5pDecode(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3949,9 +3864,6 @@ private let q6pDecodeWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q6pDecode(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3974,9 +3886,6 @@ private let q7pDecodeWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q7pDecode(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -3999,9 +3908,6 @@ private let q8pDecodeWithExternalStore:
     let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    defer {
-      store.offloadBytes(mappedData, length: length)
-    }
     return q8pDecode(
       blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
       context, params, tensorOut, decoded, decodedSize)
@@ -4169,19 +4075,31 @@ extension DynamicGraph {
     let flags: Store.OpenFlag
     let externalStore: String?
     let chunkSize: Int
-    var externalFile: UnsafeMutablePointer<FILE>?
+    var loadedBytesLength: Int
+    var loadedBytes: UnsafeMutableRawPointer?
+    var externalFileRead: UnsafeMutablePointer<FILE>?
+    var externalFileWrite: UnsafeMutablePointer<FILE>?
     init(sqlite: OpaquePointer, flags: Store.OpenFlag, externalStore: String?, chunkSize: Int) {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
       self.flags = flags
       self.externalStore = externalStore
       self.chunkSize = chunkSize
-      externalFile = nil
+      externalFileRead = nil
+      externalFileWrite = nil
+      loadedBytes = nil
+      loadedBytesLength = 0
     }
     deinit {
-      if let externalFile = externalFile {
-        fflush(externalFile)
-        fsync(fileno(externalFile))
-        fclose(externalFile)
+      if let externalFileWrite = externalFileWrite {
+        fflush(externalFileWrite)
+        fsync(fileno(externalFileWrite))
+        fclose(externalFileWrite)
+      }
+      if let loadedBytes = loadedBytes {
+        free(loadedBytes)
+      }
+      if let externalFileRead = externalFileRead {
+        fclose(externalFileRead)
       }
       // If the database is opened with WAL mode, this makes sure everything write back to the main
       // database, much easier to operate without worrying the data left in the wal log.
@@ -4192,36 +4110,36 @@ extension DynamicGraph {
     }
     // Return offset of where the bytes written to.
     func writeBytes(_ bytes: UnsafeRawPointer, length: Int) -> Int {
-      let externalFile = externalFile ?? fopen(externalStore, "w+")
-      guard let externalFile = externalFile else { return -1 }
-      self.externalFile = externalFile
-      let offset = ftell(externalFile)
+      let externalFileWrite = externalFileWrite ?? fopen(externalStore, "wb+")
+      guard let externalFileWrite = externalFileWrite else { return -1 }
+      self.externalFileWrite = externalFileWrite
+      let offset = ftell(externalFileWrite)
       let alignedOffset = (offset + chunkSize - 1) / chunkSize * chunkSize
-      fseek(externalFile, alignedOffset, SEEK_SET)
-      fwrite(bytes, 1, length, externalFile)
+      fseek(externalFileWrite, alignedOffset, SEEK_SET)
+      fwrite(bytes, 1, length, externalFileWrite)
       return alignedOffset
     }
     // Return a pointer that later can be munmap.
     func loadBytes(offset: Int, length: Int) -> UnsafeMutableRawPointer? {
       guard let externalStore = externalStore else { return nil }
-      if let externalFile = externalFile {
-        fflush(externalFile)
-        fsync(fileno(externalFile))
+      if let externalFileWrite = externalFileWrite {
+        fflush(externalFileWrite)
+        fsync(fileno(externalFileWrite))
       }
-      let fd = open(externalStore, O_RDONLY, 0)
-      let bufptr = mmap(nil, length, PROT_READ, MAP_PRIVATE, fd, off_t(offset))
-      close(fd)
-      madvise(bufptr, length, MADV_SEQUENTIAL | MADV_WILLNEED)
-      return bufptr
-    }
-    func offloadBytes(_ bytes: UnsafeMutableRawPointer?, length: Int) {
-      guard let bytes = bytes else { return }
-      munmap(bytes, length)
+      let externalFileRead = externalFileRead ?? fopen(externalStore, "rb")
+      self.externalFileRead = externalFileRead
+      fseek(externalFileRead, offset, SEEK_SET)
+      if length > loadedBytesLength {
+        loadedBytesLength = length
+        loadedBytes = realloc(loadedBytes, loadedBytesLength)
+      }
+      fread(loadedBytes, 1, length, externalFileRead)
+      return loadedBytes
     }
     func flush() {
-      guard let externalFile = externalFile else { return }
-      fflush(externalFile)
-      fsync(fileno(externalFile))
+      guard let externalFileWrite = externalFileWrite else { return }
+      fflush(externalFileWrite)
+      fsync(fileno(externalFileWrite))
     }
   }
 
