@@ -87,6 +87,32 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a4.rawValue[1, 1], 4.4 - 5)
   }
 
+  func testOpChunked() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
+    let b = a0.chunked(2)
+    XCTAssertEqual(b[0].rawValue[0, 0], 1.1)
+    XCTAssertEqual(b[0].rawValue[0, 1], 2.2)
+    XCTAssertEqual(b[1].rawValue[0, 0], 3.3)
+    XCTAssertEqual(b[1].rawValue[0, 1], 4.4)
+  }
+
+  func testOpChunkedGroup() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
+    let a1 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.4, 3.6, 4.8], .CPU, .NC(2, 2)))
+    let a = DynamicGraph.Group(a0, a1)
+    let b = a.chunked(2)
+    XCTAssertEqual(b[0][0].rawValue[0, 0], 1.1)
+    XCTAssertEqual(b[0][0].rawValue[0, 1], 2.2)
+    XCTAssertEqual(b[1][0].rawValue[0, 0], 3.3)
+    XCTAssertEqual(b[1][0].rawValue[0, 1], 4.4)
+    XCTAssertEqual(b[0][1].rawValue[0, 0], 1.2)
+    XCTAssertEqual(b[0][1].rawValue[0, 1], 2.4)
+    XCTAssertEqual(b[1][1].rawValue[0, 0], 3.6)
+    XCTAssertEqual(b[1][1].rawValue[0, 1], 4.8)
+  }
+
   func testReduceSumModel() throws {
     let dynamicGraph = DynamicGraph()
     let input = Input()
@@ -169,6 +195,8 @@ final class OpsTests: XCTestCase {
     ("testReduceMean", testReduceMean),
     ("testReduceMax", testReduceMax),
     ("testOpAdd", testOpAdd),
+    ("testOpChunked", testOpChunked),
+    ("testOpChunkedGroup", testOpChunkedGroup),
     ("testReduceSumModel", testReduceSumModel),
     ("testReduceMeanModel", testReduceMeanModel),
     ("testReduceMaxModel", testReduceMaxModel),

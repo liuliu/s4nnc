@@ -1144,6 +1144,32 @@ extension Functional {
   public static func concat(axis: Int, _ inputs: ModelIOConvertible...) -> Model.IO {
     return Concat(axis: axis).apply(inputs)
   }
+
+  public static func concat<T: DynamicGraph.TensorGroup>(
+    axis: Int, _ inputs: T..., streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = Concat(axis: axis)(
+      inputs: inputs[0], Array(inputs.suffix(from: 1)), streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// Chunk model.
+public final class Chunk: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(_ numberOfChunks: Int, axis: Int, name: String = "") {
+    super.init(ccv_cnnp_chunk(Int32(numberOfChunks), Int32(axis), name))
+  }
+}
+
+extension ModelIOConvertible {
+  public func chunked(_ numberOfChunks: Int, axis: Int) -> [Model.IO] {
+    let result = Chunk(numberOfChunks, axis: axis)(self)
+    return (0..<numberOfChunks).map { result[$0] }
+  }
 }
 
 /// LSTM model.

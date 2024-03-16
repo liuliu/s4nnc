@@ -1759,3 +1759,41 @@ extension DynamicGraph.AnyTensor {
     return isNaN != 0
   }
 }
+
+extension DynamicGraph.Tensor {
+  public func chunked(_ numberOfChunks: Int, axis: Int, streamContext: StreamContext?)
+    -> [DynamicGraph.Tensor<Element>]
+  {
+    var shape = shape
+    precondition(axis < shape.count)
+    precondition((shape[axis] % numberOfChunks) == 0)
+    shape[axis] = shape[axis] / numberOfChunks
+    var offset = TensorShape([])
+    let strides = strides
+    let format = format
+    return (0..<numberOfChunks).map {
+      offset[axis] = shape[axis] * $0
+      return reshaped(format: format, shape: shape, offset: offset, strides: strides)
+    }
+  }
+}
+
+extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
+  public func chunked(_ numberOfChunks: Int, axis: Int, streamContext: StreamContext?) -> [Self] {
+    var shape = shape
+    precondition(axis < shape.count)
+    precondition((shape[axis] % numberOfChunks) == 0)
+    shape[axis] = shape[axis] / numberOfChunks
+    let result = underlyingArray.map { tensor in
+      var offset = TensorShape([])
+      let strides = tensor.strides
+      return (0..<numberOfChunks).map {
+        offset[axis] = shape[axis] * $0
+        return tensor.reshaped(format: format, shape: shape, offset: offset, strides: strides)
+      }
+    }
+    return (0..<numberOfChunks).map { index in
+      DynamicGraph.Group(result.map { $0[index] })
+    }
+  }
+}
