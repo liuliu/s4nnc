@@ -134,6 +134,15 @@ public class Model {
     return trainable >= 0 ? trainable != 0 : nil
   }
 
+  public var gradientCheckpointing: Bool = false {
+    didSet {
+      ccv_cnnp_model_set_gradient_checkpointing(cModel, gradientCheckpointing ? 1 : 0)
+    }
+  }
+
+  /**
+   * Specify the maximum number of streams we need to allocate to run this model.
+   */
   public var maxConcurrency: StreamContext.Concurrency = .noLimit {
     didSet {
       ccv_cnnp_model_set_max_concurrency(cModel, Int32(maxConcurrency.rawValue))
