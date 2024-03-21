@@ -134,9 +134,26 @@ public class Model {
     return trainable >= 0 ? trainable != 0 : nil
   }
 
-  public var gradientCheckpointing: Bool = false {
+  /**
+   * Whether to enable gradient checkpointing for this model. Once it is enabled, we will re-run
+   * the model forward pass again during backward pass. This is effective at reducing memory usage.
+   */
+  public var gradientCheckpointing: Bool {
+    get {
+      ccv_cnnp_model_gradient_checkpointing(cModel) != 0
+    }
+    set {
+      ccv_cnnp_model_set_gradient_checkpointing(cModel, newValue ? 1 : 0)
+    }
+  }
+
+  /**
+   * Whether to enable memory reduction for this model. The current supported memory reduction
+   * technique is to redo datatype conversion during backward pass if needed.
+   */
+  public var memoryReduction: Bool = false {
     didSet {
-      ccv_cnnp_model_set_gradient_checkpointing(cModel, gradientCheckpointing ? 1 : 0)
+      ccv_cnnp_model_set_memory_reduction(cModel, memoryReduction ? 1 : 0)
     }
   }
 
