@@ -11,6 +11,10 @@ A high-level language that delegates most of the work to the C runtime seems to 
 
 Because the heavy-lifting is done in the [libnnc](https://libnnc.org) library, the Swift portion can be light and even automatically generated. At the moment, we have about 3,000 lines of Swift code to run quite a few models on GPU, complete with data feeders, model specifications and optimizers.
 
+## Live Documentation
+
+<https://liuliu.github.io/s4nnc/documentation/nnc>
+
 ## Runtime API
 
 Currently, s4nnc works better under Linux with CUDA 11, CuDNN and NCCL. The API for s4nnc wraps around [Level-4](https://libnnc.org/api/level-4/) and [Level-5](https://libnnc.org/api/level-5/) C APIs.
