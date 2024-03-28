@@ -280,6 +280,8 @@ extension Model {
       _inputs, Int32(inputs.count), _outputs, Int32(outputs.count),
       trainable == true ? 1 : (trainable == false ? 0 : -1), name)!
     self.init(cModel)
+    // Extending the lifetime of the inputs / outputs until self.init is done.
+    withExtendedLifetime((inputs, outputs)) {}
   }
 
   /**
@@ -294,6 +296,8 @@ extension Model {
     let cModel = ccv_cnnp_sequential_new(
       _models, Int32(models.count), trainable == true ? 1 : (trainable == false ? 0 : -1), name)!
     self.init(cModel)
+    // Extending the lifetime of the input until self.init is done.
+    withExtendedLifetime(models) {}
   }
 
 }
