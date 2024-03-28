@@ -710,6 +710,7 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
         _streamContext)
       _outputs.deallocate()
+      withExtendedLifetime(v) {}
     }
   }
 
@@ -769,6 +770,7 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
         _streamContext)
       _outputs.deallocate()
+      withExtendedLifetime(v) {}
     }
   }
 
