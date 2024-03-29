@@ -440,6 +440,7 @@ extension DynamicGraph.Tensor {
       var _output: ccv_nnc_tensor_variable_t? = output._tensor
       ccv_nnc_dynamic_graph_exec(
         _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
+      withExtendedLifetime((v, output)) {}
     }
   }
 
@@ -487,6 +488,7 @@ extension DynamicGraph.Tensor {
       var _output: ccv_nnc_tensor_variable_t? = output._tensor
       ccv_nnc_dynamic_graph_exec(
         _graph, cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, 0, _streamContext)
+      withExtendedLifetime((v, output)) {}
     }
   }
 
@@ -710,7 +712,7 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
         _streamContext)
       _outputs.deallocate()
-      withExtendedLifetime(v) {}
+      withExtendedLifetime((v, outputs)) {}
     }
   }
 
@@ -770,7 +772,7 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
         _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
         _streamContext)
       _outputs.deallocate()
-      withExtendedLifetime(v) {}
+      withExtendedLifetime((v, outputs)) {}
     }
   }
 

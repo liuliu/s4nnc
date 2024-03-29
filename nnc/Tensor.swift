@@ -583,6 +583,7 @@ extension AnyTensorStorage {
             CCV_NNC_FORMAT_TRANSFORM_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
           ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
       }
+      withExtendedLifetime(v) {}
     }
   }
 }
@@ -661,6 +662,7 @@ extension AnyTensorStorage {
             CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
           ccv_nnc_no_hint, 0, &input, 1, &output, 1, nil)
       }
+      withExtendedLifetime(v) {}
     }
   }
 }
