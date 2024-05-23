@@ -526,3 +526,33 @@ extension SummaryWriter {
     }
   }
 }
+
+extension SummaryWriter {
+  /// Add parameters from a model for tensorboard histograms dashboard.
+  public func addParameters(
+    _ tag: String, _ value: Model.Parameters, step: Int,
+    wallTime: Double = Date().timeIntervalSince1970
+  ) {
+    guard value.count > 1 else {
+      addHistogram(tag, Tensor<Float>(from: value.copied(Float.self).toCPU()), step: step, wallTime: wallTime, displayName: value.name)
+      return
+    }
+    for i in 0..<value.count {
+      let parameter = value[i]
+      addHistogram(tag + " \(parameter.name)", Tensor<Float>(from: parameter.copied(Float.self).toCPU()), step: step, wallTime: wallTime, displayName: parameter.name)
+    }
+  }
+  /// Add parameters from a model for tensorboard histograms dashboard.
+  public func addParameters(
+    _ tag: String, _ values: [Model.Parameters], step: Int,
+    wallTime: Double = Date().timeIntervalSince1970
+  ) {
+    guard values.count > 1 else {
+      addParameters(tag, values[0], step: step, wallTime: wallTime)
+      return
+    }
+    for parameter in values {
+      addHistogram(tag + " \(parameter.name)", Tensor<Float>(from: parameter.copied(Float.self).toCPU()), step: step, wallTime: wallTime, displayName: parameter.name)
+    }
+  }
+}

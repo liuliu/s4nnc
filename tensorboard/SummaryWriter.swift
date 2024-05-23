@@ -28,8 +28,8 @@ public struct SummaryWriter {
 
 extension SummaryWriter {
   /// Add training and validation statistics for tensorboard scalars dashboard.
-  public func addScalar(
-    _ tag: String, _ value: Float, step: Int,
+  public func addScalar<T: BinaryFloatingPoint>(
+    _ tag: String, _ value: T, step: Int,
     wallTime: Double = Date().timeIntervalSince1970, displayName: String? = nil,
     description: String? = nil
   ) {
@@ -39,7 +39,7 @@ extension SummaryWriter {
 
     var summaryValue = Tensorboard_Summary.Value()
     summaryValue.tag = tag
-    summaryValue.simpleValue = value
+    summaryValue.simpleValue = Float(value)
     summaryValue.metadata = summaryMetadata
 
     var summary = Tensorboard_Summary()

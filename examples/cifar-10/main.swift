@@ -169,6 +169,7 @@ var sgd1 = SGDOptimizer(
   graph, nesterov: true, rate: 0.0001, scale: 1.0 / Float(batchSize), decay: 0, momentum: 0.9,
   dampening: 0)
 sgd1.parameters = [cifar.parameters(for: .bias)]
+var optimizers = [sgd0, sgd1]
 for epoch in 0..<35 {
   batchedTrainData.shuffle()
   for (i, batch) in batchedTrainData["jitteredGPU", "cGPU"].enumerated() {
@@ -183,8 +184,8 @@ for epoch in 0..<35 {
         / Float((30 - 5) * batchedTrainData.count)
     }
     learnRate = max(learnRate, 0.0001)
-    sgd0.rate = learnRate
-    sgd1.rate = learnRate
+    optimizers[0].rate = learnRate
+    optimizers[1].rate = learnRate
     let tensorGPU = batch[0] as! Tensor<Float32>
     let cGPU = batch[1] as! Tensor<Int32>
     let input = graph.variable(tensorGPU)
@@ -193,7 +194,7 @@ for epoch in 0..<35 {
     let target = graph.constant(cGPU)
     let loss = softmaxLoss(output, target: target)
     loss.backward(to: [input])
-    [sgd0, sgd1].step()
+    optimizers.step()
     let c = cGPU.toCPU()
     var correct = 0
     let cpuOutput = DynamicGraph.Tensor<Float32>(output).toCPU()

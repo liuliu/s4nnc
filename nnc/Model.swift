@@ -96,6 +96,65 @@ public class Model {
       return String(
         cString: ccv_cnnp_model_parameter_name(model?.owner?.cModel ?? model?.cModel, _io))
     }
+
+    /**
+     * Get index into the parameters.
+     */
+    public subscript(position: Int) -> Parameters {
+      assert(_io == model!._parameters)
+      return model!.parameters(for: .index(position))
+    }
+
+    /**
+     * Get the total number of parameters.
+     */
+    public var count: Int {
+      guard _io == model!._parameters else {
+        return 1
+      }
+      return Int(ccv_cnnp_model_parameter_count(model!.cModel))
+    }
+
+    /**
+     * Get a parameter by loop over internally to find the matching one.
+     */
+    public func first(where block: @escaping (String) -> Bool) -> Parameters? {
+      let wrapped = Wrapped(block)
+      let unmanaged = Unmanaged.passRetained(wrapped)
+      guard let io = ccv_cnnp_model_parameter_first(model!.cModel, { _, name, context in
+        let block = Unmanaged<Wrapped<(String) -> Bool>>.fromOpaque(context!).takeUnretainedValue()
+        return block.value(name.flatMap({ String(cString: $0) }) ?? "") ? 1 : 0
+      }, unmanaged.toOpaque()) else {
+        unmanaged.release()
+        return nil
+      }
+      unmanaged.release()
+      return Parameters(io, model: model)
+    }
+
+    /**
+     * Get a list of parameters matching the condition.
+     */
+    public func filter(where block: @escaping (String) -> Bool) -> [Parameters] {
+      let wrapped = Wrapped(block)
+      let unmanaged = Unmanaged.passRetained(wrapped)
+      let array = ccv_cnnp_model_parameters_filter(model!.cModel, { _, name, context in
+        let block = Unmanaged<Wrapped<(String) -> Bool>>.fromOpaque(context!).takeUnretainedValue()
+        return block.value(name.flatMap({ String(cString: $0) }) ?? "") ? 1 : 0
+      }, unmanaged.toOpaque())!
+      unmanaged.release()
+      guard array.pointee.rnum > 0 else {
+        ccv_array_free(array)
+        return []
+      }
+      var parameters = [Parameters]()
+      let io = array.pointee.data.assumingMemoryBound(to: ccv_cnnp_model_io_t.self)
+      for i in 0..<Int(array.pointee.rnum) {
+        parameters.append(Parameters(io[i], model: model))
+      }
+      ccv_array_free(array)
+      return parameters
+    }
   }
 
   var _parameters: ccv_cnnp_model_io_t? = nil

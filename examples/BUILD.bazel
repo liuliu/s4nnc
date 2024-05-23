@@ -9,6 +9,15 @@ swift_binary(
 )
 
 swift_binary(
+    name = "minrf",
+    srcs = ["minrf/main.swift"],
+    deps = [
+        "//nnc",
+        "//tensorboard",
+    ],
+)
+
+swift_binary(
     name = "cifar-10",
     srcs = ["cifar-10/main.swift"],
     deps = [
