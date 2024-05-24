@@ -121,10 +121,15 @@ public class Model {
     public func first(where block: @escaping (String) -> Bool) -> Parameters? {
       let wrapped = Wrapped(block)
       let unmanaged = Unmanaged.passRetained(wrapped)
-      guard let io = ccv_cnnp_model_parameter_first(model!.cModel, { _, name, context in
-        let block = Unmanaged<Wrapped<(String) -> Bool>>.fromOpaque(context!).takeUnretainedValue()
-        return block.value(name.flatMap({ String(cString: $0) }) ?? "") ? 1 : 0
-      }, unmanaged.toOpaque()) else {
+      guard
+        let io = ccv_cnnp_model_parameter_first(
+          model!.cModel,
+          { _, name, context in
+            let block = Unmanaged<Wrapped<(String) -> Bool>>.fromOpaque(context!)
+              .takeUnretainedValue()
+            return block.value(name.flatMap({ String(cString: $0) }) ?? "") ? 1 : 0
+          }, unmanaged.toOpaque())
+      else {
         unmanaged.release()
         return nil
       }
@@ -138,10 +143,13 @@ public class Model {
     public func filter(where block: @escaping (String) -> Bool) -> [Parameters] {
       let wrapped = Wrapped(block)
       let unmanaged = Unmanaged.passRetained(wrapped)
-      let array = ccv_cnnp_model_parameters_filter(model!.cModel, { _, name, context in
-        let block = Unmanaged<Wrapped<(String) -> Bool>>.fromOpaque(context!).takeUnretainedValue()
-        return block.value(name.flatMap({ String(cString: $0) }) ?? "") ? 1 : 0
-      }, unmanaged.toOpaque())!
+      let array = ccv_cnnp_model_parameters_filter(
+        model!.cModel,
+        { _, name, context in
+          let block = Unmanaged<Wrapped<(String) -> Bool>>.fromOpaque(context!)
+            .takeUnretainedValue()
+          return block.value(name.flatMap({ String(cString: $0) }) ?? "") ? 1 : 0
+        }, unmanaged.toOpaque())!
       unmanaged.release()
       guard array.pointee.rnum > 0 else {
         ccv_array_free(array)
@@ -303,7 +311,23 @@ extension Model {
     ccv_cnnp_model_compile(cModel, inputParams, Int32(inputParams.count), noop, noop)
     if isEager {
       let graph = inputs[0].graph
-      let _inputs: [ccv_nnc_tensor_variable_t?] = inputs.map { $0.untyped[0]._tensor }
+      let parallel = inputs[0].untyped.count
+      let inputSize = inputs.count
+      var _inputs = [ccv_nnc_tensor_variable_t?](repeating: nil, count: parallel * inputSize)
+      for (i, input) in inputs.enumerated() {
+        assert(input.untyped.count == parallel)
+        for (j, tensor) in input.untyped.enumerated() {
+          assert(tensor.graph === graph)
+          _inputs[j * inputSize + i] = tensor._tensor
+        }
+      }
+      if let dataParallel = dataParallel {
+        // You cannot run a model previously parallel and then not.
+        assert(dataParallel == parallel)
+      } else {
+        ccv_cnnp_model_set_data_parallel(cModel, Int32(parallel))
+        dataParallel = parallel
+      }
       let _streamContext = graph.streamContext?._stream
       ccv_nnc_dynamic_graph_dry_run(
         graph.cGraph, cModel, testing ? 1 : 0, _inputs, Int32(_inputs.count), _streamContext)

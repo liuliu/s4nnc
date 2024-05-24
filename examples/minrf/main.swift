@@ -1,5 +1,5 @@
-import NNC
 import Foundation
+import NNC
 import TensorBoard
 
 public func timeEmbedding(timesteps: [Float], embeddingSize: Int, maxPeriod: Int)
@@ -32,7 +32,9 @@ public func TimestepEmbedder(hiddenSize: Int) -> Model {
   return Model([x], [out])
 }
 
-public func LabelEmbedder<T: TensorNumeric>(_ dataType: T.Type, numClasses: Int, hiddenSize: Int) -> Model {
+public func LabelEmbedder<T: TensorNumeric>(_ dataType: T.Type, numClasses: Int, hiddenSize: Int)
+  -> Model
+{
   let labelEmbed = Embedding(
     T.self, vocabularySize: numClasses + 1, embeddingSize: hiddenSize, name: "label_embedder")
   return labelEmbed
@@ -101,7 +103,8 @@ func DiT(batchSize: Int, hiddenSize: Int, layers: Int) -> Model {
     hint: Hint(stride: [1, 1], border: Hint.Border(begin: [2, 2], end: [2, 2])), name: "conv1")
   let norm1 = GroupNorm(axis: 1, groups: 32, epsilon: 1e-5, reduce: [2, 3], name: "norm1")
   out = norm1(conv1(out).swish())
-  out = out.reshaped([batchSize, hiddenSize / 2, 16, 2, 16, 2]).permuted(0, 2, 4, 3, 5, 1).contiguous().reshaped([batchSize, 16 * 16, hiddenSize * 2])
+  out = out.reshaped([batchSize, hiddenSize / 2, 16, 2, 16, 2]).permuted(0, 2, 4, 3, 5, 1)
+    .contiguous().reshaped([batchSize, 16 * 16, hiddenSize * 2])
   let xEmbedder = Dense(count: hiddenSize, name: "x_embedder")
   out = xEmbedder(out)
 
@@ -110,18 +113,23 @@ func DiT(batchSize: Int, hiddenSize: Int, layers: Int) -> Model {
   let timestepEmbedder = TimestepEmbedder(hiddenSize: hiddenSize)
   let y = Input()
   let labelEmbedder = LabelEmbedder(Float.self, numClasses: 10, hiddenSize: hiddenSize)
-  let adaLNInput = (timestepEmbedder(t) + labelEmbedder(y)).reshaped([batchSize, 1, hiddenSize]).swish()
+  let adaLNInput = (timestepEmbedder(t) + labelEmbedder(y)).reshaped([batchSize, 1, hiddenSize])
+    .swish()
   for _ in 0..<layers {
     let transformer = TransformerBlock(k: hiddenSize / 8, h: 8, hk: 8, b: batchSize, t: 256)
     out = transformer(out, rot, adaLNInput)
   }
   let norm = LayerNorm(epsilon: 1e-6, axis: [2], elementwiseAffine: false)
   out = norm(out)
-  let adaLNs = [Dense(count: hiddenSize, name: "ada_ln_final_0"), Dense(count: hiddenSize, name: "ada_ln_final_1")]
+  let adaLNs = [
+    Dense(count: hiddenSize, name: "ada_ln_final_0"),
+    Dense(count: hiddenSize, name: "ada_ln_final_1"),
+  ]
   let chunks = adaLNs.map { $0(adaLNInput) }
   out = out .* (1 + chunks[1]) + chunks[0]
   let convOut = Dense(count: 3 * 2 * 2, name: "final")
-  out = convOut(out).reshaped([batchSize, 16, 16, 2, 2, 3]).permuted(0, 5, 1, 3, 2, 4).contiguous().reshaped([batchSize, 3, 32, 32])
+  out = convOut(out).reshaped([batchSize, 16, 16, 2, 2, 3]).permuted(0, 5, 1, 3, 2, 4).contiguous()
+    .reshaped([batchSize, 3, 32, 32])
   return Model([x, rot, t, y], [out])
 }
 
@@ -131,7 +139,7 @@ let dataBatchPath = "/fast/Data/cifar-10/cifar-10-batches-bin/data_batch.bin"
 
 let dataBatchSize = 50_000
 
-let batchSize = 256
+let globalBatchSize = 256
 
 /// MARK - Loading Data from Disk
 
@@ -169,8 +177,16 @@ trainDataDf["c"] = trainDataDf["main", CIFARData.self].map {
   Tensor<Int32>([Int32($0.label)], .CPU, .C(1))
 }
 
-var batchedTrainData = trainDataDf["tensor", "c"].combine(size: batchSize)
-batchedTrainData["imageGPU"] = batchedTrainData["tensor"]!.toGPU()
+let deviceCount = DeviceKind.GPUs.count
+let batchSize = globalBatchSize / deviceCount
+var batchedTrainData = trainDataDf["tensor", "c"].combine(size: batchSize, repeating: deviceCount)
+if deviceCount > 1 {
+  for i in 0..<deviceCount {
+    batchedTrainData["imageGPU_\(i)"] = batchedTrainData["tensor_\(i)"]!.toGPU(i)
+  }
+} else {
+  batchedTrainData["imageGPU"] = batchedTrainData["tensor"]!.toGPU(0)
+}
 
 /// MARK - Training Loop
 
@@ -192,34 +208,51 @@ for i in 0..<(16 * 16) {
     }
   }
 }
-let rotG = rot.toGPU(0)
+let rotG = DynamicGraph.Group((0..<deviceCount).map { rot.toGPU($0) })
 var optimizer = AdamWOptimizer(graph, rate: 0.0005)
 optimizer.parameters = [dit.parameters]
 var isLoaded = false
+var columns = [String]()
+if deviceCount > 1 {
+  for i in 0..<deviceCount {
+    columns += ["imageGPU_\(i)", "c_\(i)"]
+  }
+} else {
+  columns += ["imageGPU", "c"]
+}
 for epoch in 0..<10000 {
   batchedTrainData.shuffle()
   var overallLoss: Double = 0
   var overallSamples = 0
   var lossCount: [Int] = Array(repeating: 0, count: 10)
   var lossBins: [Double] = Array(repeating: 0, count: 10)
-  for (_, batch) in batchedTrainData["imageGPU", "c"].enumerated() {
-    let x = graph.variable(batch[0] as! Tensor<Float>)
-    let y = graph.variable(batch[1] as! Tensor<Int32>).reshaped(.C(batchSize))
-    let labelDrop = graph.variable(.CPU, .C(batchSize), of: Float.self)
+  for (_, batch) in batchedTrainData[columns].enumerated() {
+    let x = graph.variable((0..<deviceCount).map { batch[$0 * 2] as! Tensor<Float> })
+    let y = graph.variable(
+      (0..<deviceCount).map { (batch[$0 * 2 + 1] as! Tensor<Int32>).reshaped(.C(batchSize)) })
+    let labelDrop = graph.variable(.CPU, .NC(deviceCount, batchSize), of: Float.self)
     labelDrop.rand()
-    for i in 0..<batchSize {
-      // 10% chance of dropping the label.
-      if labelDrop[i] < 0.1 {
-        y[i] = 10
+    for i in 0..<deviceCount {
+      for j in 0..<batchSize {
+        // 10% chance of dropping the label.
+        if labelDrop[i, j] < 0.1 {
+          y[i][j] = 10
+        }
       }
     }
-    let yG = y.toGPU(0)
-    let t = graph.variable(.CPU, .C(batchSize), of: Float.self)
+    let yG = DynamicGraph.Group(y.enumerated().map { $1.toGPU($0) })
+    let t = DynamicGraph.Group(
+      (0..<deviceCount).map { _ in graph.variable(.CPU, .C(batchSize), of: Float.self) })
     t.randn()
     t.sigmoid()
-    let tG = t.toGPU(0).reshaped(.NCHW(batchSize, 1, 1, 1))
-    let tE = graph.variable(timeEmbedding(timesteps:(0..<batchSize).map({ t[$0] }), embeddingSize: 256, maxPeriod: 10_000))
-    let tEG = tE.toGPU(0)
+    let tG = DynamicGraph.Group(t.enumerated().map { $1.toGPU($0) }).reshaped(
+      .NCHW(batchSize, 1, 1, 1))
+    let tE = graph.variable(
+      (0..<deviceCount).map { i in
+        timeEmbedding(
+          timesteps: (0..<batchSize).map({ t[i][$0] }), embeddingSize: 256, maxPeriod: 10_000)
+      })
+    let tEG = DynamicGraph.Group(tE.enumerated().map { $1.toGPU($0) })
     let z1 = graph.variable(like: x)
     z1.randn()
     let zt = (1 - tG) .* x + tG .* z1
@@ -235,17 +268,19 @@ for epoch in 0..<10000 {
     let vtheta = dit(inputs: zt, rotG, tEG, yG)[0].as(of: Float.self)
     let diff = z1 - x - vtheta
     let loss = (diff .* diff).reduced(.mean, axis: [1, 2, 3])
-    loss.backward(to: [zt, yG])
+    loss.backward(to: [zt])
     optimizer.step()
-    let lossC = loss.rawValue.toCPU()
+    let lossC = loss.map { $0.rawValue.toCPU() }
     var batchLoss: Double = 0
-    for i in 0..<batchSize {
-      let singleLoss = Double(lossC[i, 0, 0, 0])
-      lossBins[min(Int((t[i] * 10).rounded(.down)), 9)] += singleLoss
-      lossCount[min(Int((t[i] * 10).rounded(.down)), 9)] += 1
-      batchLoss += singleLoss
+    for i in 0..<deviceCount {
+      for j in 0..<batchSize {
+        let singleLoss = Double(lossC[i][j, 0, 0, 0])
+        lossBins[min(Int((t[i][j] * 10).rounded(.down)), 9)] += singleLoss
+        lossCount[min(Int((t[i][j] * 10).rounded(.down)), 9)] += 1
+        batchLoss += singleLoss
+      }
     }
-    batchLoss = batchLoss / Double(batchSize)
+    batchLoss = batchLoss / Double(batchSize * deviceCount)
     overallLoss += batchLoss
     overallSamples += 1
     summaryWriter.addScalar("loss", batchLoss, step: optimizer.step)
@@ -262,22 +297,27 @@ for epoch in 0..<10000 {
   // Run denoising.
   let samplingSteps = 50
   graph.withNoGrad {
-    var z = graph.variable(.GPU(0), .NCHW(batchSize, 3, 32, 32), of: Float.self)
+    var z = DynamicGraph.Group(
+      (0..<deviceCount).map {
+        graph.variable(.GPU($0), .NCHW(batchSize, 3, 32, 32), of: Float.self)
+      })
     z.randn()
     let y = graph.variable(.CPU, .C(batchSize), of: Int32.self)
     for i in 0..<batchSize {
       y[i] = Int32(i) % 10
     }
-    let yG = y.toGPU(0)
+    let yG = DynamicGraph.Group((0..<deviceCount).map { y.toGPU($0) })
     let u = graph.variable(.CPU, .C(batchSize), of: Int32.self)
     for i in 0..<batchSize {
       u[i] = 10
     }
-    let uG = u.toGPU(0)
+    let uG = DynamicGraph.Group((0..<deviceCount).map { u.toGPU($0) })
     for i in (1...samplingSteps).reversed() {
       let t = Float(i) / Float(samplingSteps)
-      let tE = graph.variable(timeEmbedding(timesteps:(0..<batchSize).map({ _ in t }), embeddingSize: 256, maxPeriod: 10_000))
-      let tEG = tE.toGPU(0)
+      let tE = graph.variable(
+        timeEmbedding(
+          timesteps: (0..<batchSize).map({ _ in t }), embeddingSize: 256, maxPeriod: 10_000))
+      let tEG = DynamicGraph.Group((0..<deviceCount).map { tE.toGPU($0) })
       let vc = dit(inputs: z, rotG, tEG, yG)[0].as(of: Float.self)
       let vu = dit(inputs: z, rotG, tEG, uG)[0].as(of: Float.self)
       // cfg = 2
@@ -285,9 +325,13 @@ for epoch in 0..<10000 {
       z = z - (1 / Float(samplingSteps)) * v
     }
     let zCPU = z.toCPU()
-    for i in 0..<batchSize {
-      // Write each image as ppm format.
-      summaryWriter.addImage("sample \(i)", (zCPU[i..<(i + 1), 0..<3, 0..<32, 0..<32] + 1) * 0.5, step: epoch)
+    for i in 0..<deviceCount {
+      for j in 0..<batchSize {
+        // Write each image as ppm format.
+        summaryWriter.addImage(
+          "sample \(i * batchSize + j)", (zCPU[i][j..<(j + 1), 0..<3, 0..<32, 0..<32] + 1) * 0.5,
+          step: epoch)
+      }
     }
   }
 }

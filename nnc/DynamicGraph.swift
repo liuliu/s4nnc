@@ -663,9 +663,9 @@ extension DynamicGraph {
         as! T
     case is DynamicGraph.AnyGroup:
       return DynamicGraph.Group(
-        (0..<like.untyped.count).map { _ in
+        like.untyped.map {
           graph.variable(
-            like.kind, format: like.format, shape: like.shape, of: T.ElementNumeric.self)
+            $0.kind, format: $0.format, shape: $0.shape, of: T.ElementNumeric.self)
         }) as! T
     default:
       fatalError("Cannot support the given type")
@@ -680,9 +680,9 @@ extension DynamicGraph {
         as! T
     case is DynamicGraph.AnyGroup:
       return DynamicGraph.Group(
-        (0..<like.untyped.count).map { _ in
+        like.untyped.map {
           graph.constant(
-            like.kind, format: like.format, shape: like.shape, of: T.ElementNumeric.self)
+            $0.kind, format: $0.format, shape: $0.shape, of: T.ElementNumeric.self)
         }) as! T
     default:
       fatalError("Cannot support the given type")

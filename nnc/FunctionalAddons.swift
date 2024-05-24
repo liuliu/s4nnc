@@ -1100,6 +1100,44 @@ extension DynamicGraph.Tensor {
   }
 }
 
+extension DynamicGraph.Group
+where Element: DynamicGraph.TensorGroup, Element: DynamicGraph.AnyTensor {
+  /// Copy the given tensor to GPU.
+  public func toGPU(_ ordinal: Int, streamContext: StreamContext?)
+    -> DynamicGraph.Group<Element>
+  {
+    fatalError(
+      "toGPU() cannot be reasonably implemented for Group as Group would be most effective to resides on different GPUs"
+    )
+  }
+
+  /// Copy the given tensor to CPU.
+  public func toCPU(streamContext: StreamContext?) -> DynamicGraph.Group<Element> {
+    guard underlyingArray.count > 0 else { return self }
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_DATA_TRANSFER_FORWARD, nil, params, 0)
+    let _inputs: [ccv_nnc_tensor_variable_t?] = underlyingArray.map { $0._tensor }
+    let graph = underlyingArray[0].graph
+    let _graph = graph.cGraph
+    let _streamContext = (streamContext ?? graph.streamContext)?._stream
+    let outputSize = Int32(underlyingArray.count)
+    let outputs: [DynamicGraph.Tensor<ElementNumeric>] = untyped.map {
+      graph.variable(.CPU, format: $0.format, shape: $0.shape)
+    }
+    let _outputs = UnsafeMutablePointer<ccv_nnc_tensor_variable_t?>.allocate(
+      capacity: Int(outputSize))
+    for (i, variable) in outputs.enumerated() {
+      (_outputs + i).initialize(to: variable._tensor)
+    }
+    ccv_nnc_dynamic_graph_exec(
+      _graph, cmd, ccv_nnc_no_hint, 0, _inputs, outputSize, _outputs, outputSize, outputSize,
+      _streamContext)
+    _outputs.deallocate()
+    return DynamicGraph.Group(outputs) as! DynamicGraph.Group<Element>
+  }
+}
+
 extension DynamicGraph.Tensor {
   /// Fill the given tensor with a value.
   public func full(_ value: Float, streamContext: StreamContext?) {

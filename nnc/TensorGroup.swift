@@ -113,250 +113,238 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
 
 extension DynamicGraph_TensorGroup {
   @inlinable
-  public subscript(ranges: Range<Int>..., streamContext streamContext: StreamContext? = nil) -> Self
+  public subscript(ranges: Range<Int>...) -> Self
   {
-    get { self[ranges, streamContext: streamContext] }
-    set { self[ranges, streamContext: streamContext] = newValue }
+    get { self[ranges, streamContext: nil] }
+    set { self[ranges, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(ranges: [Range<Int>], streamContext streamContext: StreamContext? = nil) -> Self
+  public subscript(ranges: [Range<Int>]) -> Self
   {
-    get { self[ranges, streamContext: streamContext] }
-    set { self[ranges, streamContext: streamContext] = newValue }
+    get { self[ranges, streamContext: nil] }
+    set { self[ranges, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(range: Range<Int>, streamContext streamContext: StreamContext? = nil) -> Self {
-    get { self[range, streamContext: streamContext] }
-    set { self[range, streamContext: streamContext] = newValue }
+  public subscript(range: Range<Int>) -> Self {
+    get { self[range, streamContext: nil] }
+    set { self[range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, range: Range<Int>, streamContext streamContext: StreamContext? = nil)
+  public subscript(i0: Int, range: Range<Int>)
     -> Self
   {
-    get { self[i0, range, streamContext: streamContext] }
-    set { self[i0, range, streamContext: streamContext] = newValue }
+    get { self[i0, range, streamContext: nil] }
+    set { self[i0, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, range: Range<Int>,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, range: Range<Int>
   ) -> Self {
-    get { self[i0, i1, range, streamContext: streamContext] }
-    set { self[i0, i1, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, range, streamContext: nil] }
+    set { self[i0, i1, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, range: Range<Int>
   ) -> Self {
-    get { self[i0, i1, i2, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, range, streamContext: nil] }
+    set { self[i0, i1, i2, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: Range<Int>
   ) -> Self {
-    get { self[i0, i1, i2, i3, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: Range<Int>
   ) -> Self {
-    get { self[i0, i1, i2, i3, i4, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, i4, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, i4, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, i4, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: Range<Int>
   ) -> Self {
-    get { self[i0, i1, i2, i3, i4, i5, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, i4, i5, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, i4, i5, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, i4, i5, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, range: Range<Int>
   ) -> Self {
-    get { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(range: UnboundedRange, streamContext streamContext: StreamContext? = nil) -> Self
+  public subscript(range: UnboundedRange) -> Self
   {
-    get { self[range, streamContext: streamContext] }
-    set { self[range, streamContext: streamContext] = newValue }
+    get { self[range, streamContext: nil] }
+    set { self[range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, range: UnboundedRange, streamContext streamContext: StreamContext? = nil)
+  public subscript(i0: Int, range: UnboundedRange)
     -> Self
   {
-    get { self[i0, range, streamContext: streamContext] }
-    set { self[i0, range, streamContext: streamContext] = newValue }
+    get { self[i0, range, streamContext: nil] }
+    set { self[i0, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, range: UnboundedRange,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, range: UnboundedRange
   ) -> Self {
-    get { self[i0, i1, range, streamContext: streamContext] }
-    set { self[i0, i1, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, range, streamContext: nil] }
+    set { self[i0, i1, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, range: UnboundedRange
   ) -> Self {
-    get { self[i0, i1, i2, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, range, streamContext: nil] }
+    set { self[i0, i1, i2, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, range: UnboundedRange
   ) -> Self {
-    get { self[i0, i1, i2, i3, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, range: UnboundedRange
   ) -> Self {
-    get { self[i0, i1, i2, i3, i4, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, i4, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, i4, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, i4, range, streamContext: nil] = newValue }
   }
   @inlinable
-  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange,
-    streamContext streamContext: StreamContext? = nil
+  public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, range: UnboundedRange
   ) -> Self {
-    get { self[i0, i1, i2, i3, i4, i5, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, i4, i5, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, i4, i5, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, i4, i5, range, streamContext: nil] = newValue }
   }
   @inlinable
   public subscript(i0: Int, i1: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int,
-    range: UnboundedRange, streamContext streamContext: StreamContext? = nil
+    range: UnboundedRange
   ) -> Self {
-    get { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: streamContext] }
-    set { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: streamContext] = newValue }
+    get { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: nil] }
+    set { self[i0, i1, i2, i3, i4, i5, i6, range, streamContext: nil] = newValue }
   }
   /// Transpose from axisA to axisB.
   @inlinable
-  public func transposed(_ axisA: Int, _ axisB: Int, streamContext: StreamContext? = nil) -> Self {
-    transposed(axisA, axisB, streamContext: streamContext)
+  public func transposed(_ axisA: Int, _ axisB: Int) -> Self {
+    transposed(axisA, axisB, streamContext: nil)
   }
   /// Fill the given tensor with uniform random values.
   @inlinable
-  public func rand(_ range: ClosedRange<Float> = 0...1, streamContext: StreamContext? = nil) {
-    rand(range, streamContext: streamContext)
+  public func rand(_ range: ClosedRange<Float> = 0...1) {
+    rand(range, streamContext: nil)
   }
   /// Fill the given tensor with normal-distributed random values.
   @inlinable
-  public func randn(std: Float = 1, mean: Float = 0, streamContext: StreamContext? = nil) {
-    randn(std: std, mean: mean, streamContext: streamContext)
+  public func randn(std: Float = 1, mean: Float = 0) {
+    randn(std: std, mean: mean, streamContext: nil)
   }
   /// Copy the given tensor to GPU.
   @inlinable
-  public func toGPU(_ ordinal: Int = 0, streamContext: StreamContext? = nil) -> Self {
-    toGPU(ordinal, streamContext: streamContext)
+  public func toGPU(_ ordinal: Int = 0) -> Self {
+    toGPU(ordinal, streamContext: nil)
   }
   /// Copy the given tensor to CPU.
   @inlinable
-  public func toCPU(streamContext: StreamContext? = nil) -> Self {
-    toCPU(streamContext: streamContext)
+  public func toCPU() -> Self {
+    toCPU(streamContext: nil)
   }
   /// Fill the given tensor with a value.
   @inlinable
-  public func full(_ value: Float = 0, streamContext: StreamContext? = nil) {
-    full(value, streamContext: streamContext)
+  public func full(_ value: Float = 0) {
+    full(value, streamContext: nil)
   }
   /// Interpolate from this tensor to the other tensor.
   @inlinable
-  public func lerp(_ weight: Float, to: Self, streamContext: StreamContext? = nil) {
-    lerp(weight, to: to, streamContext: streamContext)
+  public func lerp(_ weight: Float, to: Self) {
+    lerp(weight, to: to, streamContext: nil)
   }
   /// Clamp the given tensor between two values.
   @inlinable
-  public func clamp(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) {
-    clamp(range, streamContext: streamContext)
+  public func clamp(_ range: ClosedRange<Float>) {
+    clamp(range, streamContext: nil)
   }
   /// Clamp the given tensor with a lower bound.
   @inlinable
-  public func clamp(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) {
-    clamp(range, streamContext: streamContext)
+  public func clamp(_ range: PartialRangeFrom<Float>) {
+    clamp(range, streamContext: nil)
   }
   /// Clamp the given tensor with an upper bound.
   @inlinable
-  public func clamp(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil) {
-    clamp(range, streamContext: streamContext)
+  public func clamp(_ range: PartialRangeThrough<Float>) {
+    clamp(range, streamContext: nil)
   }
   /// Clamp the given tensor between two values.
   @inlinable
-  public func clamped(_ range: ClosedRange<Float>, streamContext: StreamContext? = nil) -> Self {
-    clamped(range, streamContext: streamContext)
+  public func clamped(_ range: ClosedRange<Float>) -> Self {
+    clamped(range, streamContext: nil)
   }
   /// Clamp the given tensor with a lower bound.
   @inlinable
-  public func clamped(_ range: PartialRangeFrom<Float>, streamContext: StreamContext? = nil) -> Self
-  {
-    clamped(range, streamContext: streamContext)
+  public func clamped(_ range: PartialRangeFrom<Float>) -> Self {
+    clamped(range, streamContext: nil)
   }
   /// Clamp the given tensor with an upper bound.
   @inlinable
-  public func clamped(_ range: PartialRangeThrough<Float>, streamContext: StreamContext? = nil)
+  public func clamped(_ range: PartialRangeThrough<Float>)
     -> Self
   {
-    clamped(range, streamContext: streamContext)
+    clamped(range, streamContext: nil)
   }
   /// Make a copy of the given tensor.
   @inlinable
-  public func copied(streamContext: StreamContext? = nil) -> Self {
-    copied(streamContext: streamContext)
+  public func copied() -> Self {
+    copied(streamContext: nil)
   }
   /// Only make a copy of the given tensor if it is not contiguous in memory.
   @inlinable
-  public func contiguous(streamContext: StreamContext? = nil) -> Self {
-    contiguous(streamContext: streamContext)
+  public func contiguous() -> Self {
+    contiguous(streamContext: nil)
   }
   /// Reduce along a given dimension.
   @inlinable
-  public func reduced(_ op: ReduceOp, axis: [Int], streamContext: StreamContext? = nil) -> Self {
-    reduced(op, axis: axis, streamContext: streamContext)
+  public func reduced(_ op: ReduceOp, axis: [Int]) -> Self {
+    reduced(op, axis: axis, streamContext: nil)
   }
   /// Scale the given tensor with a constant inplace.
   @inlinable
-  public func scale(by a: Float, streamContext: StreamContext? = nil) {
-    scale(by: a, streamContext: streamContext)
+  public func scale(by a: Float) {
+    scale(by: a, streamContext: nil)
   }
   /// Scale the given tensor with a constant.
   @inlinable
-  public func scaled(by a: Float, streamContext: StreamContext? = nil) -> Self {
-    scaled(by: a, streamContext: streamContext)
+  public func scaled(by a: Float) -> Self {
+    scaled(by: a, streamContext: nil)
   }
   /// Apply softmax activation to the given tensor inplace.
   @inlinable
-  public func softmax(streamContext: StreamContext? = nil) {
-    softmax(streamContext: streamContext)
+  public func softmax() {
+    softmax(streamContext: nil)
   }
   /// Apply ReLU activation to the given tensor inplace.
   @inlinable
-  public func ReLU(streamContext: StreamContext? = nil) {
-    ReLU(streamContext: streamContext)
+  public func ReLU() {
+    ReLU(streamContext: nil)
   }
   /// Apply sigmoid activation to the given tensor inplace.
   @inlinable
-  public func sigmoid(streamContext: StreamContext? = nil) {
-    sigmoid(streamContext: streamContext)
+  public func sigmoid() {
+    sigmoid(streamContext: nil)
   }
   /// Apply tanh activation to the given tensor inplace.
   @inlinable
-  public func tanh(streamContext: StreamContext? = nil) {
-    tanh(streamContext: streamContext)
+  public func tanh() {
+    tanh(streamContext: nil)
   }
   /// Apply swish activation to the given tensor inplace.
   @inlinable
-  public func swish(streamContext: StreamContext? = nil) {
-    swish(streamContext: streamContext)
+  public func swish() {
+    swish(streamContext: nil)
   }
   /// Chunk the current tensor into multiple ones.
   @inlinable
-  public func chunked(_ numberOfChunks: Int, axis: Int = 0, streamContext: StreamContext? = nil)
+  public func chunked(_ numberOfChunks: Int, axis: Int = 0)
     -> [Self]
   {
-    chunked(numberOfChunks, axis: axis, streamContext: streamContext)
+    chunked(numberOfChunks, axis: axis, streamContext: nil)
   }
 }
 
