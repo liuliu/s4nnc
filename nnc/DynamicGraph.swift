@@ -516,6 +516,8 @@ extension DynamicGraph.AnyTensor: CustomDebugStringConvertible {
       let cmd = ccv_nnc_cmd(
         CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
       ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, _streamContext)
+      // Need to wait the stream to be done so we can print current ones.
+      ccv_nnc_stream_context_wait(_streamContext)
     }
     defer {
       if _output != nil {
