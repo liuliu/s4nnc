@@ -4499,7 +4499,7 @@ extension DynamicGraph {
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
     public func read(
-      _ key: String, model: Model, strict: Bool = false, codec: Codec = [],
+      _ key: String, model: Model, strict: Bool, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) throws {
       guard let reader = reader else {
@@ -4565,6 +4565,21 @@ extension DynamicGraph {
       }
     }
     /**
+     * Read parameters into a given model.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model to be initialized with parameters from a given key.
+     *   - codec: The codec for potential encoded parameters.
+     *   - reader: You can customize your reader to load parameter with a different name etc.
+     */
+    public func read(
+      _ key: String, model: Model, codec: Codec = [],
+      reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
+    ) {
+      try? read(key, model: model, strict: false, codec: codec, reader: reader)
+    }
+    /**
      * Read parameters into a given model builder.
      *
      * - Parameters:
@@ -4579,6 +4594,21 @@ extension DynamicGraph {
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) throws {
       try model.read(key, from: store, strict: strict, codec: codec, reader: reader)
+    }
+    /**
+     * Read parameters into a given model builder.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model builder to be initialized with parameters from a given key.
+     *   - codec: The codec for potential encoded parameters.
+     *   - reader: You can customize your reader to load parameter with a different name etc.
+     */
+    public func read(
+      _ key: String, model: AnyModelBuilder, codec: Codec = [],
+      reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
+    ) {
+      try? read(key, model: model, strict: false, codec: codec, reader: reader)
     }
 
     /**

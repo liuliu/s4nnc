@@ -140,7 +140,7 @@ final class StoreTests: XCTestCase {
     linear1.compile(inputs: tv0)
     graph.openStore("test/model.db") { store in
       store.write("a", model: linear0)
-      try! store.read("a", model: linear1) { name, _, _, _ in
+      store.read("a", model: linear1) { name, _, _, _ in
         return .continue("__a__[t-linear-0-0]")
       }
     }
@@ -157,7 +157,7 @@ final class StoreTests: XCTestCase {
     linear1.compile(inputs: tv0)
     graph.openStore("test/model.db") { store in
       store.write("a", model: linear0)
-      try! store.read("a", model: linear1) { name, _, format, shape in
+      store.read("a", model: linear1) { name, _, format, shape in
         var a = Tensor<Float32>(.CPU, format: format, shape: shape)
         a[0, 0] = 2
         return .final(a)
@@ -178,7 +178,7 @@ final class StoreTests: XCTestCase {
       store.write("a", model: linear0) { name, _ in
         return .continue("__a__[t-0-0]")
       }
-      try! store.read("a", model: linear1)
+      store.read("a", model: linear1)
     }
     let tv2 = linear1(inputs: tv0)[0].as(of: Float32.self)
     XCTAssertEqual(tv1[0], tv2[0])
