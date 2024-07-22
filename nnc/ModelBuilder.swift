@@ -81,9 +81,9 @@ public class AnyModelBuilder {
     ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)? = nil
 
   func read(
-    _ key: String, from store: DynamicGraph._Store, codec: DynamicGraph.Store.Codec,
+    _ key: String, from store: DynamicGraph._Store, strict: Bool, codec: DynamicGraph.Store.Codec,
     reader: ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)?
-  ) {
+  ) throws {
     // If the model is compiled (signifies by _outputSize is set)
     if _outputSize != nil {
       guard let reader = reader else {
@@ -94,6 +94,11 @@ public class AnyModelBuilder {
           option.decode = codec.decode
           option.context = Unmanaged<DynamicGraph._Store>.passUnretained(store).toOpaque()
           ccv_cnnp_model_read(store.sqlite, key, &option, model!.cModel)
+        }
+        if strict, let _io = ccv_cnnp_model_parameter_first_uninit(model!.cModel) {
+          throw DynamicGraph.Store.ModelReadError.missing(
+            String(
+              cString: ccv_cnnp_model_parameter_name(model!.cModel, _io)))
         }
         return
       }
@@ -139,6 +144,11 @@ public class AnyModelBuilder {
       }
       ccv_cnnp_model_set_io(model!.cModel, nil, nil)
       unmanaged.release()
+      if strict, let _io = ccv_cnnp_model_parameter_first_uninit(model!.cModel) {
+        throw DynamicGraph.Store.ModelReadError.missing(
+          String(
+            cString: ccv_cnnp_model_parameter_name(model!.cModel, _io)))
+      }
     }
     _reader = reader
     _store = store

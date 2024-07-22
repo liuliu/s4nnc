@@ -55,22 +55,22 @@ private let q4pEncode:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    let numberOfBlocks = (numberOfElements + 1023) / 1024
+    let numberOfBlocks = (numberOfElements + 511) / 512
     guard
       (numberOfElements + 1) / 2 + numberOfBlocks * 16 * elementSize + MemoryLayout<UInt32>.size
         <= encodedSize[0]
     else { return 0 }
-    encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
+    encoded.storeBytes(of: UInt32(512), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(1024, numberOfElements))
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(512, numberOfElements))
       let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 16)
-      let nI = min(1024, numberOfElements - blockIdx * 1024)
+      let nI = min(512, numberOfElements - blockIdx * 512)
       var input = ccv_dense_matrix(
         1, Int32(nI), dataType | Int32(CCV_C1),
-        UnsafeMutableRawPointer(mutating: data + 1024 * blockIdx * elementSize), 0)
+        UnsafeMutableRawPointer(mutating: data + 512 * blockIdx * elementSize), 0)
       ccv_kmeans1d(&input, 16, indices, centroids)
-      let encodedBlock = encoded + (16 * elementSize + 512) * blockIdx
+      let encodedBlock = encoded + (16 * elementSize + 256) * blockIdx
       switch dataType {
       case Int32(CCV_64F):
         // Write centroids directly to the output.
@@ -312,22 +312,22 @@ private let q5pEncode:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    let numberOfBlocks = (numberOfElements + 2047) / 2048
+    let numberOfBlocks = (numberOfElements + 1023) / 1024
     guard
       (numberOfElements + 7) / 8 * 5 + numberOfBlocks * 32 * elementSize + MemoryLayout<UInt32>.size
         <= encodedSize[0]
     else { return 0 }
-    encoded.storeBytes(of: UInt32(2048), as: UInt32.self)
+    encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
     encoded += MemoryLayout<UInt32>.size
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
-      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(2048, numberOfElements))
+      let indices = UnsafeMutablePointer<Int32>.allocate(capacity: min(1024, numberOfElements))
       let centroids = UnsafeMutablePointer<Double>.allocate(capacity: 32)
-      let nI = min(2048, numberOfElements - blockIdx * 2048)
+      let nI = min(1024, numberOfElements - blockIdx * 1024)
       var input = ccv_dense_matrix(
         1, Int32(nI), dataType | Int32(CCV_C1),
-        UnsafeMutableRawPointer(mutating: data + blockIdx * 2048 * elementSize), 0)
+        UnsafeMutableRawPointer(mutating: data + blockIdx * 1024 * elementSize), 0)
       ccv_kmeans1d(&input, 32, indices, centroids)
-      let encodedBlock = encoded + (32 * elementSize + 1280) * blockIdx
+      let encodedBlock = encoded + (32 * elementSize + 640) * blockIdx
       switch dataType {
       case Int32(CCV_64F):
         // Write centroids directly to the output.
@@ -1448,7 +1448,10 @@ private let q8pEncode:
       numberOfElements *= Int(dimensions[i])
     }
     let numberOfBlocks = (numberOfElements + 16_383) / 16_384
-    guard numberOfElements + numberOfBlocks * 256 * elementSize + MemoryLayout<UInt32>.size <= encodedSize[0] else {
+    guard
+      numberOfElements + numberOfBlocks * 256 * elementSize + MemoryLayout<UInt32>.size
+        <= encodedSize[0]
+    else {
       return 0
     }
     encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
@@ -2826,7 +2829,7 @@ private func q8pDecodeJit(
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
       && (numberOfElements % (256 * 4)) == 0
-      && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
+      && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
   else {
     return q8pDecode(
       blockSize: blockSize,
@@ -3166,7 +3169,7 @@ private let q4pDecodeJitWithExternalEager:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3219,7 +3222,7 @@ private let q5pDecodeJitWithExternalEager:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3272,7 +3275,7 @@ private let q6pDecodeJitWithExternalEager:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3325,7 +3328,7 @@ private let q7pDecodeJitWithExternalEager:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3359,7 +3362,7 @@ private let q8pDecodeJitWithExternalEager:
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % (256 * 4)) == 0
-        && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
+        && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return q8pDecodeJit(
@@ -3379,7 +3382,7 @@ private let q8pDecodeJitWithExternalEager:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3402,7 +3405,7 @@ private let decodeWithExternalEager:
     let offset = Int(data.load(as: UInt64.self))
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3509,7 +3512,7 @@ private let q4pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3562,7 +3565,7 @@ private let q5pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3615,7 +3618,7 @@ private let q6pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3668,7 +3671,7 @@ private let q7pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3702,7 +3705,7 @@ private let q8pDecodeJitWithExternalOnDemand:
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
         && (numberOfElements % (256 * 4)) == 0
-        && (blockSize % (256 * 4)) == 0 // We support non-block size length for q8p only.
+        && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return q8pDecodeJit(
@@ -3722,7 +3725,7 @@ private let q8pDecodeJitWithExternalOnDemand:
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, store.externalStore, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -3745,7 +3748,7 @@ private let decodeWithExternalOnDemand:
     let offset = Int(data.load(as: UInt64.self))
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
-    decodedSize[0] = 0 // Mark that there is nothing to be copied.
+    decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
@@ -4482,18 +4485,23 @@ extension DynamicGraph {
         self.sqlite = sqlite
       }
     }
+    public enum ModelReadError: Error {
+      case missing(String)
+    }
     /**
      * Read parameters into a given model.
      *
      * - Parameters:
      *   - key: The key corresponding to a particular model.
      *   - model: The model to be initialized with parameters from a given key.
+     *   - strict: When this is true, will throw error if any parameters are missing.
+     *   - codec: The codec for potential encoded parameters.
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
     public func read(
-      _ key: String, model: Model, codec: Codec = [],
+      _ key: String, model: Model, strict: Bool = false, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
-    ) {
+    ) throws {
       guard let reader = reader else {
         if codec.isEmpty {
           ccv_cnnp_model_read(store.sqlite, key, nil, model.cModel)
@@ -4502,6 +4510,11 @@ extension DynamicGraph {
           option.decode = codec.decode
           option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
           ccv_cnnp_model_read(store.sqlite, key, &option, model.cModel)
+        }
+        if strict, let _io = ccv_cnnp_model_parameter_first_uninit(model.cModel) {
+          throw ModelReadError.missing(
+            String(
+              cString: ccv_cnnp_model_parameter_name(model.cModel, _io)))
         }
         return
       }
@@ -4545,6 +4558,11 @@ extension DynamicGraph {
       }
       ccv_cnnp_model_set_io(model.cModel, nil, nil)
       unmanaged.release()
+      if strict, let _io = ccv_cnnp_model_parameter_first_uninit(model.cModel) {
+        throw ModelReadError.missing(
+          String(
+            cString: ccv_cnnp_model_parameter_name(model.cModel, _io)))
+      }
     }
     /**
      * Read parameters into a given model builder.
@@ -4552,13 +4570,15 @@ extension DynamicGraph {
      * - Parameters:
      *   - key: The key corresponding to a particular model.
      *   - model: The model builder to be initialized with parameters from a given key.
+     *   - strict: When this is true, will throw error if any parameters are missing.
+     *   - codec: The codec for potential encoded parameters.
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
     public func read(
-      _ key: String, model: AnyModelBuilder, codec: Codec = [],
+      _ key: String, model: AnyModelBuilder, strict: Bool, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
-    ) {
-      model.read(key, from: store, codec: codec, reader: reader)
+    ) throws {
+      try model.read(key, from: store, strict: strict, codec: codec, reader: reader)
     }
 
     /**
