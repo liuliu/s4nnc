@@ -2273,7 +2273,7 @@ private let q4pEncodeWithExternalStore:
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
-    encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
+    encoded.storeBytes(of: UInt32(512), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
@@ -2300,7 +2300,7 @@ private let q5pEncodeWithExternalStore:
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
-    encoded.storeBytes(of: UInt32(2048), as: UInt32.self)
+    encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
