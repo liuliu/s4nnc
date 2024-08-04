@@ -3396,7 +3396,7 @@ private let decodeWithExternalEager:
     decoded, decodedSize
     in
     guard let data = data, let decodedSize = decodedSize, dimensionCount > 0 else { return 0 }
-    guard tensorOut!.pointee == nil else {
+    guard tensorOut!.pointee == nil, dataType == params.datatype else {
       return decodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -3739,7 +3739,7 @@ private let decodeWithExternalOnDemand:
     decoded, decodedSize
     in
     guard let data = data, let decodedSize = decodedSize, dimensionCount > 0 else { return 0 }
-    guard tensorOut!.pointee == nil else {
+    guard tensorOut!.pointee == nil, dataType == params.datatype else {
       return decodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
