@@ -124,7 +124,10 @@ public final class Matmul: Model {
     super.init(model)
   }
 
-  public init(transposeA: (Int, Int) = (0, 0), transposeB: (Int, Int) = (0, 0), flags: DynamicGraph.EnableBits = [], name: String = "") {
+  public init(
+    transposeA: (Int, Int) = (0, 0), transposeB: (Int, Int) = (0, 0),
+    flags: Functional.GEMMFlag = [], name: String = ""
+  ) {
     let a = [Int32(transposeA.0), Int32(transposeA.1)]
     let b = [Int32(transposeB.0), Int32(transposeB.1)]
     super.init(ccv_cnnp_matmul(a, b, Int32(flags.rawValue), name))
@@ -177,10 +180,14 @@ public final class Dense: Model {
     super.init(model)
   }
 
-  public init(count: Int, noBias: Bool = false, flags: DynamicGraph.EnableBits = [], trainable: Bool? = nil, name: String = "") {
+  public init(
+    count: Int, noBias: Bool = false, flags: Functional.GEMMFlag = [], trainable: Bool? = nil,
+    name: String = ""
+  ) {
     super.init(
       ccv_cnnp_dense(
-        Int32(count), noBias ? 1 : 0, Int32(flags.rawValue), trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+        Int32(count), noBias ? 1 : 0, Int32(flags.rawValue),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -1466,13 +1473,13 @@ public final class ScaledDotProductAttention: Model {
   }
 
   public init(
-    scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false, upcast: Bool = false,
-    multiHeadOutputProjectionFused: Bool = false, noBias: Bool = false, trainable: Bool? = nil,
-    name: String = ""
+    scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
+    flags: Functional.GEMMFlag = [], multiHeadOutputProjectionFused: Bool = false,
+    noBias: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_scaled_dot_product_attention(
-        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, upcast ? 1 : 0,
+        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, Int32(flags.rawValue),
         multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }

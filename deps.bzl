@@ -17,8 +17,8 @@ def s4nnc_deps():
         git_repository,
         name = "ccv",
         remote = "https://github.com/liuliu/ccv.git",
-        commit = "00be1b4c0f3214d15bb14c1d51fa963bcfde37be",
-        shallow_since = "1722884605 -0400",
+        commit = "6c30517cabac616ad4fb95c921c33754cd6849a3",
+        shallow_since = "1723480048 -0400",
     )
 
     _maybe(

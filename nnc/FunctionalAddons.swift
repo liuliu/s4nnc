@@ -278,16 +278,27 @@ extension Functional {
     return DynamicGraph.Group<DynamicGraph.Tensor<Int32>>(outputs[0])
   }
 
+  public struct GEMMFlag: OptionSet {
+    public let rawValue: Int32
+    public init(rawValue: Int32) {
+      self.rawValue = rawValue
+    }
+    public static let Float32 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_32F))
+    public static let Float16 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_16F))
+    public static let TF32 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_32TF))
+  }
+
   /// Matrix multiplication
   public static func matmul<T: DynamicGraph.TensorGroup>(
     left: T, right: T, leftTranspose: (Int, Int) = (0, 0), rightTranspose: (Int, Int) = (0, 0),
-    streamContext: StreamContext? = nil
+    flags: Functional.GEMMFlag = [], streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.blas.a = (1, 1, 0)
     params.blas.transpose_a = (Int32(leftTranspose.0), Int32(leftTranspose.1))
     params.blas.transpose_b = (Int32(rightTranspose.0), Int32(rightTranspose.1))
+    params.blas.flags = Int32(flags.rawValue)
     let cmd = ccv_nnc_cmd(CCV_NNC_GEMM_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: left, right, outputSize: 1,
