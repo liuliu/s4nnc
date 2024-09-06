@@ -1,4 +1,5 @@
 import C_nnc
+import Foundation
 
 public final class CmdParamsFactory {
   public static let factory = CmdParamsFactory()
@@ -1714,5 +1715,135 @@ extension Tensor: CustomDebugStringConvertible {
     let debugDescription = description + " " + String(cString: cString)
     free(cString)
     return debugDescription
+  }
+}
+
+extension Tensor {
+  public func data(using codec: DynamicGraph.Store.Codec = []) -> Data {
+    let tensor = kind == .CPU ? self : toCPU()
+    var codec = codec
+    codec.subtract([.externalData, .jit, .externalOnDemand])
+    let encode = codec.encode
+    return withExtendedLifetime(tensor) {
+      let cTensor = tensor.cTensor
+      let dataSize = ccv_nnc_tensor_data_size_without_padding(cTensor.pointee.info)
+      guard
+        let workspace = malloc(
+          dataSize + MemoryLayout<ccv_nnc_tensor_param_t>.size + MemoryLayout<UInt32>.size)
+      else {
+        return Data()
+      }
+      var identifier: UInt32 = 0
+      guard let encode = encode else {
+        memcpy(workspace, &identifier, MemoryLayout<UInt32>.size)
+        memcpy(
+          workspace + MemoryLayout<UInt32>.size, &cTensor.pointee.info,
+          MemoryLayout<ccv_nnc_tensor_param_t>.size)
+        memcpy(
+          workspace + MemoryLayout<UInt32>.size + MemoryLayout<ccv_nnc_tensor_param_t>.size,
+          cTensor.pointee.data.u8, dataSize)
+        return Data(
+          bytesNoCopy: workspace,
+          count: dataSize + MemoryLayout<ccv_nnc_tensor_param_t>.size + MemoryLayout<UInt32>.size,
+          deallocator: .free)
+      }
+      var params = cTensor.pointee.info
+      var encodedSize = dataSize
+      var dim = params.dim
+      guard
+        (withUnsafePointer(to: &dim) {
+          let dim = UnsafeRawPointer($0).assumingMemoryBound(to: Int32.self)
+          return encode(
+            cTensor.pointee.data.u8, dataSize, cTensor.pointee.info.datatype, dim,
+            ccv_nnc_tensor_nd(dim), nil,
+            workspace + MemoryLayout<ccv_nnc_tensor_param_t>.size + MemoryLayout<UInt32>.size,
+            &encodedSize, &params, &identifier)
+        }) != 0
+      else {
+        identifier = 0
+        memcpy(workspace, &identifier, MemoryLayout<UInt32>.size)
+        memcpy(
+          workspace + MemoryLayout<UInt32>.size, &cTensor.pointee.info,
+          MemoryLayout<ccv_nnc_tensor_param_t>.size)
+        memcpy(
+          workspace + MemoryLayout<UInt32>.size + MemoryLayout<ccv_nnc_tensor_param_t>.size,
+          cTensor.pointee.data.u8, dataSize)
+        return Data(
+          bytesNoCopy: workspace,
+          count: dataSize + MemoryLayout<ccv_nnc_tensor_param_t>.size + MemoryLayout<UInt32>.size,
+          deallocator: .free)
+      }
+      memcpy(workspace, &identifier, MemoryLayout<UInt32>.size)
+      memcpy(
+        workspace + MemoryLayout<UInt32>.size, &cTensor.pointee.info,
+        MemoryLayout<ccv_nnc_tensor_param_t>.size)
+      let bytes = realloc(
+        workspace,
+        encodedSize + MemoryLayout<ccv_nnc_tensor_param_t>.size + MemoryLayout<UInt32>.size)!
+      return Data(
+        bytesNoCopy: bytes,
+        count: encodedSize + MemoryLayout<ccv_nnc_tensor_param_t>.size + MemoryLayout<UInt32>.size,
+        deallocator: .free)
+    }
+  }
+
+  public init?(data: Data, using codec: DynamicGraph.Store.Codec) {
+    guard
+      let storage =
+        (data.withUnsafeBytes { (unsafePointer: UnsafeRawBufferPointer) -> AnyTensorStorage? in
+          guard let baseAddress = unsafePointer.baseAddress else { return nil }
+          guard
+            unsafePointer.count >= MemoryLayout<UInt32>.size
+              + MemoryLayout<ccv_nnc_tensor_param_t>.size
+          else {
+            return nil
+          }
+          let identifier = unsafePointer.load(as: UInt32.self)
+          let params = unsafePointer.loadUnaligned(
+            fromByteOffset: MemoryLayout<UInt32>.size, as: ccv_nnc_tensor_param_t.self)
+          guard identifier != 0 else {
+            let dataSize = ccv_nnc_tensor_data_size_without_padding(params)
+            guard
+              unsafePointer.count >= MemoryLayout<UInt32>.size
+                + MemoryLayout<ccv_nnc_tensor_param_t>.size + dataSize
+            else {
+              return nil
+            }
+            let cTensor = ccv_nnc_tensor_new(nil, params, 0)!
+            memcpy(
+              cTensor.pointee.data.u8,
+              baseAddress + MemoryLayout<UInt32>.size + MemoryLayout<ccv_nnc_tensor_param_t>.size,
+              dataSize)
+            return AnyTensorStorage(cTensor, original: nil)
+          }
+          var codec = codec
+          codec.subtract([.externalData, .jit, .externalOnDemand])
+          guard let decode = codec.decode else {
+            return nil
+          }
+          let dataSize =
+            unsafePointer.count - MemoryLayout<UInt32>.size
+            - MemoryLayout<ccv_nnc_tensor_param_t>.size
+          var dim = params.dim
+          var cTensor = ccv_nnc_tensor_new(nil, params, 0)
+          guard
+            (withUnsafePointer(to: &dim) {
+              let dim = UnsafeRawPointer($0).assumingMemoryBound(to: Int32.self)
+              var decodedSize = ccv_nnc_tensor_data_size_without_padding(params)
+              return decode(
+                baseAddress + MemoryLayout<UInt32>.size + MemoryLayout<ccv_nnc_tensor_param_t>.size,
+                dataSize, params.datatype, dim, ccv_nnc_tensor_nd(dim), identifier, nil, params,
+                &cTensor, cTensor?.pointee.data.u8, &decodedSize)
+            }) != 0
+          else {
+            ccv_nnc_tensor_free(cTensor)
+            return nil
+          }
+          return AnyTensorStorage(cTensor!, original: nil)
+        })
+    else {
+      return nil
+    }
+    self.init(storage)
   }
 }

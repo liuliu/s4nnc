@@ -196,6 +196,29 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual(b0[3], a1[0, 1, 0])
   }
 
+  func testSerializeTensorToData() throws {
+    var tensor = Tensor<Int32>(.CPU, .NC(2, 3))
+    tensor[1, 0..<3] = [1, 2, 3]
+    tensor[0, 0..<3] = [-1, -2, -3]
+    let data = tensor.data(using: [])
+    let tensor1 = Tensor<Int32>(data: data, using: [])!
+    XCTAssertEqual(-1, tensor1[0, 0])
+    XCTAssertEqual(-2, tensor1[0, 1])
+    XCTAssertEqual(-3, tensor[0, 2])
+    XCTAssertEqual(1, tensor1[1, 0])
+    XCTAssertEqual(2, tensor1[1, 1])
+    XCTAssertEqual(3, tensor1[1, 2])
+    var f32tensor = Tensor<Float>(.CPU, .C(1024))
+    for i in 0..<1024 {
+      f32tensor[i] = Float(i)
+    }
+    let f32Data = f32tensor.data(using: [.fpzip])
+    let f32tensor1 = Tensor<Float>(data: f32Data, using: [.fpzip])!
+    for i in 0..<1024 {
+      XCTAssertEqual(f32tensor1[i], Float(i))
+    }
+  }
+
   static let allTests = [
     ("testCreateZeroLengthTensor", testCreateZeroLengthTensor),
     ("testGetSetPartTensor", testGetSetPartTensor),
@@ -209,5 +232,6 @@ final class TensorTests: XCTestCase {
     ("testPermute", testPermute),
     ("testPermuteAndGetASubset", testPermuteAndGetASubset),
     ("testPermuteAndReshape", testPermuteAndReshape),
+    ("testSerializeTensorToData", testSerializeTensorToData),
   ]
 }
