@@ -1498,6 +1498,40 @@ public final class ScaledDotProductAttention: Model {
   }
 }
 
+/// Debug model.
+public final class Debug: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    name: String = "",
+    _ callback: @escaping ([AnyTensor?], StreamContext?) -> Void
+  ) {
+    let underlying = Wrapped(callback)
+    super.init(
+      ccv_cnnp_debug(
+        { inputs, inputSize, stream, context in
+          let callback = Unmanaged<Wrapped<([AnyTensor?], StreamContext?) -> Void>>.fromOpaque(
+            context!
+          ).takeUnretainedValue().value
+          callback(
+            (0..<Int(inputSize)).map {
+              inputs![$0].map { AnyTensorStorage($0, selfOwned: false).toAnyTensor() }
+            }, stream.map { StreamContext(stream: $0, selfOwned: false) })
+        }, Unmanaged.passRetained(underlying).toOpaque(),
+        { context in
+          guard let context = context else { return }
+          Unmanaged<Wrapped<([AnyTensor?], StreamContext?) -> Void>>.fromOpaque(context).release()
+        },
+        { context in
+          guard let context = context else { return nil }
+          return Unmanaged<Wrapped<([AnyTensor?], StreamContext?) -> Void>>.fromOpaque(context)
+            .retain().toOpaque()
+        }, name))
+  }
+}
+
 /// Custom model.
 public final class CustomModel: Model {
   required init(_ model: OpaquePointer) {

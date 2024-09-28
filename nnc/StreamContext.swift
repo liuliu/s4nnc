@@ -23,7 +23,13 @@ public final class StreamContext {
     }
   }
 
+  let selfOwned: Bool
   let _stream: OpaquePointer
+
+  init(stream: OpaquePointer, selfOwned: Bool) {
+    _stream = stream
+    self.selfOwned = selfOwned
+  }
 
   /**
    * Create a new stream context.
@@ -39,6 +45,7 @@ public final class StreamContext {
       type = Int32((ordinal << 8) | CCV_STREAM_CONTEXT_GPU)
     }
     _stream = ccv_nnc_stream_context_new(type)!
+    selfOwned = true
   }
 
   /**
@@ -69,6 +76,7 @@ public final class StreamContext {
   }
 
   deinit {
+    guard selfOwned else { return }
     ccv_nnc_stream_context_free(_stream)
   }
 }

@@ -171,6 +171,33 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(tv3s[1].rawValue[0], 0.5 / 0.2, accuracy: 1e-5)
   }
 
+  func testModelDebug() throws {
+    let dynamicGraph = DynamicGraph()
+
+    var value: Float = 0
+    func DivRec() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = i0 ./ i1
+      let debugi2 =
+        (Debug { tensors, _ in
+          let tensor = Tensor<Float>(tensors[0]!)
+          value = tensor[0]
+        })(i2)
+      let i3 = Input()
+      let i4 = debugi2 ./ i3
+      return Model([i0, i1, i3], [i4])
+    }
+
+    let div = DivRec()
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+    let tv2 = dynamicGraph.variable(Tensor<Float32>([0.2], .CPU, .C(1)))
+    let tv3s = div(inputs: tv0, tv1, tv2).map { $0.as(of: Float32.self) }
+    XCTAssertEqual(tv3s[0].rawValue[0], 0.5 / 0.2, accuracy: 1e-5)
+    XCTAssertEqual(value, 0.5, accuracy: 1e-5)
+  }
+
   func testModelScaledDotProductAttention() throws {
     let dynamicGraph = DynamicGraph()
     let q = dynamicGraph.variable(Tensor<Float32>(.CPU, .NHWC(1, 10, 8, 20)))
@@ -458,6 +485,7 @@ final class ModelTests: XCTestCase {
     ("testModelWithScalar", testModelWithScalar),
     ("testModelWithParameter", testModelWithParameter),
     ("testModelDiv", testModelDiv),
+    ("testModelDebug", testModelDebug),
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
     ("testCustomModel", testCustomModel),
     ("testModelShareWeights", testModelShareWeights),
