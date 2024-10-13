@@ -342,6 +342,18 @@ extension Model {
   }
 }
 
+extension Model {
+  /**
+   * Cancel current evaluation of this model. It only cancels the model that you know is currently
+   * in evaluation, if you didn't get the execution order right, it won't have effect (you need
+   * to make sure this method, if it is called, is strictly after call to callAsFunction and before
+   * it returns).
+   */
+  public func cancel() {
+    ccv_cnnp_model_cancel(cModel)
+  }
+}
+
 /// MARK - Functional and Sequential Models
 
 extension Model {
