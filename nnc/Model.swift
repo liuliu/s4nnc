@@ -205,12 +205,23 @@ public class Model {
    * Whether to enable gradient checkpointing for this model. Once it is enabled, we will re-run
    * the model forward pass again during backward pass. This is effective at reducing memory usage.
    */
-  public var gradientCheckpointing: Bool {
+  public var gradientCheckpointing: Bool? {
     get {
-      ccv_cnnp_model_gradient_checkpointing(cModel) != 0
+      let value = ccv_cnnp_model_gradient_checkpointing(cModel)
+      if value == 1 {
+        return true
+      } else if value == -1 {
+        return false
+      } else {
+        return nil
+      }
     }
     set {
-      ccv_cnnp_model_set_gradient_checkpointing(cModel, newValue ? 1 : 0)
+      if let newValue = newValue {
+        ccv_cnnp_model_set_gradient_checkpointing(cModel, newValue ? 1 : -1)
+      } else {
+        ccv_cnnp_model_set_gradient_checkpointing(cModel, 0)
+      }
     }
   }
 

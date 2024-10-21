@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "ccv",
-    commit = "e7c76392ec4ad529797484c6759fd2f8da974d99",
+    commit = "20d998dc3c7008060df6fdfa17e932c9dae93d31",
     remote = "https://github.com/liuliu/ccv.git",
-    shallow_since = "1728857981 -0400",
+    shallow_since = "1729535387 -0400",
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")
