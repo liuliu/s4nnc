@@ -441,11 +441,13 @@ extension DynamicGraph.AnyTensor {
     if isAlias && (shape.count != self.shape.count || (strides != nil && strides != self.strides)) {
       // Check if strides not permuted. If it is permuted (and we shape to different sizes or have different strides), we need to first make a copy and then reshape again.
       let oldStrides = TensorShape(dims: oldStrides)
-      for i in 1..<oldStrides.count {
-        // Otherwise we cannot reshape, need to first make a copy and then reshape.
-        precondition(
-          oldStrides[i - 1] >= oldStrides[i],
-          "The tensor is permuted, cannot reshape to \(shape), try .copied() before reshape.")
+      if oldStrides.count > 0 {
+        for i in 1..<oldStrides.count {
+          // Otherwise we cannot reshape, need to first make a copy and then reshape.
+          precondition(
+            oldStrides[i - 1] >= oldStrides[i],
+            "The tensor is permuted, cannot reshape to \(shape), try .copied() before reshape.")
+        }
       }
     }
     let _alias = withUnsafePointer(to: &cOffset) { offset -> ccv_nnc_tensor_variable_t in
