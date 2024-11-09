@@ -313,11 +313,10 @@ extension DynamicGraph {
 }
 
 extension DynamicGraph {
-  /// Set whether to enable memory efficient mode or not.
-  public static var memoryEfficient: Bool = false {
-    didSet {
-      ccv_nnc_set_memory_efficient(memoryEfficient ? 1 : 0)
-    }
+  /// The watermark for in-flight Metal operations.
+  public static var queueWatermark: Int {
+    set { ccv_nnc_set_queue_watermark(Int32(newValue)) }
+    get { Int(ccv_nnc_queue_watermark()) }
   }
   /// Set whether to enable profiler or not.
   public static func setProfiler(_ on: Bool) {
