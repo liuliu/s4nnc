@@ -1532,6 +1532,15 @@ public final class Debug: Model {
   }
 }
 
+extension ModelIOConvertible {
+  /// Move the value to another Model.IO. This is a special operation that can perform optimizations
+  /// violates SSA. Use it with extreme care.
+  public func debug(name: String = "", _ callback: @escaping ([AnyTensor?], StreamContext?) -> Void) -> Model.IO
+  {
+    return Debug(name: name, callback)(self)
+  }
+}
+
 /// Custom model.
 public final class CustomModel: Model {
   required init(_ model: OpaquePointer) {
