@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-enum Tensorboard_DataClass: SwiftProtobuf.Enum {
+enum Tensorboard_DataClass: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
   /// Unknown data class, used (implicitly) for legacy data. Will not be
@@ -67,7 +67,7 @@ enum Tensorboard_DataClass: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_DataClass] = [
+  static let allCases: [Tensorboard_DataClass] = [
     .unknown,
     .scalar,
     .tensor,
@@ -77,7 +77,7 @@ enum Tensorboard_DataClass: SwiftProtobuf.Enum {
 }
 
 /// Metadata associated with a series of Summary data
-struct Tensorboard_SummaryDescription {
+struct Tensorboard_SummaryDescription: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -93,7 +93,7 @@ struct Tensorboard_SummaryDescription {
 
 /// Serialization format for histogram module in
 /// core/lib/histogram/histogram.h
-struct Tensorboard_HistogramProto {
+struct Tensorboard_HistogramProto: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -124,7 +124,7 @@ struct Tensorboard_HistogramProto {
 
 /// A SummaryMetadata encapsulates information on which plugins are able to make
 /// use of a certain summary value.
-struct Tensorboard_SummaryMetadata {
+struct Tensorboard_SummaryMetadata: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -153,7 +153,7 @@ struct Tensorboard_SummaryMetadata {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct PluginData {
+  struct PluginData: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -181,7 +181,7 @@ struct Tensorboard_SummaryMetadata {
 /// Summaries are produced regularly during training, as controlled by
 /// the "summary_interval_secs" attribute of the training operation.
 /// Summaries are also produced at the end of an evaluation.
-struct Tensorboard_Summary {
+struct Tensorboard_Summary: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -191,7 +191,7 @@ struct Tensorboard_Summary {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct Image {
+  struct Image: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -219,7 +219,7 @@ struct Tensorboard_Summary {
     init() {}
   }
 
-  struct Audio {
+  struct Audio: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -244,7 +244,7 @@ struct Tensorboard_Summary {
     init() {}
   }
 
-  struct Value {
+  struct Value: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -325,7 +325,7 @@ struct Tensorboard_Summary {
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
     /// Value associated with the tag.
-    enum OneOf_Value: Equatable {
+    enum OneOf_Value: Equatable, @unchecked Sendable {
       case simpleValue(Float)
       case obsoleteOldStyleHistogram(Data)
       case image(Tensorboard_Summary.Image)
@@ -342,18 +342,6 @@ struct Tensorboard_Summary {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_SummaryDescription: @unchecked Sendable {}
-extension Tensorboard_HistogramProto: @unchecked Sendable {}
-extension Tensorboard_SummaryMetadata: @unchecked Sendable {}
-extension Tensorboard_SummaryMetadata.PluginData: @unchecked Sendable {}
-extension Tensorboard_Summary: @unchecked Sendable {}
-extension Tensorboard_Summary.Image: @unchecked Sendable {}
-extension Tensorboard_Summary.Audio: @unchecked Sendable {}
-extension Tensorboard_Summary.Value: @unchecked Sendable {}
-extension Tensorboard_Summary.Value.OneOf_Value: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -431,19 +419,19 @@ extension Tensorboard_HistogramProto: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.min != 0 {
+    if self.min.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.min, fieldNumber: 1)
     }
-    if self.max != 0 {
+    if self.max.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.max, fieldNumber: 2)
     }
-    if self.num != 0 {
+    if self.num.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.num, fieldNumber: 3)
     }
-    if self.sum != 0 {
+    if self.sum.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.sum, fieldNumber: 4)
     }
-    if self.sumSquares != 0 {
+    if self.sumSquares.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.sumSquares, fieldNumber: 5)
     }
     if !self.bucketLimit.isEmpty {
@@ -669,7 +657,7 @@ extension Tensorboard_Summary.Audio: SwiftProtobuf.Message, SwiftProtobuf._Messa
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.sampleRate != 0 {
+    if self.sampleRate.bitPattern != 0 {
       try visitor.visitSingularFloatField(value: self.sampleRate, fieldNumber: 1)
     }
     if self.numChannels != 0 {

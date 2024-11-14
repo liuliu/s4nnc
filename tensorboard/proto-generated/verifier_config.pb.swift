@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// The config for graph verifiers.
-struct Tensorboard_VerifierConfig {
+struct Tensorboard_VerifierConfig: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -35,7 +35,7 @@ struct Tensorboard_VerifierConfig {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum Toggle: SwiftProtobuf.Enum {
+  enum Toggle: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case `default` // = 0
     case on // = 1
@@ -65,7 +65,7 @@ struct Tensorboard_VerifierConfig {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_VerifierConfig.Toggle] = [
+    static let allCases: [Tensorboard_VerifierConfig.Toggle] = [
       .default,
       .on,
       .off,
@@ -75,10 +75,6 @@ struct Tensorboard_VerifierConfig {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_VerifierConfig: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

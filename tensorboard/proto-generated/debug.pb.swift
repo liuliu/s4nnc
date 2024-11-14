@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Option for watching a node in TensorFlow Debugger (tfdbg).
-struct Tensorboard_DebugTensorWatch {
+struct Tensorboard_DebugTensorWatch: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -75,7 +75,7 @@ struct Tensorboard_DebugTensorWatch {
 }
 
 /// Options for initializing DebuggerState in TensorFlow Debugger (tfdbg).
-struct Tensorboard_DebugOptions {
+struct Tensorboard_DebugOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -99,7 +99,7 @@ struct Tensorboard_DebugOptions {
   init() {}
 }
 
-struct Tensorboard_DebuggedSourceFile {
+struct Tensorboard_DebuggedSourceFile: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -124,7 +124,7 @@ struct Tensorboard_DebuggedSourceFile {
   init() {}
 }
 
-struct Tensorboard_DebuggedSourceFiles {
+struct Tensorboard_DebuggedSourceFiles: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -136,13 +136,6 @@ struct Tensorboard_DebuggedSourceFiles {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_DebugTensorWatch: @unchecked Sendable {}
-extension Tensorboard_DebugOptions: @unchecked Sendable {}
-extension Tensorboard_DebuggedSourceFile: @unchecked Sendable {}
-extension Tensorboard_DebuggedSourceFiles: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

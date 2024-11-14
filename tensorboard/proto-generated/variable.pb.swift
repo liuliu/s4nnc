@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Indicates when a distributed variable will be synced.
-enum Tensorboard_VariableSynchronization: SwiftProtobuf.Enum {
+enum Tensorboard_VariableSynchronization: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
   /// `AUTO`: Indicates that the synchronization will be determined by the
@@ -68,7 +68,7 @@ enum Tensorboard_VariableSynchronization: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_VariableSynchronization] = [
+  static let allCases: [Tensorboard_VariableSynchronization] = [
     .auto,
     .none,
     .onWrite,
@@ -78,7 +78,7 @@ enum Tensorboard_VariableSynchronization: SwiftProtobuf.Enum {
 }
 
 /// Indicates how a distributed variable will be aggregated.
-enum Tensorboard_VariableAggregation: SwiftProtobuf.Enum {
+enum Tensorboard_VariableAggregation: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
   /// `NONE`: This is the default, giving an error if you use a
@@ -123,7 +123,7 @@ enum Tensorboard_VariableAggregation: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_VariableAggregation] = [
+  static let allCases: [Tensorboard_VariableAggregation] = [
     .none,
     .sum,
     .mean,
@@ -133,7 +133,7 @@ enum Tensorboard_VariableAggregation: SwiftProtobuf.Enum {
 }
 
 /// Protocol buffer representing a Variable.
-struct Tensorboard_VariableDef {
+struct Tensorboard_VariableDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -179,7 +179,7 @@ struct Tensorboard_VariableDef {
   fileprivate var _saveSliceInfoDef: Tensorboard_SaveSliceInfoDef? = nil
 }
 
-struct Tensorboard_SaveSliceInfoDef {
+struct Tensorboard_SaveSliceInfoDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -200,11 +200,6 @@ struct Tensorboard_SaveSliceInfoDef {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_VariableDef: @unchecked Sendable {}
-extension Tensorboard_SaveSliceInfoDef: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

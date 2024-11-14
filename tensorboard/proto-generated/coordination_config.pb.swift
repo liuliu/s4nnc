@@ -16,13 +16,13 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Coordination service configuration parameters.
 /// The system picks appropriate values for fields that are not set.
-struct Tensorboard_CoordinationServiceConfig {
+struct Tensorboard_CoordinationServiceConfig: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -68,10 +68,6 @@ struct Tensorboard_CoordinationServiceConfig {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_CoordinationServiceConfig: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

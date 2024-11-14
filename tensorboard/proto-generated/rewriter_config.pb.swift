@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_AutoParallelOptions {
+struct Tensorboard_AutoParallelOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -34,7 +34,7 @@ struct Tensorboard_AutoParallelOptions {
   init() {}
 }
 
-struct Tensorboard_ScopedAllocatorOptions {
+struct Tensorboard_ScopedAllocatorOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -49,7 +49,7 @@ struct Tensorboard_ScopedAllocatorOptions {
 
 /// Graph rewriting is experimental and subject to change, not covered by any
 /// API stability guarantees.
-struct Tensorboard_RewriterConfig {
+struct Tensorboard_RewriterConfig: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -330,7 +330,7 @@ struct Tensorboard_RewriterConfig {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum Toggle: SwiftProtobuf.Enum {
+  enum Toggle: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case `default` // = 0
     case on // = 1
@@ -380,7 +380,7 @@ struct Tensorboard_RewriterConfig {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_RewriterConfig.Toggle] = [
+    static let allCases: [Tensorboard_RewriterConfig.Toggle] = [
       .default,
       .on,
       .off,
@@ -392,7 +392,7 @@ struct Tensorboard_RewriterConfig {
   }
 
   /// Enum for layout conversion between NCHW and NHWC on CPU. Default is OFF.
-  enum CpuLayout: SwiftProtobuf.Enum {
+  enum CpuLayout: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case noConversionOnCpu // = 0
     case nchwToNhwc // = 1
@@ -422,7 +422,7 @@ struct Tensorboard_RewriterConfig {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_RewriterConfig.CpuLayout] = [
+    static let allCases: [Tensorboard_RewriterConfig.CpuLayout] = [
       .noConversionOnCpu,
       .nchwToNhwc,
       .nhwcToNchw,
@@ -432,7 +432,7 @@ struct Tensorboard_RewriterConfig {
 
   /// Enum controlling the number of times to run optimizers. The default is to
   /// run them twice.
-  enum NumIterationsType: SwiftProtobuf.Enum {
+  enum NumIterationsType: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case defaultNumIters // = 0
     case one // = 1
@@ -462,7 +462,7 @@ struct Tensorboard_RewriterConfig {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_RewriterConfig.NumIterationsType] = [
+    static let allCases: [Tensorboard_RewriterConfig.NumIterationsType] = [
       .defaultNumIters,
       .one,
       .two,
@@ -470,7 +470,7 @@ struct Tensorboard_RewriterConfig {
 
   }
 
-  enum MemOptType: SwiftProtobuf.Enum {
+  enum MemOptType: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
 
     /// The default setting (SCHEDULING and SWAPPING HEURISTICS only)
@@ -529,7 +529,7 @@ struct Tensorboard_RewriterConfig {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_RewriterConfig.MemOptType] = [
+    static let allCases: [Tensorboard_RewriterConfig.MemOptType] = [
       .defaultMemOpt,
       .noMemOpt,
       .manual,
@@ -542,7 +542,7 @@ struct Tensorboard_RewriterConfig {
   }
 
   /// Message to describe custom graph optimizer and its parameters
-  struct CustomGraphOptimizer {
+  struct CustomGraphOptimizer: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -560,13 +560,6 @@ struct Tensorboard_RewriterConfig {
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_AutoParallelOptions: @unchecked Sendable {}
-extension Tensorboard_ScopedAllocatorOptions: @unchecked Sendable {}
-extension Tensorboard_RewriterConfig: @unchecked Sendable {}
-extension Tensorboard_RewriterConfig.CustomGraphOptimizer: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -717,7 +710,15 @@ extension Tensorboard_RewriterConfig: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _interOptimizerVerifierConfig: Tensorboard_VerifierConfig? = nil
     var _postOptimizationVerifierConfig: Tensorboard_VerifierConfig? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

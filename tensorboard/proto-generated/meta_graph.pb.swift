@@ -16,8 +16,8 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// NOTE: This protocol buffer is evolving, and will go through revisions in the
@@ -34,7 +34,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
 ///   CollectionDef
 ///   TensorInfo
 ///   SignatureDef
-struct Tensorboard_MetaGraphDef {
+struct Tensorboard_MetaGraphDef: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -102,7 +102,7 @@ struct Tensorboard_MetaGraphDef {
 
   /// Meta information regarding the graph to be exported.  To be used by users
   /// of this protocol buffer to encode information regarding their meta graph.
-  struct MetaInfoDef {
+  struct MetaInfoDef: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -233,7 +233,7 @@ struct Tensorboard_MetaGraphDef {
 ///                                proto_type=variable_pb2.VariableDef,
 ///                                to_proto=Variable.to_proto,
 ///                                from_proto=Variable.from_proto)
-struct Tensorboard_CollectionDef {
+struct Tensorboard_CollectionDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -282,7 +282,7 @@ struct Tensorboard_CollectionDef {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Kind: Equatable {
+  enum OneOf_Kind: Equatable, Sendable {
     case nodeList(Tensorboard_CollectionDef.NodeList)
     case bytesList(Tensorboard_CollectionDef.BytesList)
     case int64List(Tensorboard_CollectionDef.Int64List)
@@ -301,7 +301,7 @@ struct Tensorboard_CollectionDef {
   ///       value: "ImageSummary:0"
   ///     }
   ///   }
-  struct NodeList {
+  struct NodeList: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -326,7 +326,7 @@ struct Tensorboard_CollectionDef {
   ///     }
   ///   }
   /// }
-  struct BytesList {
+  struct BytesList: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -339,7 +339,7 @@ struct Tensorboard_CollectionDef {
   }
 
   /// Int64List is used for collecting int, int64 and long values.
-  struct Int64List {
+  struct Int64List: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -352,7 +352,7 @@ struct Tensorboard_CollectionDef {
   }
 
   /// FloatList is used for collecting float values.
-  struct FloatList {
+  struct FloatList: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -365,7 +365,7 @@ struct Tensorboard_CollectionDef {
   }
 
   /// AnyList is used for collecting Any protos.
-  struct AnyList {
+  struct AnyList: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -381,7 +381,7 @@ struct Tensorboard_CollectionDef {
 }
 
 /// Information about a Tensor necessary for feeding or retrieval.
-struct Tensorboard_TensorInfo {
+struct Tensorboard_TensorInfo: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -434,7 +434,7 @@ struct Tensorboard_TensorInfo {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Encoding: Equatable {
+  enum OneOf_Encoding: Equatable, Sendable {
     /// For dense `Tensor`s, the name of the tensor in the graph.
     case name(String)
     /// There are many possible encodings of sparse matrices
@@ -449,7 +449,7 @@ struct Tensorboard_TensorInfo {
 
   /// For sparse tensors, The COO encoding stores a triple of values, indices,
   /// and shape.
-  struct CooSparse {
+  struct CooSparse: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -471,7 +471,7 @@ struct Tensorboard_TensorInfo {
   }
 
   /// Generic encoding for composite tensors.
-  struct CompositeTensor {
+  struct CompositeTensor: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -558,7 +558,7 @@ struct Tensorboard_TensorInfo {
 ///   }
 ///   ...
 /// }
-struct Tensorboard_SignatureDef {
+struct Tensorboard_SignatureDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -586,7 +586,7 @@ struct Tensorboard_SignatureDef {
 
 /// An asset file def for a single file or a set of sharded files with the same
 /// name.
-struct Tensorboard_AssetFileDef {
+struct Tensorboard_AssetFileDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -613,24 +613,6 @@ struct Tensorboard_AssetFileDef {
   fileprivate var _tensorInfo: Tensorboard_TensorInfo? = nil
 }
 
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_MetaGraphDef: @unchecked Sendable {}
-extension Tensorboard_MetaGraphDef.MetaInfoDef: @unchecked Sendable {}
-extension Tensorboard_CollectionDef: @unchecked Sendable {}
-extension Tensorboard_CollectionDef.OneOf_Kind: @unchecked Sendable {}
-extension Tensorboard_CollectionDef.NodeList: @unchecked Sendable {}
-extension Tensorboard_CollectionDef.BytesList: @unchecked Sendable {}
-extension Tensorboard_CollectionDef.Int64List: @unchecked Sendable {}
-extension Tensorboard_CollectionDef.FloatList: @unchecked Sendable {}
-extension Tensorboard_CollectionDef.AnyList: @unchecked Sendable {}
-extension Tensorboard_TensorInfo: @unchecked Sendable {}
-extension Tensorboard_TensorInfo.OneOf_Encoding: @unchecked Sendable {}
-extension Tensorboard_TensorInfo.CooSparse: @unchecked Sendable {}
-extension Tensorboard_TensorInfo.CompositeTensor: @unchecked Sendable {}
-extension Tensorboard_SignatureDef: @unchecked Sendable {}
-extension Tensorboard_AssetFileDef: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
-
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "tensorboard"
@@ -656,7 +638,15 @@ extension Tensorboard_MetaGraphDef: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _assetFileDef: [Tensorboard_AssetFileDef] = []
     var _objectGraphDef: Tensorboard_SavedObjectGraph? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

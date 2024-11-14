@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_SavedObjectGraph {
+struct Tensorboard_SavedObjectGraph: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -40,7 +40,7 @@ struct Tensorboard_SavedObjectGraph {
   init() {}
 }
 
-struct Tensorboard_SavedObject {
+struct Tensorboard_SavedObject: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -158,7 +158,7 @@ struct Tensorboard_SavedObject {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Kind: Equatable {
+  enum OneOf_Kind: Equatable, Sendable {
     case userObject(Tensorboard_SavedUserObject)
     case asset(Tensorboard_SavedAsset)
     case function(Tensorboard_SavedFunction)
@@ -181,7 +181,7 @@ struct Tensorboard_SavedObject {
 ///
 /// This object cannot be evaluated as a tensor, and therefore cannot be bound
 /// to an input of a function.
-struct Tensorboard_SavedUserObject {
+struct Tensorboard_SavedUserObject: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -204,6 +204,8 @@ struct Tensorboard_SavedUserObject {
   /// Deprecated! At the time of deprecation, Keras was the only user of this
   /// field, and its saving and loading code will be updated shortly.
   /// Please save your application-specific metadata to a separate file.
+  ///
+  /// NOTE: This field was marked as deprecated in the .proto file.
   var metadata: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -218,7 +220,7 @@ struct Tensorboard_SavedUserObject {
 /// When bound to a function this object evaluates to a tensor with the absolute
 /// filename. Users should not depend on a particular part of the filename to
 /// remain stable (e.g. basename could be changed).
-struct Tensorboard_SavedAsset {
+struct Tensorboard_SavedAsset: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -235,7 +237,7 @@ struct Tensorboard_SavedAsset {
 }
 
 /// A function with multiple signatures, possibly with non-Tensor arguments.
-struct Tensorboard_SavedFunction {
+struct Tensorboard_SavedFunction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -258,7 +260,7 @@ struct Tensorboard_SavedFunction {
   fileprivate var _functionSpec: Tensorboard_FunctionSpec? = nil
 }
 
-struct Tensorboard_CapturedTensor {
+struct Tensorboard_CapturedTensor: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -276,7 +278,7 @@ struct Tensorboard_CapturedTensor {
 
 /// Stores low-level information about a concrete function. Referenced in either
 /// a SavedFunction or a SavedBareConcreteFunction.
-struct Tensorboard_SavedConcreteFunction {
+struct Tensorboard_SavedConcreteFunction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -314,7 +316,7 @@ struct Tensorboard_SavedConcreteFunction {
   fileprivate var _outputSignature: Tensorboard_StructuredValue? = nil
 }
 
-struct Tensorboard_SavedBareConcreteFunction {
+struct Tensorboard_SavedBareConcreteFunction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -350,7 +352,7 @@ struct Tensorboard_SavedBareConcreteFunction {
   fileprivate var _functionSpec: Tensorboard_FunctionSpec? = nil
 }
 
-struct Tensorboard_SavedConstant {
+struct Tensorboard_SavedConstant: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -365,7 +367,7 @@ struct Tensorboard_SavedConstant {
 
 /// Represents a Variable that is initialized by loading the contents from the
 /// checkpoint.
-struct Tensorboard_SavedVariable {
+struct Tensorboard_SavedVariable: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -408,7 +410,7 @@ struct Tensorboard_SavedVariable {
 
 /// Represents `FunctionSpec` used in `Function`. This represents a
 /// function that has been wrapped as a TensorFlow `Function`.
-struct Tensorboard_FunctionSpec {
+struct Tensorboard_FunctionSpec: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -448,7 +450,7 @@ struct Tensorboard_FunctionSpec {
   /// field, so we instead map to an enum.
   ///
   /// See `tf.function` for details.
-  enum JitCompile: SwiftProtobuf.Enum {
+  enum JitCompile: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case `default` // = 0
     case on // = 1
@@ -478,7 +480,7 @@ struct Tensorboard_FunctionSpec {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_FunctionSpec.JitCompile] = [
+    static let allCases: [Tensorboard_FunctionSpec.JitCompile] = [
       .default,
       .on,
       .off,
@@ -495,7 +497,7 @@ struct Tensorboard_FunctionSpec {
 /// A SavedResource represents a TF object that holds state during its lifetime.
 /// An object of this type can have a reference to a:
 /// create_resource() and an initialize() function.
-struct Tensorboard_SavedResource {
+struct Tensorboard_SavedResource: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -510,7 +512,7 @@ struct Tensorboard_SavedResource {
   init() {}
 }
 
-struct Tensorboard_SaveableObject {
+struct Tensorboard_SaveableObject: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -525,23 +527,6 @@ struct Tensorboard_SaveableObject {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_SavedObjectGraph: @unchecked Sendable {}
-extension Tensorboard_SavedObject: @unchecked Sendable {}
-extension Tensorboard_SavedObject.OneOf_Kind: @unchecked Sendable {}
-extension Tensorboard_SavedUserObject: @unchecked Sendable {}
-extension Tensorboard_SavedAsset: @unchecked Sendable {}
-extension Tensorboard_SavedFunction: @unchecked Sendable {}
-extension Tensorboard_CapturedTensor: @unchecked Sendable {}
-extension Tensorboard_SavedConcreteFunction: @unchecked Sendable {}
-extension Tensorboard_SavedBareConcreteFunction: @unchecked Sendable {}
-extension Tensorboard_SavedConstant: @unchecked Sendable {}
-extension Tensorboard_SavedVariable: @unchecked Sendable {}
-extension Tensorboard_FunctionSpec: @unchecked Sendable {}
-extension Tensorboard_SavedResource: @unchecked Sendable {}
-extension Tensorboard_SaveableObject: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

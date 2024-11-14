@@ -73,9 +73,9 @@ def s4nnc_extra_deps():
         new_git_repository,
         name = "SwiftProtobuf",
         build_file = "@s4nnc//:external/swift-protobuf.BUILD",
-        commit = "7cbb5279dd7e997c8f0f5537e46d4513be894ff1",
+        commit = "d57a5aecf24a25b32ec4a74be2f5d0a995a47c4b",
         remote = "https://github.com/apple/swift-protobuf.git",
-        shallow_since = "1658527939 -0700",
+        shallow_since = "1720448759 -0400",
     )
 
     _maybe(

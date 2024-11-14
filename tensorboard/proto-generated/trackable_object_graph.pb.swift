@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_TrackableObjectGraph {
+struct Tensorboard_TrackableObjectGraph: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -29,7 +29,7 @@ struct Tensorboard_TrackableObjectGraph {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct TrackableObject {
+  struct TrackableObject: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -69,7 +69,7 @@ struct Tensorboard_TrackableObjectGraph {
 
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    struct ObjectReference {
+    struct ObjectReference: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -86,7 +86,7 @@ struct Tensorboard_TrackableObjectGraph {
       init() {}
     }
 
-    struct SerializedTensor {
+    struct SerializedTensor: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -110,7 +110,7 @@ struct Tensorboard_TrackableObjectGraph {
       init() {}
     }
 
-    struct SlotVariableReference {
+    struct SlotVariableReference: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -140,7 +140,7 @@ struct Tensorboard_TrackableObjectGraph {
   init() {}
 }
 
-struct Tensorboard_RegisteredSaver {
+struct Tensorboard_RegisteredSaver: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -155,15 +155,6 @@ struct Tensorboard_RegisteredSaver {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_TrackableObjectGraph: @unchecked Sendable {}
-extension Tensorboard_TrackableObjectGraph.TrackableObject: @unchecked Sendable {}
-extension Tensorboard_TrackableObjectGraph.TrackableObject.ObjectReference: @unchecked Sendable {}
-extension Tensorboard_TrackableObjectGraph.TrackableObject.SerializedTensor: @unchecked Sendable {}
-extension Tensorboard_TrackableObjectGraph.TrackableObject.SlotVariableReference: @unchecked Sendable {}
-extension Tensorboard_RegisteredSaver: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

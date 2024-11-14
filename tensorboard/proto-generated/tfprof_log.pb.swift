@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// It specifies the Python callstack that creates an op.
-struct Tensorboard_CodeDef {
+struct Tensorboard_CodeDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -30,12 +30,14 @@ struct Tensorboard_CodeDef {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct Trace {
+  struct Trace: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
     /// deprecated by file_id.
+    ///
+    /// NOTE: This field was marked as deprecated in the .proto file.
     var file: String = String()
 
     var fileID: Int64 = 0
@@ -43,11 +45,15 @@ struct Tensorboard_CodeDef {
     var lineno: Int32 = 0
 
     /// deprecated by function_id.
+    ///
+    /// NOTE: This field was marked as deprecated in the .proto file.
     var function: String = String()
 
     var functionID: Int64 = 0
 
     /// deprecated line_id.
+    ///
+    /// NOTE: This field was marked as deprecated in the .proto file.
     var line: String = String()
 
     var lineID: Int64 = 0
@@ -62,7 +68,7 @@ struct Tensorboard_CodeDef {
   init() {}
 }
 
-struct Tensorboard_OpLogEntry {
+struct Tensorboard_OpLogEntry: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -96,7 +102,7 @@ struct Tensorboard_OpLogEntry {
   fileprivate var _codeDef: Tensorboard_CodeDef? = nil
 }
 
-struct Tensorboard_OpLogProto {
+struct Tensorboard_OpLogProto: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -116,7 +122,7 @@ struct Tensorboard_OpLogProto {
 /// It allows serialization, shipping around and deserialization of the profiles.
 ///
 /// Please don't depend on the internals of the profile proto.
-struct Tensorboard_ProfileProto {
+struct Tensorboard_ProfileProto: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -142,7 +148,7 @@ struct Tensorboard_ProfileProto {
   init() {}
 }
 
-struct Tensorboard_ProfileNode {
+struct Tensorboard_ProfileNode: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -197,7 +203,7 @@ struct Tensorboard_ProfileNode {
   fileprivate var _trace: Tensorboard_CodeDef? = nil
 }
 
-struct Tensorboard_ExecProfile {
+struct Tensorboard_ExecProfile: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -235,7 +241,7 @@ struct Tensorboard_ExecProfile {
   init() {}
 }
 
-struct Tensorboard_ExecTime {
+struct Tensorboard_ExecTime: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -247,7 +253,7 @@ struct Tensorboard_ExecTime {
   init() {}
 }
 
-struct Tensorboard_ExecMemory {
+struct Tensorboard_ExecMemory: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -289,7 +295,7 @@ struct Tensorboard_ExecMemory {
   init() {}
 }
 
-struct Tensorboard_Tuple {
+struct Tensorboard_Tuple: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -301,7 +307,7 @@ struct Tensorboard_Tuple {
   init() {}
 }
 
-struct Tensorboard_Memory {
+struct Tensorboard_Memory: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -314,20 +320,6 @@ struct Tensorboard_Memory {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_CodeDef: @unchecked Sendable {}
-extension Tensorboard_CodeDef.Trace: @unchecked Sendable {}
-extension Tensorboard_OpLogEntry: @unchecked Sendable {}
-extension Tensorboard_OpLogProto: @unchecked Sendable {}
-extension Tensorboard_ProfileProto: @unchecked Sendable {}
-extension Tensorboard_ProfileNode: @unchecked Sendable {}
-extension Tensorboard_ExecProfile: @unchecked Sendable {}
-extension Tensorboard_ExecTime: @unchecked Sendable {}
-extension Tensorboard_ExecMemory: @unchecked Sendable {}
-extension Tensorboard_Tuple: @unchecked Sendable {}
-extension Tensorboard_Memory: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

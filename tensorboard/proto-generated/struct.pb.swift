@@ -16,8 +16,8 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// `StructuredValue` represents a dynamically typed value representing various
@@ -44,7 +44,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
 /// This is an ergonomic aid for working with loaded SavedModels, not a promise
 /// to serialize all possible function signatures. For example we do not expect
 /// to pickle generic Python objects, and ideally we'd stay language-agnostic.
-struct Tensorboard_StructuredValue {
+struct Tensorboard_StructuredValue: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -190,7 +190,7 @@ struct Tensorboard_StructuredValue {
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   /// The kind of value.
-  enum OneOf_Kind: Equatable {
+  enum OneOf_Kind: Equatable, Sendable {
     /// Represents None.
     case noneValue(Tensorboard_NoneValue)
     /// Represents a double-precision floating-point value (a Python `float`).
@@ -234,7 +234,7 @@ struct Tensorboard_StructuredValue {
 }
 
 /// Represents None.
-struct Tensorboard_NoneValue {
+struct Tensorboard_NoneValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -245,7 +245,7 @@ struct Tensorboard_NoneValue {
 }
 
 /// Represents a Python list.
-struct Tensorboard_ListValue {
+struct Tensorboard_ListValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -258,7 +258,7 @@ struct Tensorboard_ListValue {
 }
 
 /// Represents a Python tuple.
-struct Tensorboard_TupleValue {
+struct Tensorboard_TupleValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -272,7 +272,7 @@ struct Tensorboard_TupleValue {
 
 /// Represents a Python dict keyed by `str`.
 /// The comment on Unicode from Value.string_value applies analogously.
-struct Tensorboard_DictValue {
+struct Tensorboard_DictValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -285,7 +285,7 @@ struct Tensorboard_DictValue {
 }
 
 /// Represents a (key, value) pair.
-struct Tensorboard_PairValue {
+struct Tensorboard_PairValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -309,7 +309,7 @@ struct Tensorboard_PairValue {
 }
 
 /// Represents Python's namedtuple.
-struct Tensorboard_NamedTupleValue {
+struct Tensorboard_NamedTupleValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -324,7 +324,7 @@ struct Tensorboard_NamedTupleValue {
 }
 
 /// A protobuf to represent tf.TensorSpec.
-struct Tensorboard_TensorSpecProto {
+struct Tensorboard_TensorSpecProto: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -350,7 +350,7 @@ struct Tensorboard_TensorSpecProto {
 }
 
 /// A protobuf to represent tf.BoundedTensorSpec.
-struct Tensorboard_BoundedTensorSpecProto {
+struct Tensorboard_BoundedTensorSpecProto: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -396,7 +396,7 @@ struct Tensorboard_BoundedTensorSpecProto {
 }
 
 /// Represents a tf.TypeSpec
-struct Tensorboard_TypeSpecProto {
+struct Tensorboard_TypeSpecProto: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -437,7 +437,7 @@ struct Tensorboard_TypeSpecProto {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum TypeSpecClass: SwiftProtobuf.Enum {
+  enum TypeSpecClass: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case unknown // = 0
 
@@ -521,7 +521,7 @@ struct Tensorboard_TypeSpecProto {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_TypeSpecProto.TypeSpecClass] = [
+    static let allCases: [Tensorboard_TypeSpecProto.TypeSpecClass] = [
       .unknown,
       .sparseTensorSpec,
       .indexedSlicesSpec,
@@ -543,20 +543,6 @@ struct Tensorboard_TypeSpecProto {
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_StructuredValue: @unchecked Sendable {}
-extension Tensorboard_StructuredValue.OneOf_Kind: @unchecked Sendable {}
-extension Tensorboard_NoneValue: @unchecked Sendable {}
-extension Tensorboard_ListValue: @unchecked Sendable {}
-extension Tensorboard_TupleValue: @unchecked Sendable {}
-extension Tensorboard_DictValue: @unchecked Sendable {}
-extension Tensorboard_PairValue: @unchecked Sendable {}
-extension Tensorboard_NamedTupleValue: @unchecked Sendable {}
-extension Tensorboard_TensorSpecProto: @unchecked Sendable {}
-extension Tensorboard_BoundedTensorSpecProto: @unchecked Sendable {}
-extension Tensorboard_TypeSpecProto: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -584,7 +570,15 @@ extension Tensorboard_StructuredValue: SwiftProtobuf.Message, SwiftProtobuf._Mes
   fileprivate class _StorageClass {
     var _kind: Tensorboard_StructuredValue.OneOf_Kind?
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 
@@ -860,8 +854,8 @@ extension Tensorboard_NoneValue: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
   static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let _ = try decoder.nextFieldNumber() {
-    }
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
@@ -1173,7 +1167,15 @@ extension Tensorboard_TypeSpecProto: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _typeSpecClassName: String = String()
     var _numFlatComponents: Int32 = 0
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

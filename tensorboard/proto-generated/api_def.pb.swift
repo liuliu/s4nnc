@@ -19,8 +19,8 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Used to specify and override the default API & behavior in the
@@ -39,7 +39,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
 /// you can change the semantics of existing code.  These changes may
 /// need to wait until a major release of TensorFlow to avoid breaking
 /// our compatibility promises.
-struct Tensorboard_ApiDef {
+struct Tensorboard_ApiDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -86,7 +86,7 @@ struct Tensorboard_ApiDef {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum Visibility: SwiftProtobuf.Enum {
+  enum Visibility: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
 
     /// Normally this is "VISIBLE" unless you are inheriting a
@@ -130,7 +130,7 @@ struct Tensorboard_ApiDef {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_ApiDef.Visibility] = [
+    static let allCases: [Tensorboard_ApiDef.Visibility] = [
       .defaultVisibility,
       .visible,
       .skip,
@@ -143,7 +143,7 @@ struct Tensorboard_ApiDef {
   /// inherited endpoints.  The first endpoint should be the
   /// "canonical" endpoint, and should not be deprecated (unless all
   /// endpoints are deprecated).
-  struct Endpoint {
+  struct Endpoint: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -168,7 +168,7 @@ struct Tensorboard_ApiDef {
     init() {}
   }
 
-  struct Arg {
+  struct Arg: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -193,7 +193,7 @@ struct Tensorboard_ApiDef {
   /// Description of the graph-construction-time configuration of this
   /// Op.  That is to say, this describes the attr fields that will
   /// be specified in the NodeDef.
-  struct Attr {
+  struct Attr: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -232,7 +232,7 @@ struct Tensorboard_ApiDef {
   init() {}
 }
 
-struct Tensorboard_ApiDefs {
+struct Tensorboard_ApiDefs: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -243,14 +243,6 @@ struct Tensorboard_ApiDefs {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_ApiDef: @unchecked Sendable {}
-extension Tensorboard_ApiDef.Endpoint: @unchecked Sendable {}
-extension Tensorboard_ApiDef.Arg: @unchecked Sendable {}
-extension Tensorboard_ApiDef.Attr: @unchecked Sendable {}
-extension Tensorboard_ApiDefs: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

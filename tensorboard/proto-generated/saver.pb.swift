@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Protocol buffer representing the configuration of a Saver.
-struct Tensorboard_SaverDef {
+struct Tensorboard_SaverDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -56,7 +56,7 @@ struct Tensorboard_SaverDef {
   /// Usually, each subclass of BaseSaverBuilder works with a particular
   /// version/format.  However, it is possible that the same builder may be
   /// upgraded to support a newer checkpoint format in the future.
-  enum CheckpointFormatVersion: SwiftProtobuf.Enum {
+  enum CheckpointFormatVersion: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
 
     /// Internal legacy format.
@@ -92,7 +92,7 @@ struct Tensorboard_SaverDef {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_SaverDef.CheckpointFormatVersion] = [
+    static let allCases: [Tensorboard_SaverDef.CheckpointFormatVersion] = [
       .legacy,
       .v1,
       .v2,
@@ -102,10 +102,6 @@ struct Tensorboard_SaverDef {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_SaverDef: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -157,7 +153,7 @@ extension Tensorboard_SaverDef: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if self.sharded != false {
       try visitor.visitSingularBoolField(value: self.sharded, fieldNumber: 5)
     }
-    if self.keepCheckpointEveryNHours != 0 {
+    if self.keepCheckpointEveryNHours.bitPattern != 0 {
       try visitor.visitSingularFloatField(value: self.keepCheckpointEveryNHours, fieldNumber: 6)
     }
     if self.version != .legacy {

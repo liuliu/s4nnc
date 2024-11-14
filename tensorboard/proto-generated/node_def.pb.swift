@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_NodeDef {
+struct Tensorboard_NodeDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -102,7 +102,7 @@ struct Tensorboard_NodeDef {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct ExperimentalDebugInfo {
+  struct ExperimentalDebugInfo: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -135,11 +135,6 @@ struct Tensorboard_NodeDef {
   fileprivate var _experimentalDebugInfo: Tensorboard_NodeDef.ExperimentalDebugInfo? = nil
   fileprivate var _experimentalType: Tensorboard_FullTypeDef? = nil
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_NodeDef: @unchecked Sendable {}
-extension Tensorboard_NodeDef.ExperimentalDebugInfo: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

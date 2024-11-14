@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_GPUOptions {
+struct Tensorboard_GPUOptions: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -144,7 +144,7 @@ struct Tensorboard_GPUOptions {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct Experimental {
+  struct Experimental: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -246,7 +246,7 @@ struct Tensorboard_GPUOptions {
 
     /// Configuration for breaking down a visible GPU into multiple "virtual"
     /// devices.
-    struct VirtualDevices {
+    struct VirtualDevices: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -287,7 +287,7 @@ struct Tensorboard_GPUOptions {
 }
 
 /// Options passed to the graph optimizer
-struct Tensorboard_OptimizerOptions {
+struct Tensorboard_OptimizerOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -327,7 +327,7 @@ struct Tensorboard_OptimizerOptions {
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   /// Optimization level
-  enum Level: SwiftProtobuf.Enum {
+  enum Level: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
 
     /// L1 is the default level.
@@ -361,7 +361,7 @@ struct Tensorboard_OptimizerOptions {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_OptimizerOptions.Level] = [
+    static let allCases: [Tensorboard_OptimizerOptions.Level] = [
       .l1,
       .l0,
     ]
@@ -369,7 +369,7 @@ struct Tensorboard_OptimizerOptions {
   }
 
   /// Control the use of the compiler/jit.  Experimental.
-  enum GlobalJitLevel: SwiftProtobuf.Enum {
+  enum GlobalJitLevel: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
 
     /// Default setting ("off" now, but later expected to be "on")
@@ -409,7 +409,7 @@ struct Tensorboard_OptimizerOptions {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_OptimizerOptions.GlobalJitLevel] = [
+    static let allCases: [Tensorboard_OptimizerOptions.GlobalJitLevel] = [
       .default,
       .off,
       .on1,
@@ -421,7 +421,7 @@ struct Tensorboard_OptimizerOptions {
   init() {}
 }
 
-struct Tensorboard_GraphOptions {
+struct Tensorboard_GraphOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -489,7 +489,7 @@ struct Tensorboard_GraphOptions {
   fileprivate var _rewriteOptions: Tensorboard_RewriterConfig? = nil
 }
 
-struct Tensorboard_ThreadPoolOptionProto {
+struct Tensorboard_ThreadPoolOptionProto: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -522,7 +522,7 @@ struct Tensorboard_ThreadPoolOptionProto {
   init() {}
 }
 
-struct Tensorboard_RPCOptions {
+struct Tensorboard_RPCOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -573,7 +573,7 @@ struct Tensorboard_RPCOptions {
 /// sessions within the same process.
 ///
 /// NOTE: This is currently used and propagated only by the direct session.
-struct Tensorboard_SessionMetadata {
+struct Tensorboard_SessionMetadata: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -590,7 +590,7 @@ struct Tensorboard_SessionMetadata {
 
 /// Session configuration parameters.
 /// The system picks appropriate values for fields that are not set.
-struct Tensorboard_ConfigProto {
+struct Tensorboard_ConfigProto: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -788,7 +788,7 @@ struct Tensorboard_ConfigProto {
   /// Everything inside Experimental is subject to change and is not subject
   /// to API stability guarantees in
   /// https://www.tensorflow.org/guide/version_compat.
-  struct Experimental {
+  struct Experimental: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -995,7 +995,7 @@ struct Tensorboard_ConfigProto {
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
     /// An enum that describes the state of the MLIR bridge rollout.
-    enum MlirBridgeRollout: SwiftProtobuf.Enum {
+    enum MlirBridgeRollout: SwiftProtobuf.Enum, Swift.CaseIterable {
       typealias RawValue = Int
 
       /// If this field is left unspecified, the MLIR bridge may be selectively
@@ -1050,7 +1050,7 @@ struct Tensorboard_ConfigProto {
       }
 
       // The compiler won't synthesize support with the UNRECOGNIZED case.
-      static var allCases: [Tensorboard_ConfigProto.Experimental.MlirBridgeRollout] = [
+      static let allCases: [Tensorboard_ConfigProto.Experimental.MlirBridgeRollout] = [
         .unspecified,
         .enabled,
         .disabled,
@@ -1071,7 +1071,7 @@ struct Tensorboard_ConfigProto {
 }
 
 /// Options for a single Run() call.
-struct Tensorboard_RunOptions {
+struct Tensorboard_RunOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1123,7 +1123,7 @@ struct Tensorboard_RunOptions {
 
   /// TODO(pbar) Turn this into a TraceOptions proto which allows
   /// tracing to be controlled in a more orthogonal manner?
-  enum TraceLevel: SwiftProtobuf.Enum {
+  enum TraceLevel: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case noTrace // = 0
     case softwareTrace // = 1
@@ -1156,7 +1156,7 @@ struct Tensorboard_RunOptions {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_RunOptions.TraceLevel] = [
+    static let allCases: [Tensorboard_RunOptions.TraceLevel] = [
       .noTrace,
       .softwareTrace,
       .hardwareTrace,
@@ -1168,7 +1168,7 @@ struct Tensorboard_RunOptions {
   /// Everything inside Experimental is subject to change and is not subject
   /// to API stability guarantees in
   /// https://www.tensorflow.org/guide/version_compat.
-  struct Experimental {
+  struct Experimental: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -1197,7 +1197,7 @@ struct Tensorboard_RunOptions {
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
     /// Options for run handler thread pool.
-    struct RunHandlerPoolOptions {
+    struct RunHandlerPoolOptions: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -1223,7 +1223,7 @@ struct Tensorboard_RunOptions {
 }
 
 /// Metadata output (i.e., non-Tensor) for a single Run() call.
-struct Tensorboard_RunMetadata {
+struct Tensorboard_RunMetadata: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1267,7 +1267,7 @@ struct Tensorboard_RunMetadata {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct FunctionGraphs {
+  struct FunctionGraphs: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -1310,7 +1310,7 @@ struct Tensorboard_RunMetadata {
 }
 
 /// Defines a connection between two tensors in a `GraphDef`.
-struct Tensorboard_TensorConnection {
+struct Tensorboard_TensorConnection: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1332,7 +1332,7 @@ struct Tensorboard_TensorConnection {
 /// to be fetched or executed.
 ///
 /// Compare with the arguments to `Session::Run()`.
-struct Tensorboard_CallableOptions {
+struct Tensorboard_CallableOptions: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1455,26 +1455,6 @@ struct Tensorboard_CallableOptions {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_GPUOptions: @unchecked Sendable {}
-extension Tensorboard_GPUOptions.Experimental: @unchecked Sendable {}
-extension Tensorboard_GPUOptions.Experimental.VirtualDevices: @unchecked Sendable {}
-extension Tensorboard_OptimizerOptions: @unchecked Sendable {}
-extension Tensorboard_GraphOptions: @unchecked Sendable {}
-extension Tensorboard_ThreadPoolOptionProto: @unchecked Sendable {}
-extension Tensorboard_RPCOptions: @unchecked Sendable {}
-extension Tensorboard_SessionMetadata: @unchecked Sendable {}
-extension Tensorboard_ConfigProto: @unchecked Sendable {}
-extension Tensorboard_ConfigProto.Experimental: @unchecked Sendable {}
-extension Tensorboard_RunOptions: @unchecked Sendable {}
-extension Tensorboard_RunOptions.Experimental: @unchecked Sendable {}
-extension Tensorboard_RunOptions.Experimental.RunHandlerPoolOptions: @unchecked Sendable {}
-extension Tensorboard_RunMetadata: @unchecked Sendable {}
-extension Tensorboard_RunMetadata.FunctionGraphs: @unchecked Sendable {}
-extension Tensorboard_TensorConnection: @unchecked Sendable {}
-extension Tensorboard_CallableOptions: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
-
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "tensorboard"
@@ -1504,7 +1484,15 @@ extension Tensorboard_GPUOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     var _forceGpuCompatible: Bool = false
     var _experimental: Tensorboard_GPUOptions.Experimental? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 
@@ -1557,7 +1545,7 @@ extension Tensorboard_GPUOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       // allocates stack space for every if/case branch local when no optimizations
       // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
       // https://github.com/apple/swift-protobuf/issues/1182
-      if _storage._perProcessGpuMemoryFraction != 0 {
+      if _storage._perProcessGpuMemoryFraction.bitPattern != 0 {
         try visitor.visitSingularDoubleField(value: _storage._perProcessGpuMemoryFraction, fieldNumber: 1)
       }
       if !_storage._allocatorType.isEmpty {
@@ -1674,7 +1662,7 @@ extension Tensorboard_GPUOptions.Experimental: SwiftProtobuf.Message, SwiftProto
     if self.kernelTrackerMaxPending != 0 {
       try visitor.visitSingularInt32Field(value: self.kernelTrackerMaxPending, fieldNumber: 9)
     }
-    if self.internalFragmentationFraction != 0 {
+    if self.internalFragmentationFraction.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.internalFragmentationFraction, fieldNumber: 10)
     }
     if self.useCudaMallocAsync != false {
@@ -2088,7 +2076,15 @@ extension Tensorboard_ConfigProto: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _shareClusterDevicesInSession: Bool = false
     var _experimental: Tensorboard_ConfigProto.Experimental? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 
@@ -2290,7 +2286,15 @@ extension Tensorboard_ConfigProto.Experimental: SwiftProtobuf.Message, SwiftProt
     var _xlaPreferSingleGraphCluster: Bool = false
     var _coordinationConfig: Tensorboard_CoordinationServiceConfig? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 
@@ -2701,7 +2705,15 @@ extension Tensorboard_RunMetadata.FunctionGraphs: SwiftProtobuf.Message, SwiftPr
     var _preOptimizationGraph: Tensorboard_GraphDef? = nil
     var _postOptimizationGraph: Tensorboard_GraphDef? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 
@@ -2833,7 +2845,15 @@ extension Tensorboard_CallableOptions: SwiftProtobuf.Message, SwiftProtobuf._Mes
     var _fetchDevices: Dictionary<String,String> = [:]
     var _fetchSkipSync: Bool = false
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

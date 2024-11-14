@@ -16,13 +16,13 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// DISABLED.IfChange
 /// Experimental. Represents the complete type information of a TensorFlow value.
-enum Tensorboard_FullTypeId: SwiftProtobuf.Enum {
+enum Tensorboard_FullTypeId: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
   /// The default represents an uninitialized values.
@@ -331,7 +331,7 @@ enum Tensorboard_FullTypeId: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_FullTypeId] = [
+  static let allCases: [Tensorboard_FullTypeId] = [
     .tftUnset,
     .tftVar,
     .tftAny,
@@ -371,7 +371,7 @@ enum Tensorboard_FullTypeId: SwiftProtobuf.Enum {
 /// This encoding uses tags instead of dedicated messages for regularity. In
 /// particular the encoding imposes no restrictions on what the parameters of any
 /// type should be, which in particular needs to be true for type symbols.
-struct Tensorboard_FullTypeDef {
+struct Tensorboard_FullTypeDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -412,7 +412,7 @@ struct Tensorboard_FullTypeDef {
   /// For example, a type variable admits a string attribute - its name.
   /// Shape-related types may admit int attributes - their static shape values.
   /// Fields for more data types to be added as needed.
-  enum OneOf_Attr: Equatable {
+  enum OneOf_Attr: Equatable, Sendable {
     case s(String)
     /// TODO(mdan): list/tensor, map? Need to reconcile with TFT_RECORD, etc.
     case i(Int64)
@@ -421,11 +421,6 @@ struct Tensorboard_FullTypeDef {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_FullTypeDef: @unchecked Sendable {}
-extension Tensorboard_FullTypeDef.OneOf_Attr: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

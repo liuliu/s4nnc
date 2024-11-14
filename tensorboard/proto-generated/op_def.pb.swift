@@ -16,14 +16,14 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Defines an operation. A NodeDef in a GraphDef specifies an Op by
 /// using the "op" field which should match the name of a OpDef.
 /// DISABLED.IfChange
-struct Tensorboard_OpDef {
+struct Tensorboard_OpDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -100,7 +100,7 @@ struct Tensorboard_OpDef {
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   /// For describing inputs and outputs.
-  struct ArgDef {
+  struct ArgDef: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -169,7 +169,7 @@ struct Tensorboard_OpDef {
   /// Description of the graph-construction-time configuration of this
   /// Op.  That is to say, this describes the attr fields that will
   /// be specified in the NodeDef.
-  struct AttrDef {
+  struct AttrDef: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -246,7 +246,7 @@ struct Tensorboard_OpDef {
 }
 
 /// Information about version-dependent deprecation of an op
-struct Tensorboard_OpDeprecation {
+struct Tensorboard_OpDeprecation: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -263,7 +263,7 @@ struct Tensorboard_OpDeprecation {
 }
 
 /// A collection of OpDefs
-struct Tensorboard_OpList {
+struct Tensorboard_OpList: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -274,14 +274,6 @@ struct Tensorboard_OpList {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_OpDef: @unchecked Sendable {}
-extension Tensorboard_OpDef.ArgDef: @unchecked Sendable {}
-extension Tensorboard_OpDef.AttrDef: @unchecked Sendable {}
-extension Tensorboard_OpDeprecation: @unchecked Sendable {}
-extension Tensorboard_OpList: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -500,7 +492,15 @@ extension Tensorboard_OpDef.AttrDef: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _minimum: Int64 = 0
     var _allowedValues: Tensorboard_AttrValue? = nil
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

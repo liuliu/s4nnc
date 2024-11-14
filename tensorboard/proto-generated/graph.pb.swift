@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Represents the graph of operations
-struct Tensorboard_GraphDef {
+struct Tensorboard_GraphDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -43,6 +43,8 @@ struct Tensorboard_GraphDef {
   /// Deprecated single version field; use versions above instead.  Since all
   /// GraphDef changes before "versions" was introduced were forward
   /// compatible, this field is entirely ignored.
+  ///
+  /// NOTE: This field was marked as deprecated in the .proto file.
   var version: Int32 = 0
 
   /// "library" provides user-defined functions.
@@ -87,10 +89,6 @@ struct Tensorboard_GraphDef {
   fileprivate var _versions: Tensorboard_VersionDef? = nil
   fileprivate var _library: Tensorboard_FunctionDefLibrary? = nil
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_GraphDef: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_CppShapeInferenceResult {
+struct Tensorboard_CppShapeInferenceResult: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -45,7 +45,7 @@ struct Tensorboard_CppShapeInferenceResult {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct HandleShapeAndType {
+  struct HandleShapeAndType: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -78,7 +78,7 @@ struct Tensorboard_CppShapeInferenceResult {
     fileprivate var _type: Tensorboard_FullTypeDef? = nil
   }
 
-  struct HandleData {
+  struct HandleData: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -99,7 +99,7 @@ struct Tensorboard_CppShapeInferenceResult {
   fileprivate var _handleData: Tensorboard_CppShapeInferenceResult.HandleData? = nil
 }
 
-struct Tensorboard_CppShapeInferenceInputsNeeded {
+struct Tensorboard_CppShapeInferenceInputsNeeded: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -112,13 +112,6 @@ struct Tensorboard_CppShapeInferenceInputsNeeded {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_CppShapeInferenceResult: @unchecked Sendable {}
-extension Tensorboard_CppShapeInferenceResult.HandleShapeAndType: @unchecked Sendable {}
-extension Tensorboard_CppShapeInferenceResult.HandleData: @unchecked Sendable {}
-extension Tensorboard_CppShapeInferenceInputsNeeded: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 

@@ -16,13 +16,13 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// (== suppress_warning documentation-presence ==)
 /// DISABLED.IfChange
-enum Tensorboard_DataType: SwiftProtobuf.Enum {
+enum Tensorboard_DataType: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
   /// Not a legal value for DataType.  Used to indicate a DataType field
@@ -211,7 +211,7 @@ enum Tensorboard_DataType: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_DataType] = [
+  static let allCases: [Tensorboard_DataType] = [
     .dtInvalid,
     .dtFloat,
     .dtDouble,

@@ -16,11 +16,11 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
-struct Tensorboard_CostGraphDef {
+struct Tensorboard_CostGraphDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -31,7 +31,7 @@ struct Tensorboard_CostGraphDef {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct Node {
+  struct Node: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -56,10 +56,13 @@ struct Tensorboard_CostGraphDef {
     /// Persistent memory used by this node.
     var persistentMemorySize: Int64 = 0
 
+    /// NOTE: This field was marked as deprecated in the .proto file.
     var hostTempMemorySize: Int64 = 0
 
+    /// NOTE: This field was marked as deprecated in the .proto file.
     var deviceTempMemorySize: Int64 = 0
 
+    /// NOTE: This field was marked as deprecated in the .proto file.
     var devicePersistentMemorySize: Int64 = 0
 
     /// Estimate of the computational cost of this node, in microseconds.
@@ -88,7 +91,7 @@ struct Tensorboard_CostGraphDef {
     /// Inputs of this node. They must be executed before this node can be
     /// executed. An input is a particular output of another node, specified
     /// by the node id and the output index.
-    struct InputInfo {
+    struct InputInfo: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -103,7 +106,7 @@ struct Tensorboard_CostGraphDef {
     }
 
     /// Outputs of this node.
-    struct OutputInfo {
+    struct OutputInfo: Sendable {
       // SwiftProtobuf.Message conformance is added in an extension below. See the
       // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
       // methods supported on all messages.
@@ -137,7 +140,7 @@ struct Tensorboard_CostGraphDef {
   }
 
   /// Total cost of this graph, typically used for balancing decisions.
-  struct AggregatedCost {
+  struct AggregatedCost: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -155,14 +158,6 @@ struct Tensorboard_CostGraphDef {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_CostGraphDef: @unchecked Sendable {}
-extension Tensorboard_CostGraphDef.Node: @unchecked Sendable {}
-extension Tensorboard_CostGraphDef.Node.InputInfo: @unchecked Sendable {}
-extension Tensorboard_CostGraphDef.Node.OutputInfo: @unchecked Sendable {}
-extension Tensorboard_CostGraphDef.AggregatedCost: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -441,7 +436,7 @@ extension Tensorboard_CostGraphDef.AggregatedCost: SwiftProtobuf.Message, SwiftP
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.cost != 0 {
+    if self.cost.bitPattern != 0 {
       try visitor.visitSingularFloatField(value: self.cost, fieldNumber: 1)
     }
     if !self.dimension.isEmpty {

@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// A library is a set of named functions.
-struct Tensorboard_FunctionDefLibrary {
+struct Tensorboard_FunctionDefLibrary: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -43,7 +43,7 @@ struct Tensorboard_FunctionDefLibrary {
 ///
 /// TODO(zhifengc):
 ///   * device spec, etc.
-struct Tensorboard_FunctionDef {
+struct Tensorboard_FunctionDef: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -110,7 +110,7 @@ struct Tensorboard_FunctionDef {
 
   /// Attributes for function arguments. These attributes are the same set of
   /// valid attributes as to _Arg nodes.
-  struct ArgAttrs {
+  struct ArgAttrs: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -145,7 +145,7 @@ struct Tensorboard_FunctionDef {
 /// where L is a scalar-value function of (x1, x2, ..., xN) (e.g., the
 /// loss function). dL/dx_i is the partial derivative of L with respect
 /// to x_i.
-struct Tensorboard_GradientDef {
+struct Tensorboard_GradientDef: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -165,7 +165,7 @@ struct Tensorboard_GradientDef {
 /// gradients library and used in the ops of a function in the function library.
 /// Unlike GradientDef, these gradients are identified by op type, and not
 /// directly linked to any function.
-struct Tensorboard_RegisteredGradient {
+struct Tensorboard_RegisteredGradient: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -180,14 +180,6 @@ struct Tensorboard_RegisteredGradient {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_FunctionDefLibrary: @unchecked Sendable {}
-extension Tensorboard_FunctionDef: @unchecked Sendable {}
-extension Tensorboard_FunctionDef.ArgAttrs: @unchecked Sendable {}
-extension Tensorboard_GradientDef: @unchecked Sendable {}
-extension Tensorboard_RegisteredGradient: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -258,7 +250,15 @@ extension Tensorboard_FunctionDef: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _ret: Dictionary<String,String> = [:]
     var _controlRet: Dictionary<String,String> = [:]
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

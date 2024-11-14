@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Current health status of a worker.
-enum Tensorboard_WorkerHealth: SwiftProtobuf.Enum {
+enum Tensorboard_WorkerHealth: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
   /// By default a worker is healthy.
@@ -58,7 +58,7 @@ enum Tensorboard_WorkerHealth: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_WorkerHealth] = [
+  static let allCases: [Tensorboard_WorkerHealth] = [
     .ok,
     .receivedShutdownSignal,
     .internalError,
@@ -69,7 +69,7 @@ enum Tensorboard_WorkerHealth: SwiftProtobuf.Enum {
 
 /// Indicates the behavior of the worker when an internal error or shutdown
 /// signal is received.
-enum Tensorboard_WorkerShutdownMode: SwiftProtobuf.Enum {
+enum Tensorboard_WorkerShutdownMode: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case `default` // = 0
   case notConfigured // = 1
@@ -102,7 +102,7 @@ enum Tensorboard_WorkerShutdownMode: SwiftProtobuf.Enum {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [Tensorboard_WorkerShutdownMode] = [
+  static let allCases: [Tensorboard_WorkerShutdownMode] = [
     .default,
     .notConfigured,
     .waitForCoordinator,
@@ -113,7 +113,7 @@ enum Tensorboard_WorkerShutdownMode: SwiftProtobuf.Enum {
 
 /// Protocol buffer representing an event that happened during
 /// the execution of a Brain model.
-struct Tensorboard_Event {
+struct Tensorboard_Event: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -159,6 +159,8 @@ struct Tensorboard_Event {
   /// The user output a log message. This was theoretically used by the defunct
   /// tensorboard_logging module, which has since been removed; this field is
   /// now deprecated and should not be used.
+  ///
+  /// NOTE: This field was marked as deprecated in the .proto file.
   var logMessage: Tensorboard_LogMessage {
     get {
       if case .logMessage(let v)? = what {return v}
@@ -196,7 +198,7 @@ struct Tensorboard_Event {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_What: Equatable {
+  enum OneOf_What: Equatable, @unchecked Sendable {
     /// An event file was started, with the specified version.
     /// This is use to identify the contents of the record IO files
     /// easily.  Current version is "brain.Event:2".  All versions
@@ -209,6 +211,8 @@ struct Tensorboard_Event {
     /// The user output a log message. This was theoretically used by the defunct
     /// tensorboard_logging module, which has since been removed; this field is
     /// now deprecated and should not be used.
+    ///
+    /// NOTE: This field was marked as deprecated in the .proto file.
     case logMessage(Tensorboard_LogMessage)
     /// The state of the session which can be used for restarting after crashes.
     case sessionLog(Tensorboard_SessionLog)
@@ -226,7 +230,9 @@ struct Tensorboard_Event {
 ///
 /// This was theoretically used by the defunct tensorboard_logging module, which
 /// has been removed; this message is now deprecated and should not be used.
-struct Tensorboard_LogMessage {
+///
+/// NOTE: This message was marked as deprecated in the .proto file.
+struct Tensorboard_LogMessage: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -237,7 +243,8 @@ struct Tensorboard_LogMessage {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum Level: SwiftProtobuf.Enum {
+  /// NOTE: This enum was marked as deprecated in the .proto file.
+  enum Level: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case unknown // = 0
 
@@ -281,7 +288,7 @@ struct Tensorboard_LogMessage {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_LogMessage.Level] = [
+    static let allCases: [Tensorboard_LogMessage.Level] = [
       .unknown,
       .debugging,
       .info,
@@ -296,7 +303,7 @@ struct Tensorboard_LogMessage {
 }
 
 /// Protocol buffer used for logging session state.
-struct Tensorboard_SessionLog {
+struct Tensorboard_SessionLog: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -310,7 +317,7 @@ struct Tensorboard_SessionLog {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum SessionStatus: SwiftProtobuf.Enum {
+  enum SessionStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
     typealias RawValue = Int
     case statusUnspecified // = 0
     case start // = 1
@@ -343,7 +350,7 @@ struct Tensorboard_SessionLog {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [Tensorboard_SessionLog.SessionStatus] = [
+    static let allCases: [Tensorboard_SessionLog.SessionStatus] = [
       .statusUnspecified,
       .start,
       .stop,
@@ -356,7 +363,7 @@ struct Tensorboard_SessionLog {
 }
 
 /// For logging the metadata output for a single session.run() call.
-struct Tensorboard_TaggedRunMetadata {
+struct Tensorboard_TaggedRunMetadata: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -373,7 +380,7 @@ struct Tensorboard_TaggedRunMetadata {
   init() {}
 }
 
-struct Tensorboard_WatchdogConfig {
+struct Tensorboard_WatchdogConfig: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -385,7 +392,7 @@ struct Tensorboard_WatchdogConfig {
   init() {}
 }
 
-struct Tensorboard_RequestedExitCode {
+struct Tensorboard_RequestedExitCode: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -397,7 +404,7 @@ struct Tensorboard_RequestedExitCode {
   init() {}
 }
 
-struct Tensorboard_WorkerHeartbeatRequest {
+struct Tensorboard_WorkerHeartbeatRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -430,7 +437,7 @@ struct Tensorboard_WorkerHeartbeatRequest {
   fileprivate var _exitCode: Tensorboard_RequestedExitCode? = nil
 }
 
-struct Tensorboard_WorkerHeartbeatResponse {
+struct Tensorboard_WorkerHeartbeatResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -445,18 +452,6 @@ struct Tensorboard_WorkerHeartbeatResponse {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_Event: @unchecked Sendable {}
-extension Tensorboard_Event.OneOf_What: @unchecked Sendable {}
-extension Tensorboard_LogMessage: @unchecked Sendable {}
-extension Tensorboard_SessionLog: @unchecked Sendable {}
-extension Tensorboard_TaggedRunMetadata: @unchecked Sendable {}
-extension Tensorboard_WatchdogConfig: @unchecked Sendable {}
-extension Tensorboard_RequestedExitCode: @unchecked Sendable {}
-extension Tensorboard_WorkerHeartbeatRequest: @unchecked Sendable {}
-extension Tensorboard_WorkerHeartbeatResponse: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -588,7 +583,7 @@ extension Tensorboard_Event: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     // allocates stack space for every if/case branch local when no optimizations
     // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
     // https://github.com/apple/swift-protobuf/issues/1182
-    if self.wallTime != 0 {
+    if self.wallTime.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.wallTime, fieldNumber: 1)
     }
     if self.step != 0 {

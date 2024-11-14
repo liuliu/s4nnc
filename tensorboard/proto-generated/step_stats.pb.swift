@@ -16,12 +16,12 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// An allocation/de-allocation operation performed by the allocator.
-struct Tensorboard_AllocationRecord {
+struct Tensorboard_AllocationRecord: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -37,7 +37,7 @@ struct Tensorboard_AllocationRecord {
   init() {}
 }
 
-struct Tensorboard_AllocatorMemoryUsed {
+struct Tensorboard_AllocatorMemoryUsed: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -65,7 +65,7 @@ struct Tensorboard_AllocatorMemoryUsed {
 }
 
 /// Output sizes recorded for a single execution of a graph node.
-struct Tensorboard_NodeOutput {
+struct Tensorboard_NodeOutput: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -89,7 +89,7 @@ struct Tensorboard_NodeOutput {
 }
 
 /// For memory tracking.
-struct Tensorboard_MemoryStats {
+struct Tensorboard_MemoryStats: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -100,10 +100,13 @@ struct Tensorboard_MemoryStats {
 
   var persistentTensorAllocIds: [Int64] = []
 
+  /// NOTE: This field was marked as deprecated in the .proto file.
   var deviceTempMemorySize: Int64 = 0
 
+  /// NOTE: This field was marked as deprecated in the .proto file.
   var devicePersistentMemorySize: Int64 = 0
 
+  /// NOTE: This field was marked as deprecated in the .proto file.
   var devicePersistentTensorAllocIds: [Int64] = []
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -112,7 +115,7 @@ struct Tensorboard_MemoryStats {
 }
 
 /// Time/size stats recorded for a single execution of a graph node.
-struct Tensorboard_NodeExecStats {
+struct Tensorboard_NodeExecStats: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -217,7 +220,7 @@ struct Tensorboard_NodeExecStats {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct Tensorboard_DeviceStepStats {
+struct Tensorboard_DeviceStepStats: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -234,7 +237,7 @@ struct Tensorboard_DeviceStepStats {
   init() {}
 }
 
-struct Tensorboard_StepStats {
+struct Tensorboard_StepStats: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -245,16 +248,6 @@ struct Tensorboard_StepStats {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_AllocationRecord: @unchecked Sendable {}
-extension Tensorboard_AllocatorMemoryUsed: @unchecked Sendable {}
-extension Tensorboard_NodeOutput: @unchecked Sendable {}
-extension Tensorboard_MemoryStats: @unchecked Sendable {}
-extension Tensorboard_NodeExecStats: @unchecked Sendable {}
-extension Tensorboard_DeviceStepStats: @unchecked Sendable {}
-extension Tensorboard_StepStats: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
@@ -505,7 +498,15 @@ extension Tensorboard_NodeExecStats: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _allEndRelNanos: Int64 = 0
     var _scheduledNanos: Int64 = 0
 
-    static let defaultInstance = _StorageClass()
+    #if swift(>=5.10)
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+    #else
+      static let defaultInstance = _StorageClass()
+    #endif
 
     private init() {}
 

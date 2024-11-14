@@ -16,14 +16,14 @@ import SwiftProtobuf
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
 fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _3: SwiftProtobuf.ProtobufAPIVersion_3 {}
-  typealias Version = _3
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 /// Protocol buffer representing the value for an attr used to configure an Op.
 /// Comment indicates the corresponding attr type.  Only the field matching the
 /// attr type may be filled.
-struct Tensorboard_AttrValue {
+struct Tensorboard_AttrValue: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -131,7 +131,7 @@ struct Tensorboard_AttrValue {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Value: Equatable {
+  enum OneOf_Value: Equatable, @unchecked Sendable {
     /// "string"
     case s(Data)
     /// "int"
@@ -165,7 +165,7 @@ struct Tensorboard_AttrValue {
   }
 
   /// DISABLED.IfChange
-  struct ListValue {
+  struct ListValue: @unchecked Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -204,7 +204,7 @@ struct Tensorboard_AttrValue {
 
 /// A list of attr names and their values. The whole list is attached
 /// with a string name.  E.g., MatMul[T=float].
-struct Tensorboard_NameAttrList {
+struct Tensorboard_NameAttrList: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -217,13 +217,6 @@ struct Tensorboard_NameAttrList {
 
   init() {}
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension Tensorboard_AttrValue: @unchecked Sendable {}
-extension Tensorboard_AttrValue.OneOf_Value: @unchecked Sendable {}
-extension Tensorboard_AttrValue.ListValue: @unchecked Sendable {}
-extension Tensorboard_NameAttrList: @unchecked Sendable {}
-#endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
