@@ -64,9 +64,9 @@ def s4nnc_extra_deps():
         new_git_repository,
         name = "SwiftSystem",
         build_file = "@s4nnc//:external/swift-system.BUILD",
-        commit = "836bc4557b74fe6d2660218d56e3ce96aff76574",
+        commit = "fbd61a676d79cbde05cd4fda3cc46e94d6b8f0eb",
         remote = "https://github.com/apple/swift-system.git",
-        shallow_since = "1638472952 -0800",
+        shallow_since = "1729316385 -0700",
     )
 
     _maybe(

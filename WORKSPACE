@@ -119,9 +119,9 @@ new_git_repository(
 new_git_repository(
     name = "SwiftSystem",
     build_file = "swift-system.BUILD",
-    commit = "025bcb1165deab2e20d4eaba79967ce73013f496",
+    commit = "fbd61a676d79cbde05cd4fda3cc46e94d6b8f0eb",
     remote = "https://github.com/apple/swift-system.git",
-    shallow_since = "1654977448 -0700",
+    shallow_since = "1729316385 -0700",
 )
 
 new_git_repository(
