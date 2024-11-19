@@ -39,6 +39,18 @@ public enum DeviceKind {
     public static var count: Int {
       Int(ccv_nnc_device_count(Int32(CCV_STREAM_CONTEXT_GPU)))
     }
+
+    /**
+     * Remap GPU devices. It supports at most 64 devices remapping. Call this method
+     * again would clear up the old remap.
+     */
+    public static func permute(_ ordinals: Int...) {
+      Array(ordinals.map { Int32($0) }).withUnsafeBytes {
+        ccv_nnc_set_device_permutation(
+          Int32(CCV_STREAM_CONTEXT_GPU), $0.baseAddress?.assumingMemoryBound(to: Int32.self),
+          Int32(ordinals.count))
+      }
+    }
   }
 
   @usableFromInline
