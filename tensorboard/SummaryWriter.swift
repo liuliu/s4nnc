@@ -16,8 +16,8 @@ public struct SummaryWriter {
 
   /// Creates an instance with log located at `logDirectory`.
   public init(logDirectory: String, comment: String = "") {
-    // Properly construct the folder name. It should be runs/currentdatetimecomment/
-    self.logDirectory = logDirectory + "/runs/\(Self.dateFormatter.string(from: Date()))\(comment)"
+    // Properly construct the folder name. It should be runs/commentcurrentdatetime/
+    self.logDirectory = logDirectory + "/runs/\(comment)\(Self.dateFormatter.string(from: Date()))"
     eventLogger = try! EventLogger(logDirectory: self.logDirectory)
   }
 
