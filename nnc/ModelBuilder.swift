@@ -121,17 +121,16 @@ public class AnyModelBuilder {
         { (handle, name, options, params, tensorOut) -> Int32 in
           let readerHelper = Unmanaged<DynamicGraph.Store.ModelReaderHelper>.fromOpaque(handle!)
             .takeUnretainedValue()
-          if tensorOut!.pointee == nil {
-            tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
-          }
-          let cTensorOut = tensorOut!.pointee
-          let params = cTensorOut!.pointee.info
+          let params = tensorOut!.pointee?.pointee.info ?? params
           let result = readerHelper.reader(
             name.map { String(cString: $0) } ?? "", DataType.from(cTensorParams: params),
             TensorFormat.from(cTensorParams: params), TensorShape(dims: params.dim))
           switch result {
           case .final(let tensor):
             precondition(tensor.kind == .CPU)
+            if tensorOut!.pointee == nil {
+              tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
+            }
             var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = tensor.cTensor
             ccv_nnc_cmd_exec(
               ccv_nnc_cmd(
