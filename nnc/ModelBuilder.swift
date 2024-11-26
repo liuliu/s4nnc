@@ -37,6 +37,19 @@ public class AnyModelBuilder {
     return outputSize
   }
 
+  /**
+   * Whether to enable memory reduction for this model. The current supported memory reduction
+   * technique is to redo datatype conversion during backward pass if needed.
+   */
+  public var memoryReduction: Bool = false {
+    didSet {
+      ccv_cnnp_model_set_memory_reduction(model!.cModel, memoryReduction ? 1 : 0)
+    }
+  }
+
+  /**
+   * Specify the maximum number of streams we need to allocate to run this model.
+   */
   public var maxConcurrency: StreamContext.Concurrency = .noLimit {
     didSet {
       ccv_cnnp_model_set_max_concurrency(model!.cModel, Int32(maxConcurrency.rawValue))
