@@ -4578,6 +4578,7 @@ extension DynamicGraph {
      *   - codec: The codec for potential encoded parameters.
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
+    @inlinable
     public func read(
       _ key: String, model: Model, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
@@ -4609,13 +4610,52 @@ extension DynamicGraph {
      *   - codec: The codec for potential encoded parameters.
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
+    @inlinable
     public func read(
       _ key: String, model: AnyModelBuilder, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
       try? read(key, model: model, strict: false, codec: codec, reader: reader)
     }
-
+    /**
+     * Read parameters into a given model.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model to be initialized with parameters from a given key.
+     *   - strict: When this is true, will throw error if any parameters are missing.
+     *   - codec: The codec for potential encoded parameters.
+     *   - reader: You can customize your reader to load parameter with a different name etc.
+     */
+    @inlinable
+    public func read(
+      _ key: String, model: AnyModel, strict: Bool, codec: Codec = [],
+      reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
+    ) throws {
+      switch model {
+      case let model as Model:
+        try read(key, model: model, strict: strict, codec: codec, reader: reader)
+      case let model as AnyModelBuilder:
+        try read(key, model: model, strict: strict, codec: codec, reader: reader)
+      default:
+        fatalError("Unrecognized model \(model)")
+      }
+    }
+    /**
+     * Read parameters into a given model.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model to be initialized with parameters from a given key.
+     *   - codec: The codec for potential encoded parameters.
+     *   - reader: You can customize your reader to load parameter with a different name etc.
+     */
+    public func read(
+      _ key: String, model: AnyModel, codec: Codec = [],
+      reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
+    ) {
+      try? read(key, model: model, strict: false, codec: codec, reader: reader)
+    }
     /**
      * Write a tensor to the store.
      *
@@ -4747,6 +4787,28 @@ extension DynamicGraph {
       writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
     ) {
       write(key, model: model.model!, codec: codec, writer: writer)
+    }
+    /**
+     * Write a model to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model where its parameters to be persisted.
+     *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
+     */
+    @inlinable
+    public func write(
+      _ key: String, model: AnyModel, codec: Codec = [],
+      writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
+    ) {
+      switch model {
+      case let model as Model:
+        write(key, model: model, codec: codec, writer: writer)
+      case let model as AnyModelBuilder:
+        write(key, model: model, codec: codec, writer: writer)
+      default:
+        fatalError("Unrecognized model \(model)")
+      }
     }
 
     init(_ store: _Store, graph: DynamicGraph) {

@@ -1,9 +1,12 @@
 import C_nnc
 
 /// A type-erased model builder.
-public class AnyModelBuilder {
+public class AnyModelBuilder: AnyModel {
 
-  public var testing: Bool = false
+  public var testing: Bool {
+    get { model!.testing }
+    set { model!.testing = newValue }
+  }
 
   var model: Model? = nil
   var t: Any? = nil

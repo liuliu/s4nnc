@@ -6,7 +6,7 @@ public protocol ModelIOConvertible {
 
 /// A model is a base class for stateful operations on a dynamic graph. It can be
 /// use to construct computations statically, thus, more efficient.
-public class Model {
+public class Model: AnyModel {
 
   /**
    * A IO class represent the abstract input / output for a model. It can correspond
