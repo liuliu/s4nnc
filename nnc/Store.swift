@@ -4907,6 +4907,14 @@ extension DynamicGraph {
     }
     guard let sqlite = _sqlite else { return .failure(.cannotOpen) }
     sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
+    if flags.contains(.readOnly) {
+      sqlite3_exec(_sqlite, "SAVEPOINT nnc_open_read_only", nil, nil, nil)
+    }
+    defer {
+      if flags.contains(.readOnly) {
+        sqlite3_exec(_sqlite, "RELEASE nnc_open_read_only", nil, nil, nil)
+      }
+    }
     let store = Store(
       _Store(sqlite: sqlite, flags: flags, externalStore: externalStore, chunkSize: chunkSize),
       graph: self)
