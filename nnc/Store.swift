@@ -4109,6 +4109,9 @@ extension DynamicGraph {
       if flags.contains(.truncateWhenClose) {
         sqlite3_wal_checkpoint_v2(OpaquePointer(sqlite), nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil)
       }
+      if flags.contains(.readOnly) {
+        sqlite3_exec(_sqlite, "RELEASE nnc_open_read_only", nil, nil, nil)
+      }
       sqlite3_close(OpaquePointer(sqlite))
     }
     // Return offset of where the bytes written to.
@@ -4909,11 +4912,6 @@ extension DynamicGraph {
     sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
     if flags.contains(.readOnly) {
       sqlite3_exec(_sqlite, "SAVEPOINT nnc_open_read_only", nil, nil, nil)
-    }
-    defer {
-      if flags.contains(.readOnly) {
-        sqlite3_exec(_sqlite, "RELEASE nnc_open_read_only", nil, nil, nil)
-      }
     }
     let store = Store(
       _Store(sqlite: sqlite, flags: flags, externalStore: externalStore, chunkSize: chunkSize),
