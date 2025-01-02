@@ -4110,7 +4110,7 @@ extension DynamicGraph {
         sqlite3_wal_checkpoint_v2(OpaquePointer(sqlite), nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil)
       }
       if flags.contains(.readOnly) {
-        sqlite3_exec(_sqlite, "RELEASE nnc_open_read_only", nil, nil, nil)
+        sqlite3_exec(OpaquePointer(sqlite), "RELEASE nnc_open_read_only", nil, nil, nil)
       }
       sqlite3_close(OpaquePointer(sqlite))
     }
