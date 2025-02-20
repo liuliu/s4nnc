@@ -33,4 +33,11 @@ public protocol AnyModel {
    * - Returns: An abstract representation of parameters.
    */
   func parameters(for type: Model.ParametersType) -> Model.Parameters
+  /**
+   * Cancel current evaluation of this model. It only cancels the model that you know is currently
+   * in evaluation, if you didn't get the execution order right, it won't have effect (you need
+   * to make sure this method, if it is called, is strictly after call to callAsFunction and before
+   * it returns).
+   */
+  func cancel()
 }
