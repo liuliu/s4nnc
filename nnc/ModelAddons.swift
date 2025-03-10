@@ -1148,14 +1148,20 @@ public final class Concat: Model {
 }
 
 extension Functional {
-  public static func concat(axis: Int, _ inputs: ModelIOConvertible...) -> Model.IO {
-    return Concat(axis: axis).apply(inputs)
+  public static func concat(
+    axis: Int, _ inputs: ModelIOConvertible..., flags: Model.EnableBits = []
+  ) -> Model.IO {
+    let concat = Concat(axis: axis)
+    concat.flags = flags
+    return concat.apply(inputs)
   }
 
   public static func concat<T: DynamicGraph.TensorGroup>(
-    axis: Int, _ inputs: T..., streamContext: StreamContext? = nil
+    axis: Int, _ inputs: T..., flags: Model.EnableBits = [], streamContext: StreamContext? = nil
   ) -> T {
-    let outputs = Concat(axis: axis)(
+    let concat = Concat(axis: axis)
+    concat.flags = flags
+    let outputs = concat(
       inputs: inputs[0], Array(inputs.suffix(from: 1)), streamContext: streamContext)
     return T(outputs[0])
   }
@@ -1535,7 +1541,8 @@ public final class Debug: Model {
 extension ModelIOConvertible {
   /// Move the value to another Model.IO. This is a special operation that can perform optimizations
   /// violates SSA. Use it with extreme care.
-  public func debug(name: String = "", _ callback: @escaping ([AnyTensor?], StreamContext?) -> Void) -> Model.IO
+  public func debug(name: String = "", _ callback: @escaping ([AnyTensor?], StreamContext?) -> Void)
+    -> Model.IO
   {
     return Debug(name: name, callback)(self)
   }

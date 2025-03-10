@@ -244,6 +244,31 @@ public class Model: AnyModel {
     }
   }
 
+  public struct EnableBits: OptionSet, CaseIterable {
+    public let rawValue: Int32
+    public init(rawValue: Int32) {
+      self.rawValue = rawValue
+    }
+    /**
+     * Disable Optimizations
+     */
+    public static let disableOpt = EnableBits(
+      rawValue: Int32(CCV_NNC_GRAPH_EXEC_DISABLE_OPT))
+    public static let allCases: [EnableBits] = [.disableOpt]
+  }
+  /**
+   * The flags for the underlying execution node.
+   */
+  public var flags: EnableBits {
+    get {
+      let value = ccv_cnnp_model_flags(cModel)
+      return EnableBits(rawValue: value)
+    }
+    set {
+      let _ = ccv_cnnp_model_set_flags(cModel, newValue.rawValue)
+    }
+  }
+
   public enum ParametersType {
     case weight
     case bias
