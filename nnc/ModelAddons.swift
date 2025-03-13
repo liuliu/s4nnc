@@ -1348,6 +1348,33 @@ extension ModelIOConvertible {
   }
 }
 
+/// "Making" copy model.
+public final class Copy: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_copy(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ x: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: x, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Make the output contiguous in memory.
+   */
+  public func copied() -> Model.IO {
+    return Copy()(self)
+  }
+}
+
 extension ModelIOConvertible {
   func clamped(
     min: Float?, max: Float?
