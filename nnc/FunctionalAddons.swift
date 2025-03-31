@@ -119,6 +119,19 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Element-wise absolute.
+  public static func abs<T: DynamicGraph.TensorGroup>(
+    _ one: T, streamContext: StreamContext? = nil
+  )
+    -> T
+  {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWABS_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Softmax activation
   public static func softmax<T: DynamicGraph.TensorGroup>(
     _ one: T, streamContext: StreamContext? = nil
