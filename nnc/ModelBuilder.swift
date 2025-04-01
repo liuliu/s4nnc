@@ -8,6 +8,7 @@ public class AnyModelBuilder: AnyModel {
     set { model!.testing = newValue }
   }
 
+  @usableFromInline
   var model: Model? = nil
   var t: Any? = nil
   var inputs: [DynamicGraph_Any]? = nil
@@ -106,6 +107,7 @@ public class AnyModelBuilder: AnyModel {
   private var _reader:
     ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)? = nil
 
+  @usableFromInline
   func read(
     _ key: String, from store: DynamicGraph._Store, strict: Bool, codec: DynamicGraph.Store.Codec,
     reader: ((String, DataType, TensorFormat, TensorShape) -> DynamicGraph.Store.ModelReaderResult)?

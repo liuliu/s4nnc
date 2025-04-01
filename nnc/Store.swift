@@ -4073,6 +4073,7 @@ private let uDecode:
 
 extension DynamicGraph {
 
+  @usableFromInline
   final class _Store {
     let sqlite: UnsafeMutableRawPointer
     let flags: Store.OpenFlag
@@ -4082,6 +4083,7 @@ extension DynamicGraph {
     var loadedBytes: UnsafeMutableRawPointer?
     var externalFileRead: UnsafeMutablePointer<FILE>?
     var externalFileWrite: UnsafeMutablePointer<FILE>?
+    var externalFileWriteError: Bool
     init(sqlite: OpaquePointer, flags: Store.OpenFlag, externalStore: String?, chunkSize: Int) {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
       self.flags = flags
@@ -4089,6 +4091,7 @@ extension DynamicGraph {
       self.chunkSize = chunkSize
       externalFileRead = nil
       externalFileWrite = nil
+      externalFileWriteError = false
       loadedBytes = nil
       loadedBytesLength = 0
     }
@@ -4120,9 +4123,20 @@ extension DynamicGraph {
       guard let externalFileWrite = externalFileWrite else { return -1 }
       self.externalFileWrite = externalFileWrite
       let offset = ftell(externalFileWrite)
+      if offset == -1 {
+        externalFileWriteError = true
+        return -1
+      }
       let alignedOffset = (offset + chunkSize - 1) / chunkSize * chunkSize
-      fseek(externalFileWrite, alignedOffset, SEEK_SET)
-      fwrite(bytes, 1, length, externalFileWrite)
+      if fseek(externalFileWrite, alignedOffset, SEEK_SET) != 0 {
+        externalFileWriteError = true
+        return -1
+      }
+      let bytesWritten = fwrite(bytes, 1, length, externalFileWrite)
+      if bytesWritten != length {
+        externalFileWriteError = true
+        return -1
+      }
       return alignedOffset
     }
     // Return a pointer that later can be munmap.
@@ -4314,7 +4328,8 @@ extension DynamicGraph {
       }
     }
     private let graph: DynamicGraph
-    private let store: _Store
+    @usableFromInline
+    let store: _Store // Should be private, but it is used from another inline function.
 
     /**
      * Read a type-erased tensor from the store.
@@ -4598,6 +4613,7 @@ extension DynamicGraph {
      *   - codec: The codec for potential encoded parameters.
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
+    @inlinable
     public func read(
       _ key: String, model: AnyModelBuilder, strict: Bool, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
@@ -4653,11 +4669,42 @@ extension DynamicGraph {
      *   - codec: The codec for potential encoded parameters.
      *   - reader: You can customize your reader to load parameter with a different name etc.
      */
+    @inlinable
     public func read(
       _ key: String, model: AnyModel, codec: Codec = [],
       reader: ((String, DataType, TensorFormat, TensorShape) -> ModelReaderResult)? = nil
     ) {
       try? read(key, model: model, strict: false, codec: codec, reader: reader)
+    }
+    public enum ModelWriteError: Error {
+      case sqliteError
+      case externalFileWriteError
+    }
+    /**
+     * Write a tensor to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular tensor.
+     *   - tensor: The tensor to be persisted.
+     *   - strict: Whether check error.
+     */
+    public func write(_ key: String, tensor: NNC.AnyTensor, strict: Bool, codec: Codec = []) throws {
+      if codec.isEmpty {
+        if ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, nil) != CCV_IO_FINAL, strict {
+          throw ModelWriteError.sqliteError
+        }
+      } else {
+        var option = ccv_nnc_tensor_io_option_t()
+        option.encode = codec.encode
+        option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
+        store.externalFileWriteError = false
+        if ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, &option) != CCV_IO_FINAL, strict {
+          throw ModelWriteError.sqliteError
+        }
+        if strict, store.externalFileWriteError {
+          throw ModelWriteError.externalFileWriteError
+        }
+      }
     }
     /**
      * Write a tensor to the store.
@@ -4666,14 +4713,47 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular tensor.
      *   - tensor: The tensor to be persisted.
      */
+    @inlinable
     public func write(_ key: String, tensor: NNC.AnyTensor, codec: Codec = []) {
-      if codec.isEmpty {
-        ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, nil)
-      } else {
-        var option = ccv_nnc_tensor_io_option_t()
-        option.encode = codec.encode
-        option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-        ccv_nnc_tensor_write(tensor.cTensor, store.sqlite, key, &option)
+      try? write(key, tensor: tensor, strict: false, codec: codec)
+    }
+    /**
+     * Write a tensor variable to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular tensor.
+     *   - variable: The tensor variable to be persisted.
+     *   - strict: Whether check error.
+     */
+    public func write(_ key: String, variable: DynamicGraph_Any, strict: Bool, codec: Codec = []) throws {
+      switch variable {
+      case let tensor as DynamicGraph.AnyTensor:
+        assert(tensor.graph === graph)
+        let _graph = graph.cGraph
+        let _tensor = tensor._tensor
+        let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
+        if codec.isEmpty {
+          if ccv_nnc_tensor_write(raw, store.sqlite, key, nil) != CCV_IO_FINAL, strict {
+            throw ModelWriteError.sqliteError
+          }
+        } else {
+          var option = ccv_nnc_tensor_io_option_t()
+          option.encode = codec.encode
+          option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
+          store.externalFileWriteError = false
+          if ccv_nnc_tensor_write(raw, store.sqlite, key, &option) != CCV_IO_FINAL, strict {
+            throw ModelWriteError.sqliteError
+          }
+          if strict, store.externalFileWriteError {
+            throw ModelWriteError.externalFileWriteError
+          }
+        }
+      case let group as DynamicGraph.AnyGroup:
+        for (i, tensor) in group.untyped.enumerated() {
+          try write("\(key)(\(i))", variable: tensor, strict: strict, codec: codec)
+        }
+      default:
+        fatalError("Cannot recognize the variable")
       }
     }
     /**
@@ -4683,28 +4763,9 @@ extension DynamicGraph {
      *   - key: The key corresponding to a particular tensor.
      *   - variable: The tensor variable to be persisted.
      */
+    @inlinable
     public func write(_ key: String, variable: DynamicGraph_Any, codec: Codec = []) {
-      switch variable {
-      case let tensor as DynamicGraph.AnyTensor:
-        assert(tensor.graph === graph)
-        let _graph = graph.cGraph
-        let _tensor = tensor._tensor
-        let raw = ccv_nnc_tensor_from_variable_impl(_graph, _tensor, nil)!
-        if codec.isEmpty {
-          ccv_nnc_tensor_write(raw, store.sqlite, key, nil)
-        } else {
-          var option = ccv_nnc_tensor_io_option_t()
-          option.encode = codec.encode
-          option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-          ccv_nnc_tensor_write(raw, store.sqlite, key, &option)
-        }
-      case let group as DynamicGraph.AnyGroup:
-        for (i, tensor) in group.untyped.enumerated() {
-          write("\(key)(\(i))", variable: tensor)
-        }
-      default:
-        fatalError("Cannot recognize the variable")
-      }
+      try? write(key, variable: variable, strict: false, codec: codec)
     }
     public enum ModelWriterResult {
       /// Continue to write the tensor with the given name.
@@ -4729,20 +4790,29 @@ extension DynamicGraph {
      * - Parameters:
      *   - key: The key corresponding to a particular model.
      *   - model: The model where its parameters to be persisted.
+     *   - strict: Whether check error.
      *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
      */
     public func write(
-      _ key: String, model: Model, codec: Codec = [],
+      _ key: String, model: Model, strict: Bool, codec: Codec = [],
       writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
-    ) {
+    ) throws {
       guard let writer = writer else {
         if codec.isEmpty {
-          ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil)
+          if ccv_cnnp_model_write(model.cModel, store.sqlite, key, nil) != CCV_IO_FINAL, strict {
+            throw ModelWriteError.sqliteError
+          }
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.encode = codec.encode
           option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-          ccv_cnnp_model_write(model.cModel, store.sqlite, key, &option)
+          store.externalFileWriteError = false
+          if ccv_cnnp_model_write(model.cModel, store.sqlite, key, &option) != CCV_IO_FINAL, strict {
+            throw ModelWriteError.sqliteError
+          }
+          if strict, store.externalFileWriteError {
+            throw ModelWriteError.externalFileWriteError
+          }
         }
         return
       }
@@ -4767,16 +4837,41 @@ extension DynamicGraph {
           }
         })
       let unmanaged = Unmanaged.passRetained(writerHelper)
+      defer {
+        ccv_cnnp_model_set_io(model.cModel, nil, nil)
+        unmanaged.release()
+      }
       if codec.isEmpty {
-        ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, nil)
+        if ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, nil) != CCV_IO_FINAL, strict {
+          throw ModelWriteError.sqliteError
+        }
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.encode = codec.encode
         option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-        ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, &option)
+        store.externalFileWriteError = false
+        if ccv_cnnp_model_write(model.cModel, unmanaged.toOpaque(), key, &option) != CCV_IO_FINAL, strict {
+          throw ModelWriteError.sqliteError
+        }
+        if strict, store.externalFileWriteError {
+          throw ModelWriteError.externalFileWriteError
+        }
       }
-      ccv_cnnp_model_set_io(model.cModel, nil, nil)
-      unmanaged.release()
+    }
+    /**
+     * Write a model to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model where its parameters to be persisted.
+     *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
+     */
+    @inlinable
+    public func write(
+      _ key: String, model: Model, codec: Codec = [],
+      writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
+    ) {
+      try? write(key, model: model, strict: false, codec: codec, writer: writer)
     }
     /**
      * Write a model builder to the store.
@@ -4784,12 +4879,53 @@ extension DynamicGraph {
      * - Parameters:
      *   - key: The key corresponding to a particular model builder.
      *   - model builder: The model where its parameters to be persisted.
+     *   - strict: Whether check error.
+     *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
      */
+    @inlinable
+    public func write(
+      _ key: String, model: AnyModelBuilder, strict: Bool, codec: Codec = [],
+      writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
+    ) throws {
+      try write(key, model: model.model!, strict: strict, codec: codec, writer: writer)
+    }
+    /**
+     * Write a model builder to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model builder.
+     *   - model builder: The model where its parameters to be persisted.
+     *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
+     */
+    @inlinable
     public func write(
       _ key: String, model: AnyModelBuilder, codec: Codec = [],
       writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
     ) {
-      write(key, model: model.model!, codec: codec, writer: writer)
+      try? write(key, model: model, strict: false, codec: codec, writer: writer)
+    }
+    /**
+     * Write a model to the store.
+     *
+     * - Parameters:
+     *   - key: The key corresponding to a particular model.
+     *   - model: The model where its parameters to be persisted.
+     *   - strict: Whether check error.
+     *   - writer: You can customize your writer to writer parameter with a different name or skip entirely.
+     */
+    @inlinable
+    public func write(
+      _ key: String, model: AnyModel, strict: Bool, codec: Codec = [],
+      writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
+    ) throws {
+      switch model {
+      case let model as Model:
+        try write(key, model: model, strict: strict, codec: codec, writer: writer)
+      case let model as AnyModelBuilder:
+        try write(key, model: model, strict: strict, codec: codec, writer: writer)
+      default:
+        fatalError("Unrecognized model \(model)")
+      }
     }
     /**
      * Write a model to the store.
@@ -4804,14 +4940,7 @@ extension DynamicGraph {
       _ key: String, model: AnyModel, codec: Codec = [],
       writer: ((String, NNC.AnyTensor) -> ModelWriterResult)? = nil
     ) {
-      switch model {
-      case let model as Model:
-        write(key, model: model, codec: codec, writer: writer)
-      case let model as AnyModelBuilder:
-        write(key, model: model, codec: codec, writer: writer)
-      default:
-        fatalError("Unrecognized model \(model)")
-      }
+      try? write(key, model: model, strict: false, codec: codec, writer: writer)
     }
 
     init(_ store: _Store, graph: DynamicGraph) {
