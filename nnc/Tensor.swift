@@ -1162,6 +1162,42 @@ extension Tensor {
 }
 
 extension Tensor {
+  /**
+   * Check if a tensor contains any NaN.
+   */
+  public var isNaN: Bool {
+    var params = CmdParamsFactory.factory.newParams()
+    params.reduce.count = Int32(shape.count)
+    params.reduce.axis = toCDimensions(Array(0..<Int(params.reduce.count)))
+    let cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_ISNAN_FORWARD, nil, params, 0)
+    var _output = ccv_nnc_tensor_new(
+      nil,
+      toCTensorParams(kind, dataType: .Int32, format: format, shape: [1]),
+      0)
+    var _input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = cTensor
+    ccv_nnc_cmd_exec(cmd, ccv_nnc_no_hint, 0, &_input, 1, &_output, 1, nil)
+    guard kind != .CPU else {
+      let pointer = _output?.pointee.data.ptr.bindMemory(to: Int32.self, capacity: 1)
+      let isNaN = pointer?[0]
+      ccv_nnc_tensor_free(_output)
+      return isNaN != 0
+    }
+    var _cpu = ccv_nnc_tensor_new(
+      nil,
+      toCTensorParams(.CPU, dataType: dataType, format: format, shape: [1]),
+      0)
+    let transfer = ccv_nnc_cmd(
+      CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0)
+    ccv_nnc_cmd_exec(transfer, ccv_nnc_no_hint, 0, &_output, 1, &_cpu, 1, nil)
+    ccv_nnc_tensor_free(_output)
+    let pointer = _cpu?.pointee.data.ptr.bindMemory(to: Int32.self, capacity: 1)
+    let isNaN = pointer?[0]
+    ccv_nnc_tensor_free(_cpu)
+    return isNaN != 0
+  }
+}
+
+extension Tensor {
 
   public func reshaped(
     format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
