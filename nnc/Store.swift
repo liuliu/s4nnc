@@ -4999,10 +4999,16 @@ extension DynamicGraph {
      */
     public func withTransaction<Result>(_ closure: () throws -> Result) rethrows -> Result {
       sqlite3_exec(OpaquePointer(store.sqlite), "BEGIN", nil, nil, nil)
-      let result = try closure()
-      store.flush()
-      sqlite3_exec(OpaquePointer(store.sqlite), "COMMIT", nil, nil, nil)
-      return result
+      do {
+        let result = try closure()
+        store.flush()
+        sqlite3_exec(OpaquePointer(store.sqlite), "COMMIT", nil, nil, nil)
+        return result
+      } catch {
+        store.flush()
+        sqlite3_exec(OpaquePointer(store.sqlite), "ROLLBACK", nil, nil, nil)
+        throw error
+      }
     }
   }
 
