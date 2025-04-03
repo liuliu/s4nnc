@@ -4336,16 +4336,16 @@ extension DynamicGraph {
      *
      * - Parameter key: The key corresponding to that particular tensor.
      */
-    public func read(_ key: String, codec: Codec = []) -> NNC.AnyTensor? {
+    public func read(_ key: String, kind: DeviceKind? = nil, codec: Codec = []) -> NNC.AnyTensor? {
       var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
       let result: Int32
       if codec.isEmpty {
-        result = ccv_nnc_tensor_read(store.sqlite, key, nil, 0, nil, &underlying)
+        result = ccv_nnc_tensor_read(store.sqlite, key, nil, kind == .CPU ? Int32(CCV_NNC_TENSOR_READ_CPU_MEMORY) : 0, nil, &underlying)
       } else {
         var option = ccv_nnc_tensor_io_option_t()
         option.decode = codec.decode
         option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-        result = ccv_nnc_tensor_read(store.sqlite, key, &option, 0, nil, &underlying)
+        result = ccv_nnc_tensor_read(store.sqlite, key, &option, kind == .CPU ? Int32(CCV_NNC_TENSOR_READ_CPU_MEMORY) : 0, nil, &underlying)
       }
       guard result == CCV_IO_FINAL else { return nil }
       let anyTensor = AnyTensorStorage(underlying!)
@@ -4430,7 +4430,7 @@ extension DynamicGraph {
      * - Returns whether we successfully initialized the tensor variable.
      */
     @discardableResult
-    public func read(_ key: String, variable: DynamicGraph_Any, codec: Codec = []) -> Bool {
+    public func read(_ key: String, variable: DynamicGraph_Any, kind: DeviceKind? = nil, codec: Codec = []) -> Bool {
       switch variable {
       case let tensor as DynamicGraph.AnyTensor:
         assert(tensor.graph === graph)
@@ -4441,12 +4441,12 @@ extension DynamicGraph {
           var underlying = raw
           let result: Int32
           if codec.isEmpty {
-            result = ccv_nnc_tensor_read(store.sqlite, key, nil, 0, nil, &underlying)
+            result = ccv_nnc_tensor_read(store.sqlite, key, nil, kind == .CPU ? Int32(CCV_NNC_TENSOR_READ_CPU_MEMORY) : 0, nil, &underlying)
           } else {
             var option = ccv_nnc_tensor_io_option_t()
             option.decode = codec.decode
             option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-            result = ccv_nnc_tensor_read(store.sqlite, key, &option, 0, nil, &underlying)
+            result = ccv_nnc_tensor_read(store.sqlite, key, &option, kind == .CPU ? Int32(CCV_NNC_TENSOR_READ_CPU_MEMORY) : 0, nil, &underlying)
           }
           if result == CCV_IO_FINAL {
             assert(underlying == raw)
@@ -4456,12 +4456,12 @@ extension DynamicGraph {
         var underlying: UnsafeMutablePointer<ccv_nnc_tensor_t>? = nil
         let result: Int32
         if codec.isEmpty {
-          result = ccv_nnc_tensor_read(store.sqlite, key, nil, 0, nil, &underlying)
+          result = ccv_nnc_tensor_read(store.sqlite, key, nil, kind == .CPU ? Int32(CCV_NNC_TENSOR_READ_CPU_MEMORY) : 0, nil, &underlying)
         } else {
           var option = ccv_nnc_tensor_io_option_t()
           option.decode = codec.decode
           option.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
-          result = ccv_nnc_tensor_read(store.sqlite, key, &option, 0, nil, &underlying)
+          result = ccv_nnc_tensor_read(store.sqlite, key, &option, kind == .CPU ? Int32(CCV_NNC_TENSOR_READ_CPU_MEMORY) : 0, nil, &underlying)
         }
         guard result == CCV_IO_FINAL else { return false }
         let anyTensor = AnyTensorStorage(underlying!)
