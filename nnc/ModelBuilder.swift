@@ -82,6 +82,13 @@ public class AnyModelBuilder: AnyModel {
   }
 
   /**
+   * The size of scratch memory allocated for this model.
+   */
+  public var runtimeMemorySize: UInt64 {
+    return model!.runtimeMemorySize
+  }
+
+  /**
    * Broadly speaking, you can have two types of parameters, weight and bias.
    * You can get them in abstract fashion with this method.
    *

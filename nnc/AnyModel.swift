@@ -1,4 +1,3 @@
-
 public protocol AnyModel {
   /**
    * Whether the existing model is for testing or training.
@@ -25,6 +24,10 @@ public protocol AnyModel {
    * Shortcut for bias parameter.
    */
   var bias: Model.Parameters { get }
+  /**
+   * The size of scratch memory allocated for this model.
+   */
+  var runtimeMemorySize: UInt64 { get }
   /**
    * Broadly speaking, you can have two types of parameters, weight and bias.
    * You can get them in abstract fashion with this method.

@@ -116,6 +116,13 @@ public class Model: AnyModel {
     }
 
     /**
+     * Get the byte size of parameters.
+     */
+    public var size: UInt64 {
+      return ccv_cnnp_model_parameters_size(model!.cModel)
+    }
+
+    /**
      * Get a parameter by loop over internally to find the matching one.
      */
     public func first(where block: @escaping (String) -> Bool) -> Parameters? {
@@ -191,6 +198,13 @@ public class Model: AnyModel {
    */
   public var bias: Parameters {
     parameters(for: .bias)
+  }
+
+  /**
+   * The size of scratch memory allocated for this model.
+   */
+  public var runtimeMemorySize: UInt64 {
+    ccv_cnnp_model_memory_size(cModel)
   }
 
   /**
