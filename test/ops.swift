@@ -187,6 +187,50 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[1, 1], 3.3)
   }
 
+  func testSort() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 3.2, 2.3, 4.4], .CPU, .NC(2, 2)))
+    let (a1, indices) = a0.sorted(axis: 1, descending: true)
+    XCTAssertEqual(a1.rawValue.shape, [2, 2])
+    XCTAssertEqual(a1.rawValue[0, 0], 3.2)
+    XCTAssertEqual(a1.rawValue[0, 1], 1.1)
+    XCTAssertEqual(a1.rawValue[1, 0], 4.4)
+    XCTAssertEqual(a1.rawValue[1, 1], 2.3)
+    XCTAssertEqual(indices.rawValue[0, 0], 1)
+    XCTAssertEqual(indices.rawValue[0, 1], 0)
+    XCTAssertEqual(indices.rawValue[1, 0], 1)
+    XCTAssertEqual(indices.rawValue[1, 1], 0)
+  }
+
+  func testPartition() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(
+      Tensor<Float32>([1.1, 3.2, 2.3, 4.4, 4.5, 4.6], .CPU, .NC(2, 3)))
+    let (a1, indices) = a0.partitioned(kth: 2, axis: 1, descending: true)
+    XCTAssertEqual(a1.rawValue.shape, [2, 2])
+    XCTAssertEqual(a1.rawValue[0, 0], 3.2)
+    XCTAssertEqual(a1.rawValue[0, 1], 2.3)
+    XCTAssertEqual(a1.rawValue[1, 0], 4.6)
+    XCTAssertEqual(a1.rawValue[1, 1], 4.5)
+    XCTAssertEqual(indices.rawValue[0, 0], 1)
+    XCTAssertEqual(indices.rawValue[0, 1], 2)
+    XCTAssertEqual(indices.rawValue[1, 0], 2)
+    XCTAssertEqual(indices.rawValue[1, 1], 1)
+  }
+
+  func testUniqueConsecutive() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Int32>([2, 2, 1, 3, 3, 3], .CPU, .C(6)))
+    let (a1, counts) = a0.uniqueConsecutive(bincount: 3)
+    XCTAssertEqual(a1.rawValue.shape, [3])
+    XCTAssertEqual(a1.rawValue[0], 2)
+    XCTAssertEqual(a1.rawValue[1], 1)
+    XCTAssertEqual(a1.rawValue[2], 3)
+    XCTAssertEqual(counts.rawValue[0], 2)
+    XCTAssertEqual(counts.rawValue[1], 1)
+    XCTAssertEqual(counts.rawValue[2], 3)
+  }
+
   static let allTests = [
     ("testDivision", testDivision),
     ("testScalarDivision1", testScalarDivision1),
@@ -203,5 +247,8 @@ final class OpsTests: XCTestCase {
     ("testMinModel", testMinModel),
     ("testMaxModel", testMaxModel),
     ("testConcatModel", testConcatModel),
+    ("testSort", testSort),
+    ("testPartition", testPartition),
+    ("testUniqueConsecutive", testUniqueConsecutive),
   ]
 }

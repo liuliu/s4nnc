@@ -418,6 +418,20 @@ extension Functional {
       streamContext: streamContext)
     return T(outputs[0])
   }
+
+  /// Scatter add tensor with a index tensor.
+  public static func scatterAdd<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    bincount: Int, input: T, index: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    var params = CmdParamsFactory.factory.newParams()
+    params.scatter_add.bincount = Int32(bincount)
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_SCATTER_ADD_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: input, index, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
 }
 
 extension DynamicGraph.Tensor {
@@ -1861,5 +1875,120 @@ extension DynamicGraph.Group where Element: DynamicGraph.AnyTensor {
     return (0..<numberOfChunks).map { index in
       DynamicGraph.Group(result.map { $0[index] })
     }
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Sort along a given dimension.
+  public func sorted(axis: Int, descending: Bool, streamContext: StreamContext? = nil)
+    -> (DynamicGraph.Tensor<Element>, indices: DynamicGraph.Tensor<Int32>)
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.sort.along_axis = Int32(axis)
+    params.sort.descending = descending ? 1 : 0
+    let cmd = ccv_nnc_cmd(CCV_NNC_SORT_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
+    return (
+      DynamicGraph.Tensor<Element>(outputs[0]), indices: DynamicGraph.Tensor<Int32>(outputs[1])
+    )
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Sort along a given dimension.
+  public func sorted(axis: Int, descending: Bool, streamContext: StreamContext? = nil)
+    -> (DynamicGraph.Group<Element>, indices: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>)
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.sort.along_axis = Int32(axis)
+    params.sort.descending = descending ? 1 : 0
+    let cmd = ccv_nnc_cmd(CCV_NNC_SORT_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
+    return (
+      DynamicGraph.Group<Element>(outputs[0]),
+      indices: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>(outputs[1])
+    )
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Partition k items along a given dimension.
+  public func partitioned(
+    kth: Int, axis: Int, descending: Bool, streamContext: StreamContext? = nil
+  )
+    -> (DynamicGraph.Tensor<Element>, indices: DynamicGraph.Tensor<Int32>)
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.partition.kth = Int32(kth)
+    params.partition.along_axis = Int32(axis)
+    params.partition.descending = descending ? 1 : 0
+    let cmd = ccv_nnc_cmd(CCV_NNC_PARTITION_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
+    return (
+      DynamicGraph.Tensor<Element>(outputs[0]), indices: DynamicGraph.Tensor<Int32>(outputs[1])
+    )
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Partition k items along a given dimension.
+  public func partitioned(
+    kth: Int, axis: Int, descending: Bool, streamContext: StreamContext? = nil
+  )
+    -> (DynamicGraph.Group<Element>, indices: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>)
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.partition.kth = Int32(kth)
+    params.partition.along_axis = Int32(axis)
+    params.partition.descending = descending ? 1 : 0
+    let cmd = ccv_nnc_cmd(CCV_NNC_PARTITION_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
+    return (
+      DynamicGraph.Group<Element>(outputs[0]),
+      indices: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>(outputs[1])
+    )
+  }
+}
+
+extension DynamicGraph.Tensor {
+  /// Find unique consecutive elements and their counts.
+  public func uniqueConsecutive(bincount: Int, streamContext: StreamContext? = nil)
+    -> (DynamicGraph.Tensor<Element>, counts: DynamicGraph.Tensor<Int32>)
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.unique_consecutive.bincount = Int32(bincount)
+    let cmd = ccv_nnc_cmd(CCV_NNC_UNIQUE_CONSECUTIVE_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
+    return (
+      DynamicGraph.Tensor<Element>(outputs[0]), counts: DynamicGraph.Tensor<Int32>(outputs[1])
+    )
+  }
+}
+
+extension DynamicGraph.Group {
+  /// Find unique consecutive elements and their counts.
+  public func uniqueConsecutive(bincount: Int, streamContext: StreamContext? = nil)
+    -> (DynamicGraph.Group<Element>, counts: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>)
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.unique_consecutive.bincount = Int32(bincount)
+    let cmd = ccv_nnc_cmd(CCV_NNC_UNIQUE_CONSECUTIVE_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
+    return (
+      DynamicGraph.Group<Element>(outputs[0]),
+      counts: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>(outputs[1])
+    )
   }
 }

@@ -1646,3 +1646,127 @@ public final class CustomModel: Model {
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 }
+
+/// Sort model.
+public final class Sort: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    axis: Int, descending: Bool, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_sort(
+        Int32(axis), descending ? 1 : 0, name))
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Sort the input, it returns two values, sorted value, and indices.
+   *
+   * - Parameters:
+   *   - axis: Which axis to sort.
+   *   - descending: Whether to sort in descending order.
+   */
+  public func sorted(axis: Int, descending: Bool) -> Model.IO {
+    return Sort(axis: axis, descending: descending)(self)
+  }
+}
+
+/// Partition model.
+public final class Partition: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(kth: Int, axis: Int, descending: Bool, name: String = "") {
+    super.init(
+      ccv_cnnp_partition(Int32(kth), Int32(axis), descending ? 1 : 0, name))
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Partition the input, it returns two values, first kth values, and indices.
+   *
+   * - Parameters:
+   *   - kth: How many elements to be partitioned.
+   *   - axis: Which axis to sort.
+   *   - descending: Whether to sort in descending order.
+   */
+  public func partitioned(kth: Int, axis: Int, descending: Bool) -> Model.IO {
+    return Partition(kth: kth, axis: axis, descending: descending)(self)
+  }
+}
+
+/// ScatterAdd model.
+public final class ScatterAdd: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(bincount: Int, name: String = "") {
+    super.init(
+      ccv_cnnp_scatter_add(Int32(bincount), name))
+  }
+}
+
+extension Functional {
+  public static func scatterAdd(
+    bincount: Int, _ input: ModelIOConvertible, index: ModelIOConvertible
+  )
+    -> Model.IO
+  {
+    return ScatterAdd(bincount: bincount)(input, index)
+  }
+}
+
+/// UniqueConsecutive model.
+public final class UniqueConsecutive: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(bincount: Int, name: String = "") {
+    super.init(
+      ccv_cnnp_unique_consecutive(Int32(bincount), name))
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Unique consecutive in the input, it returns two values, the unique values and the counts.
+   *
+   * - Parameters:
+   *   - bincount: How many unique elements there will be roughly.
+   */
+  public func uniqueConsecutive(bincount: Int) -> Model.IO {
+    return UniqueConsecutive(bincount: bincount)(self)
+  }
+}
+
+/// A segmented linear layer model that makes more sense in the lenses of MoE.
+public final class SegmentedDense: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    segments: Int, count: Int, noBias: Bool = false, flags: Functional.GEMMFlag = [],
+    trainable: Bool? = nil, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_segmented_dense(
+        Int32(segments), Int32(count), noBias ? 1 : 0, Int32(flags.rawValue),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ input: T, indices: U, counts: U, streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: input, indices, counts, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
