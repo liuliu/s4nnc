@@ -1707,19 +1707,19 @@ public final class ScatterAdd: Model {
     super.init(model)
   }
 
-  public init(bincount: Int, name: String = "") {
+  public init(count: Int, name: String = "") {
     super.init(
-      ccv_cnnp_scatter_add(Int32(bincount), name))
+      ccv_cnnp_scatter_add(Int32(count), name))
   }
 }
 
 extension Functional {
   public static func scatterAdd(
-    bincount: Int, _ input: ModelIOConvertible, index: ModelIOConvertible
+    count: Int, _ input: ModelIOConvertible, index: ModelIOConvertible
   )
     -> Model.IO
   {
-    return ScatterAdd(bincount: bincount)(input, index)
+    return ScatterAdd(count: count)(input, index)
   }
 }
 
@@ -1729,9 +1729,9 @@ public final class UniqueConsecutive: Model {
     super.init(model)
   }
 
-  public init(bincount: Int, name: String = "") {
+  public init(count: Int, name: String = "") {
     super.init(
-      ccv_cnnp_unique_consecutive(Int32(bincount), name))
+      ccv_cnnp_unique_consecutive(Int32(count), name))
   }
 }
 
@@ -1740,10 +1740,10 @@ extension ModelIOConvertible {
    * Unique consecutive in the input, it returns two values, the unique values and the counts.
    *
    * - Parameters:
-   *   - bincount: How many unique elements there will be roughly.
+   *   - count: How many unique elements there will be roughly.
    */
-  public func uniqueConsecutive(bincount: Int) -> Model.IO {
-    return UniqueConsecutive(bincount: bincount)(self)
+  public func uniqueConsecutive(count: Int) -> Model.IO {
+    return UniqueConsecutive(count: count)(self)
   }
 }
 

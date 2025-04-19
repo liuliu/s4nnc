@@ -221,7 +221,7 @@ final class OpsTests: XCTestCase {
   func testUniqueConsecutive() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Int32>([2, 2, 1, 3, 3, 3], .CPU, .C(6)))
-    let (a1, counts) = a0.uniqueConsecutive(bincount: 3)
+    let (a1, counts) = a0.uniqueConsecutive(count: 3)
     XCTAssertEqual(a1.rawValue.shape, [3])
     XCTAssertEqual(a1.rawValue[0], 2)
     XCTAssertEqual(a1.rawValue[1], 1)

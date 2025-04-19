@@ -421,10 +421,10 @@ extension Functional {
 
   /// Scatter add tensor with a index tensor.
   public static func scatterAdd<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
-    bincount: Int, input: T, index: U, streamContext: StreamContext? = nil
+    count: Int, input: T, index: U, streamContext: StreamContext? = nil
   ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
     var params = CmdParamsFactory.factory.newParams()
-    params.scatter_add.bincount = Int32(bincount)
+    params.scatter_add.bincount = Int32(count)
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCATTER_ADD_FORWARD, nil, params, 0)
     let outputs = exec(
@@ -1960,12 +1960,12 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Find unique consecutive elements and their counts.
-  public func uniqueConsecutive(bincount: Int, streamContext: StreamContext? = nil)
+  public func uniqueConsecutive(count: Int, streamContext: StreamContext? = nil)
     -> (DynamicGraph.Tensor<Element>, counts: DynamicGraph.Tensor<Int32>)
   {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    params.unique_consecutive.bincount = Int32(bincount)
+    params.unique_consecutive.bincount = Int32(count)
     let cmd = ccv_nnc_cmd(CCV_NNC_UNIQUE_CONSECUTIVE_FORWARD, nil, params, 0)
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
@@ -1977,12 +1977,12 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Find unique consecutive elements and their counts.
-  public func uniqueConsecutive(bincount: Int, streamContext: StreamContext? = nil)
+  public func uniqueConsecutive(count: Int, streamContext: StreamContext? = nil)
     -> (DynamicGraph.Group<Element>, counts: DynamicGraph.Group<DynamicGraph.Tensor<Int32>>)
   {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    params.unique_consecutive.bincount = Int32(bincount)
+    params.unique_consecutive.bincount = Int32(count)
     let cmd = ccv_nnc_cmd(CCV_NNC_UNIQUE_CONSECUTIVE_FORWARD, nil, params, 0)
     let outputs = Functional.exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, outputSize: 2, streamContext: streamContext)
