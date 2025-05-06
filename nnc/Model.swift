@@ -170,6 +170,76 @@ public class Model: AnyModel {
       ccv_array_free(array)
       return parameters
     }
+
+    /**
+     * Move the backing tensor out of parameters. Only valid if this parameter is on a compiled model.
+     */
+    public func detach(_ kind: DeviceKind) -> [(key: String, value: AnyTensor)] {
+      let count = ccv_cnnp_model_parameter_count(model!.cModel)
+      let names = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: Int(count))
+      let tensors = UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>.allocate(
+        capacity: Int(count))
+      let success = ccv_cnnp_model_parameters_move(model!.cModel, names, tensors, count, kind.toC)
+      guard success == 1 else {
+        names.deallocate()
+        tensors.deallocate()
+        return []
+      }
+      let keyValues: [(key: String, value: AnyTensor)] = (0..<Int(count)).compactMap {
+        guard let name = names[$0], let tensor = tensors[$0] else { return nil }
+        let key = String(cString: name)
+        let value = AnyTensorStorage(tensor).toAnyTensor()
+        name.deallocate()
+        return (key, value)
+      }
+      names.deallocate()
+      tensors.deallocate()
+      return keyValues
+    }
+
+    /**
+     * Move the backing tensor into the parameters. Making the original one invalid afterwards.
+     */
+    public func attach(consuming keyValues: [(key: String, value: AnyTensor)]) {
+      let keys = keyValues.map { $0.key.utf8CString }
+      let values = keyValues.map(\.value)
+      var cTensors: [UnsafeMutablePointer<ccv_nnc_tensor_t>?] = values.map { $0.cTensor }
+      withExtendedLifetime(keys) { keys in
+        var cKeys: [UnsafeMutablePointer<CChar>?] = keys.map {
+          $0.withUnsafeBufferPointer { $0.baseAddress.map { UnsafeMutablePointer(mutating: $0) } }
+        }
+        cKeys.withUnsafeMutableBufferPointer { cKeys in
+          cTensors.withUnsafeMutableBufferPointer { cTensors in
+            ccv_cnnp_model_set_parameters_from_key_values(
+              model!.cModel, cKeys.baseAddress, cTensors.baseAddress, Int32(keyValues.count), 1)
+            for (i, value) in values.enumerated() {
+              guard cTensors[i] == nil else { continue }
+              value.consume()
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * Copying the backing tensor into the parameters.
+     */
+    public func attach(from keyValues: [(key: String, value: AnyTensor)]) {
+      let keys = keyValues.map { $0.key.utf8CString }
+      let values = keyValues.map(\.value)
+      var cTensors: [UnsafeMutablePointer<ccv_nnc_tensor_t>?] = values.map { $0.cTensor }
+      withExtendedLifetime(keys) { keys in
+        var cKeys: [UnsafeMutablePointer<CChar>?] = keys.map {
+          $0.withUnsafeBufferPointer { $0.baseAddress.map { UnsafeMutablePointer(mutating: $0) } }
+        }
+        cKeys.withUnsafeMutableBufferPointer { cKeys in
+          cTensors.withUnsafeMutableBufferPointer { cTensors in
+            ccv_cnnp_model_set_parameters_from_key_values(
+              model!.cModel, cKeys.baseAddress, cTensors.baseAddress, Int32(keyValues.count), 0)
+          }
+        }
+      }
+    }
   }
 
   var _parameters: ccv_cnnp_model_io_t? = nil

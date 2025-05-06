@@ -438,7 +438,7 @@ extension UInt8: TensorNumeric {
 public final class AnyTensorStorage {
   fileprivate let cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>
   fileprivate let original: Any?
-  private let selfOwned: Bool
+  fileprivate var selfOwned: Bool
 
   init(
     _ cTensor: UnsafeMutablePointer<ccv_nnc_tensor_t>, original: Any? = nil, selfOwned: Bool = true
@@ -740,6 +740,10 @@ extension AnyTensor {
       dims: UnsafeMutableRawPointer(cTensor).bindMemory(
         to: ccv_nnc_tensor_view_t.self, capacity: 1
       ).pointee.stride)
+  }
+
+  func consume() {  // Give up the lifetime control of the underlying tensor.
+    storage.selfOwned = false
   }
 }
 
