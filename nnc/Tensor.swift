@@ -742,6 +742,11 @@ extension AnyTensor {
       ).pointee.stride)
   }
 
+  @inlinable
+  public var size: Int {
+    ccv_nnc_tensor_data_size(cTensor.pointee.info)
+  }
+
   func consume() {  // Give up the lifetime control of the underlying tensor.
     storage.selfOwned = false
   }
