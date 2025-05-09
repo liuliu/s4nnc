@@ -203,18 +203,20 @@ public class Model: AnyModel {
     public func attach(consuming keyValues: [(key: String, value: AnyTensor)]) {
       let keys = keyValues.map { $0.key.utf8CString }
       let values = keyValues.map(\.value)
-      var cTensors: [UnsafeMutablePointer<ccv_nnc_tensor_t>?] = values.map { $0.cTensor }
       withExtendedLifetime(keys) { keys in
-        var cKeys: [UnsafeMutablePointer<CChar>?] = keys.map {
-          $0.withUnsafeBufferPointer { $0.baseAddress.map { UnsafeMutablePointer(mutating: $0) } }
-        }
-        cKeys.withUnsafeMutableBufferPointer { cKeys in
-          cTensors.withUnsafeMutableBufferPointer { cTensors in
-            ccv_cnnp_model_set_parameters_from_key_values(
-              model!.cModel, cKeys.baseAddress, cTensors.baseAddress, Int32(keyValues.count), 1)
-            for (i, value) in values.enumerated() {
-              guard cTensors[i] == nil else { continue }
-              value.consume()
+        withExtendedLifetime(values) { values in
+          var cTensors: [UnsafeMutablePointer<ccv_nnc_tensor_t>?] = values.map { $0.cTensor }
+          var cKeys: [UnsafeMutablePointer<CChar>?] = keys.map {
+            $0.withUnsafeBufferPointer { $0.baseAddress.map { UnsafeMutablePointer(mutating: $0) } }
+          }
+          cKeys.withUnsafeMutableBufferPointer { cKeys in
+            cTensors.withUnsafeMutableBufferPointer { cTensors in
+              ccv_cnnp_model_set_parameters_from_key_values(
+                model!.cModel, cKeys.baseAddress, cTensors.baseAddress, Int32(keyValues.count), 1)
+              for (i, value) in values.enumerated() {
+                guard cTensors[i] == nil else { continue }
+                value.consume()
+              }
             }
           }
         }
@@ -227,15 +229,17 @@ public class Model: AnyModel {
     public func attach(from keyValues: [(key: String, value: AnyTensor)]) {
       let keys = keyValues.map { $0.key.utf8CString }
       let values = keyValues.map(\.value)
-      var cTensors: [UnsafeMutablePointer<ccv_nnc_tensor_t>?] = values.map { $0.cTensor }
       withExtendedLifetime(keys) { keys in
-        var cKeys: [UnsafeMutablePointer<CChar>?] = keys.map {
-          $0.withUnsafeBufferPointer { $0.baseAddress.map { UnsafeMutablePointer(mutating: $0) } }
-        }
-        cKeys.withUnsafeMutableBufferPointer { cKeys in
-          cTensors.withUnsafeMutableBufferPointer { cTensors in
-            ccv_cnnp_model_set_parameters_from_key_values(
-              model!.cModel, cKeys.baseAddress, cTensors.baseAddress, Int32(keyValues.count), 0)
+        withExtendedLifetime(values) { values in
+          var cTensors: [UnsafeMutablePointer<ccv_nnc_tensor_t>?] = values.map { $0.cTensor }
+          var cKeys: [UnsafeMutablePointer<CChar>?] = keys.map {
+            $0.withUnsafeBufferPointer { $0.baseAddress.map { UnsafeMutablePointer(mutating: $0) } }
+          }
+          cKeys.withUnsafeMutableBufferPointer { cKeys in
+            cTensors.withUnsafeMutableBufferPointer { cTensors in
+              ccv_cnnp_model_set_parameters_from_key_values(
+                model!.cModel, cKeys.baseAddress, cTensors.baseAddress, Int32(keyValues.count), 0)
+            }
           }
         }
       }
