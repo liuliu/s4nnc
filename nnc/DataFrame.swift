@@ -309,7 +309,7 @@ extension DataFrame {
       }
     }
 
-    public var underestmiatedCount: Int {
+    public var underestimatedCount: Int {
       return count
     }
 
@@ -384,7 +384,7 @@ extension DataFrame {
       return columnData
     }
 
-    public var underestmiatedCount: Int {
+    public var underestimatedCount: Int {
       return count
     }
 
@@ -437,7 +437,7 @@ extension DataFrame {
       }
     }
 
-    public var underestmiatedCount: Int {
+    public var underestimatedCount: Int {
       return count
     }
 
