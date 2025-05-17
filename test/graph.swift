@@ -309,6 +309,19 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a0.rawValue[0], 4.4 / (1.0 + exp(-4.4)), accuracy: 1e-5)
   }
 
+  func testSoftmax() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1.0, 2.0, 3.0], .CPU, .C(3)))
+    a0.softmax()
+    let e0 = exp(1.0)
+    let e1 = exp(2.0)
+    let e2 = exp(3.0)
+    let sum = e0 + e1 + e2
+    XCTAssertEqual(a0.rawValue[0], Float32(e0 / sum), accuracy: 1e-5)
+    XCTAssertEqual(a0.rawValue[1], Float32(e1 / sum), accuracy: 1e-5)
+    XCTAssertEqual(a0.rawValue[2], Float32(e2 / sum), accuracy: 1e-5)
+  }
+
   func testArgmax() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2, 3.2, 3.4], .CPU, .C(4)))
@@ -407,6 +420,7 @@ final class GraphTests: XCTestCase {
     ("testSigmoid", testSigmoid),
     ("testTanh", testTanh),
     ("testSwish", testSwish),
+    ("testSoftmax", testSoftmax),
     ("testArgmax", testArgmax),
     ("testMaskedFill", testMaskedFill),
     ("testPermute", testPermute),
