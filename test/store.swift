@@ -597,7 +597,7 @@ final class StoreTests: XCTestCase {
     }
     var readout: AnyTensor? = nil
     var readoutCodec: DynamicGraph.Store.Codec? = nil
-    graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
+    graph.openStore("test/tmp.db", externalStore: .path("test/tmp.db-tensordata")) { store in
       store.write("a", tensor: tensor, codec: [.externalData, .q8p])
       readout = store.read("a", codec: [.externalData, .q8p])
       readoutCodec = store.codec(for: "a")
