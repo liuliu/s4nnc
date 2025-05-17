@@ -3166,8 +3166,13 @@ private let q4pDecodeJitWithExternalEager:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q4pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3219,8 +3224,13 @@ private let q5pDecodeJitWithExternalEager:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q5pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3272,8 +3282,13 @@ private let q6pDecodeJitWithExternalEager:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q6pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3325,8 +3340,13 @@ private let q7pDecodeJitWithExternalEager:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q7pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3379,8 +3399,13 @@ private let q8pDecodeJitWithExternalEager:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q8pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3403,8 +3428,13 @@ private let decodeWithExternalEager:
     }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let offset = Int(data.load(as: UInt64.self))
+    if store.externalStoreData != nil {
+      return decodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      params, store.externalStorePath, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -3509,8 +3539,13 @@ private let q4pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q4pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3562,8 +3597,13 @@ private let q5pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q5pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3615,8 +3655,13 @@ private let q6pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q6pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3668,8 +3713,13 @@ private let q7pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q7pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3722,8 +3772,13 @@ private let q8pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    if store.externalStoreData != nil {
+      return q8pDecodeJitWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, store.externalStorePath, off_t(offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -3746,8 +3801,13 @@ private let decodeWithExternalOnDemand:
     }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let offset = Int(data.load(as: UInt64.self))
+    if store.externalStoreData != nil {
+      return decodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
+        tensorOut, decoded, decodedSize)
+    }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      params, store.externalStorePath, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4077,14 +4137,23 @@ extension DynamicGraph {
   final class _Store {
     let sqlite: UnsafeMutableRawPointer
     let flags: Store.OpenFlag
-    let externalStore: String?
+    let externalStore: Store.ExternalStore?
     let chunkSize: Int
     var loadedBytesLength: Int
     var loadedBytes: UnsafeMutableRawPointer?
     var externalFileRead: UnsafeMutablePointer<FILE>?
     var externalFileWrite: UnsafeMutablePointer<FILE>?
     var externalFileWriteError: Bool
-    init(sqlite: OpaquePointer, flags: Store.OpenFlag, externalStore: String?, chunkSize: Int) {
+    var externalStorePath: String? {
+      if case let .path(p) = externalStore { return p } else { return nil }
+    }
+    var externalStoreData: Data? {
+      if case let .data(d) = externalStore { return d } else { return nil }
+    }
+    init(
+      sqlite: OpaquePointer, flags: Store.OpenFlag, externalStore: Store.ExternalStore?,
+      chunkSize: Int
+    ) {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
       self.flags = flags
       self.externalStore = externalStore
@@ -4119,6 +4188,7 @@ extension DynamicGraph {
     }
     // Return offset of where the bytes written to.
     func writeBytes(_ bytes: UnsafeRawPointer, length: Int) -> Int {
+      guard case let .path(externalStore)? = externalStore else { return -1 }
       let externalFileWrite = externalFileWrite ?? fopen(externalStore, "wb+")
       guard let externalFileWrite = externalFileWrite else { return -1 }
       self.externalFileWrite = externalFileWrite
@@ -4141,20 +4211,34 @@ extension DynamicGraph {
     }
     // Return a pointer that later can be munmap.
     func loadBytes(offset: Int, length: Int) -> UnsafeMutableRawPointer? {
-      guard let externalStore = externalStore else { return nil }
-      if let externalFileWrite = externalFileWrite {
-        fflush(externalFileWrite)
-        fsync(fileno(externalFileWrite))
+      switch externalStore {
+      case .path(let externalStore):
+        if let externalFileWrite = externalFileWrite {
+          fflush(externalFileWrite)
+          fsync(fileno(externalFileWrite))
+        }
+        let externalFileRead = externalFileRead ?? fopen(externalStore, "rb")
+        self.externalFileRead = externalFileRead
+        fseek(externalFileRead, offset, SEEK_SET)
+        if length > loadedBytesLength {
+          loadedBytesLength = length
+          loadedBytes = realloc(loadedBytes, loadedBytesLength)
+        }
+        fread(loadedBytes, 1, length, externalFileRead)
+        return loadedBytes
+      case .data(let data):
+        guard offset + length <= data.count else { return nil }
+        if length > loadedBytesLength {
+          loadedBytesLength = length
+          loadedBytes = realloc(loadedBytes, loadedBytesLength)
+        }
+        data.withUnsafeBytes { buf in
+          memcpy(loadedBytes, buf.baseAddress!.advanced(by: offset), length)
+        }
+        return loadedBytes
+      case .none:
+        return nil
       }
-      let externalFileRead = externalFileRead ?? fopen(externalStore, "rb")
-      self.externalFileRead = externalFileRead
-      fseek(externalFileRead, offset, SEEK_SET)
-      if length > loadedBytesLength {
-        loadedBytesLength = length
-        loadedBytes = realloc(loadedBytes, loadedBytesLength)
-      }
-      fread(loadedBytes, 1, length, externalFileRead)
-      return loadedBytes
     }
     func flush() {
       guard let externalFileWrite = externalFileWrite else { return }
@@ -4174,6 +4258,10 @@ extension DynamicGraph {
       }
       public static let truncateWhenClose = OpenFlag(rawValue: 1 << 0)
       public static let readOnly = OpenFlag(rawValue: 1 << 1)
+    }
+    public enum ExternalStore {
+      case path(String)
+      case data(Data)
     }
     public struct Codec: OptionSet {
       public let rawValue: Int
@@ -5045,7 +5133,7 @@ extension DynamicGraph {
    * - Parameters:
    *   - filePath: The file path for the store.
    *   - flags: The flags for the opening store. Default to truncateWhenClose.
-   *   - externalStore: The external store for tensor data, in case we have tensors stored externally (a.k.a. outside of the SQLite database).
+   *   - externalStore: The external store for tensor data, either a path or a Data object.
    *   - chunkSize: Align each tensor to a certain chunk size.
    *   - procedure: When the store is open, you can access it from this closure.
    * - Returns: Wether this store can be successfully open or not.
@@ -5053,7 +5141,7 @@ extension DynamicGraph {
   @discardableResult
   public func openStore<SuccessResult>(
     _ filePath: String, flags: Store.OpenFlag = .truncateWhenClose,
-    externalStore: String? = nil, chunkSize: Int = 16_384,
+    externalStore: Store.ExternalStore? = nil, chunkSize: Int = 16_384,
     procedure: (_ store: Store) throws -> SuccessResult
   ) rethrows -> Result<SuccessResult, OpenError> {
     var _sqlite: OpaquePointer? = nil
