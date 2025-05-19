@@ -171,6 +171,29 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(tv3s[1].rawValue[0], 0.5 / 0.2, accuracy: 1e-5)
   }
 
+  func testSoftmaxModel() throws {
+    let graph = DynamicGraph()
+    let softmax = Softmax()
+    let input = graph.variable(Tensor<Float32>([1.0, 2.0, 3.0], .CPU, .C(3)))
+    let output = DynamicGraph.Tensor<Float32>(softmax(inputs: input)[0])
+    let e0 = exp(1.0)
+    let e1 = exp(2.0)
+    let e2 = exp(3.0)
+    let sum = e0 + e1 + e2
+    XCTAssertEqual(output.rawValue[0], Float32(e0 / sum), accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[1], Float32(e1 / sum), accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[2], Float32(e2 / sum), accuracy: 1e-5)
+  }
+
+  func testLeakyReLUModel() throws {
+    let graph = DynamicGraph()
+    let model = LeakyReLU(negativeSlope: 0.1)
+    let input = graph.variable(Tensor<Float32>([1.0, -2.0], .CPU, .C(2)))
+    let output = DynamicGraph.Tensor<Float32>(model(inputs: input)[0])
+    XCTAssertEqual(output.rawValue[0], 1.0, accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[1], -0.2, accuracy: 1e-5)
+  }
+
   func testModelDebug() throws {
     let dynamicGraph = DynamicGraph()
 
@@ -485,6 +508,8 @@ final class ModelTests: XCTestCase {
     ("testModelWithScalar", testModelWithScalar),
     ("testModelWithParameter", testModelWithParameter),
     ("testModelDiv", testModelDiv),
+    ("testSoftmaxModel", testSoftmaxModel),
+    ("testLeakyReLUModel", testLeakyReLUModel),
     ("testModelDebug", testModelDebug),
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
     ("testCustomModel", testCustomModel),
