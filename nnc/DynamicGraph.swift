@@ -422,6 +422,14 @@ extension DynamicGraph.AnyTensor {
     format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
     strides: TensorShape? = nil
   ) -> Self {
+    var shape = shape
+    if let first = shape.firstIndex(of: -1) {
+      precondition(shape.filter { $0 == -1 }.count == 1)
+      let numElements = self.shape.reduce(1, *)
+      let known = shape.reduce(1) { $1 == -1 ? $0 : $0 * $1 }
+      precondition(known > 0 && numElements % known == 0)
+      shape[first] = numElements / known
+    }
     let _graph = graph.cGraph
     let cTensorParams = ccv_nnc_tensor_variable_params(_graph, _tensor)
     let device = DeviceKind.from(cTensorParams: cTensorParams)
