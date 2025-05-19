@@ -377,6 +377,15 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(b0[3], a1[0, 1, 0])
   }
 
+  func testReshapeWithNegativeOne() throws {
+    let graph = DynamicGraph()
+    let tensor = graph.variable(Tensor<Int32>([1, 2, 3, 4, 5, 6], .CPU, .NC(2, 3)))
+    let reshaped = tensor.reshaped(format: .NCHW, shape: [-1])
+    XCTAssertEqual([6], Array(reshaped.shape))
+    XCTAssertEqual(1, reshaped.rawValue[0])
+    XCTAssertEqual(6, reshaped.rawValue[5])
+  }
+
   func testConcatZeroLengthTensor() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(.CPU, format: .NCHW, shape: [], of: Float.self)
@@ -412,6 +421,7 @@ final class GraphTests: XCTestCase {
     ("testPermute", testPermute),
     ("testPermuteAndGetASubset", testPermuteAndGetASubset),
     ("testPermuteAndReshape", testPermuteAndReshape),
+    ("testReshapeWithNegativeOne", testReshapeWithNegativeOne),
     ("testConcatZeroLengthTensor", testConcatZeroLengthTensor),
   ]
 }

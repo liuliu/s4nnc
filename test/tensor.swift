@@ -196,6 +196,14 @@ final class TensorTests: XCTestCase {
     XCTAssertEqual(b0[3], a1[0, 1, 0])
   }
 
+  func testReshapeWithNegativeOne() throws {
+    let tensor = Tensor<Int32>([1, 2, 3, 4, 5, 6], .CPU, .NC(2, 3))
+    let reshaped = tensor.reshaped(format: .NCHW, shape: [-1])
+    XCTAssertEqual([6], Array(reshaped.shape))
+    XCTAssertEqual(1, reshaped[0])
+    XCTAssertEqual(6, reshaped[5])
+  }
+
   func testSerializeTensorToData() throws {
     var tensor = Tensor<Int32>(.CPU, .NC(2, 3))
     tensor[1, 0..<3] = [1, 2, 3]
@@ -232,6 +240,7 @@ final class TensorTests: XCTestCase {
     ("testPermute", testPermute),
     ("testPermuteAndGetASubset", testPermuteAndGetASubset),
     ("testPermuteAndReshape", testPermuteAndReshape),
+    ("testReshapeWithNegativeOne", testReshapeWithNegativeOne),
     ("testSerializeTensorToData", testSerializeTensorToData),
   ]
 }
