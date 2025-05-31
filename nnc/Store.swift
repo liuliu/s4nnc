@@ -3510,7 +3510,8 @@ private let q4pDecodeJitWithExternalEagerMmap:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset }, 0)
+      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
+      min(max(0, store.externalFileSize - offset), length), 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -3562,7 +3563,8 @@ private let q5pDecodeJitWithExternalEagerMmap:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset }, 0)
+      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
+      min(max(0, store.externalFileSize - offset), length), 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -3614,7 +3616,8 @@ private let q6pDecodeJitWithExternalEagerMmap:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset }, 0)
+      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
+      min(max(0, store.externalFileSize - offset), length), 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -3666,7 +3669,8 @@ private let q7pDecodeJitWithExternalEagerMmap:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset }, 0)
+      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
+      min(max(0, store.externalFileSize - offset), length), 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -3719,7 +3723,8 @@ private let q8pDecodeJitWithExternalEagerMmap:
         context, params, tensorOut, decoded, decodedSize)
     }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset }, 0)
+      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
+      min(max(0, store.externalFileSize - offset), length), 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -3742,7 +3747,8 @@ private let decodeWithExternalEagerMmap:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let offset = Int(data.load(as: UInt64.self))
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      params, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset }, 0)
+      params, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
+      max(0, store.externalFileSize - offset), 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4423,6 +4429,7 @@ extension DynamicGraph {
     var externalFileWrite: UnsafeMutablePointer<FILE>?
     var externalFileWriteError: Bool
     private var _externalFileSize: Int = 0
+    var externalFileSize: Int { _externalFileSize }
     private var _externalMmap: UnsafeMutableRawPointer? = nil
     var externalMmap: UnsafeRawPointer? {
       if let _externalMmap = _externalMmap {
@@ -4554,10 +4561,10 @@ extension DynamicGraph {
       }
       public static func externalData(_ readingOptions: DataReadingOptions = .fread) -> Codec {
         switch readingOptions {
-          case .fread:
-            return Codec(rawValue: 1 << 9)
-          case .mmap:
-            return Codec(rawValue: 1 << 10)
+        case .fread:
+          return Codec(rawValue: 1 << 9)
+        case .mmap:
+          return Codec(rawValue: 1 << 10)
         }
       }
       public static let externalOnDemand = Codec(rawValue: 1 << 11)
