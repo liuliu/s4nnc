@@ -4440,7 +4440,7 @@ extension DynamicGraph {
       let fd = fileno(fp)
       fseek(fp, 0, SEEK_END)
       let externalFileSize = ftell(fp)
-      let externalMmap = mmap(nil, externalFileSize, PROT_READ, MAP_SHARED, fd, 0)
+      let externalMmap = mmap(nil, externalFileSize, PROT_READ, MAP_PRIVATE, fd, 0)
       fclose(fp)
       _externalMmap = externalMmap
       _externalFileSize = externalFileSize
