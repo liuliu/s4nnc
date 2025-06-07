@@ -4880,7 +4880,7 @@ extension DynamicGraph {
     }
     public enum ModelReaderResult {
       /// Continue to load parameter with the given name.
-      case `continue`(String, codec: Codec? = nil)
+      case `continue`(String, codec: Codec? = nil, store: Store? = nil)
       /// The parameter is loaded, no futher operation need.
       case final(NNC.AnyTensor)
       /// Nothing is loaded.
@@ -4951,15 +4951,23 @@ extension DynamicGraph {
                 CCV_NNC_DATA_TRANSFER_FORWARD, nil, CmdParamsFactory.factory.newParams(), 0),
               ccv_nnc_no_hint, 0, &input, 1, tensorOut, 1, nil)
             return Int32(CCV_IO_FINAL)
-          case let .continue(name, codec):
+          case let .continue(name, codec, store):
             var params = params
-            guard let codec = codec, var options = options?.pointee else {
+            let sqlite = store?.store.sqlite ?? readerHelper.sqlite
+            guard var options = options?.pointee else {
               return ccv_nnc_tensor_read(
-                readerHelper.sqlite, name, options, 0, &params, tensorOut)
+                sqlite, name, nil, 0, &params, tensorOut)
+            }
+            if let store = store?.store {
+              options.context = Unmanaged<_Store>.passUnretained(store).toOpaque()
+            }
+            guard let codec = codec else {
+              return ccv_nnc_tensor_read(
+                sqlite, name, &options, 0, &params, tensorOut)
             }
             options.decode = codec.decode
             return ccv_nnc_tensor_read(
-              readerHelper.sqlite, name, &options, 0, &params, tensorOut)
+              sqlite, name, &options, 0, &params, tensorOut)
           case .fail:
             return Int32(CCV_IO_ERROR)
           }
