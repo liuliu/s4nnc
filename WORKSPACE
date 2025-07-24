@@ -52,9 +52,9 @@ swift_rules_extra_dependencies()
 
 git_repository(
     name = "swift-mujoco",
-    commit = "3c0a4496bd3b984fb5ddceebc8f8def7c698bd2f",
+    commit = "a37f3ba8e7a245a229c2372cf8eee492800d328a",
     remote = "https://github.com/liuliu/swift-mujoco.git",
-    shallow_since = "1658628786 -0400"
+    shallow_since = "1753395265 -0400"
 )
 
 load("@swift-mujoco//:deps.bzl", "swift_mujoco_deps")

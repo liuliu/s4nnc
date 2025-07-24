@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary", "swift_library", "swift_interop_hint")
 
 cc_library(
     name = "CNIOAtomics",
@@ -11,6 +11,12 @@ cc_library(
         "Sources/CNIOAtomics/include/",
     ],
     tags = ["swift_module=CNIOAtomics"],
+    aspect_hints = [":CNIOAtomics_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CNIOAtomics_swift_interop",
+    module_name = "CNIOAtomics",
 )
 
 cc_library(
@@ -24,6 +30,12 @@ cc_library(
         "Sources/CNIOSHA1/include/",
     ],
     tags = ["swift_module=CNIOSHA1"],
+    aspect_hints = [":CNIOSHA1_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CNIOSHA1_swift_interop",
+    module_name = "CNIOSHA1",
 )
 
 cc_library(
@@ -37,6 +49,12 @@ cc_library(
         "Sources/CNIOLinux/include/",
     ],
     tags = ["swift_module=CNIOLinux"],
+    aspect_hints = [":CNIOLinux_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CNIOLinux_swift_interop",
+    module_name = "CNIOLinux",
 )
 
 cc_library(
@@ -51,6 +69,12 @@ cc_library(
         "Sources/CNIODarwin/include/",
     ],
     tags = ["swift_module=CNIODarwin"],
+    aspect_hints = [":CNIODarwin_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CNIODarwin_swift_interop",
+    module_name = "CNIODarwin",
 )
 
 cc_library(
@@ -64,6 +88,12 @@ cc_library(
         "Sources/CNIOWindows/include/",
     ],
     tags = ["swift_module=CNIOWindows"],
+    aspect_hints = [":CNIOWindows_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CNIOWindows_swift_interop",
+    module_name = "CNIOWindows",
 )
 
 swift_library(
@@ -169,6 +199,12 @@ cc_library(
         "Sources/CNIOWindows/include/",
     ],
     tags = ["swift_module=CNIOHTTPParser"],
+    aspect_hints = [":CNIOHTTPParser_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CNIOHTTPParser_swift_interop",
+    module_name = "CNIOHTTPParser",
 )
 
 swift_library(

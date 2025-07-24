@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_interop_hint")
 
 config_setting(
     name = "linux_build",
@@ -21,6 +21,12 @@ cc_library(
         "//conditions:default": [],
     }),
     tags = ["swift_module=TSCclibc"],
+    aspect_hints = [":TSCclibc_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "TSCclibc_swift_interop",
+    module_name = "TSCclibc",
 )
 
 swift_library(

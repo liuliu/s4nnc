@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_interop_hint")
 
 cc_library(
     name = "_NumericsShims",
@@ -8,6 +8,12 @@ cc_library(
         "Sources/_NumericsShims/include/",
     ],
     tags = ["swift_module=_NumericsShims"],
+    aspect_hints = [":NumericsShims_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "NumericsShims_swift_interop",
+    module_name = "NumericsShims",
 )
 
 swift_library(

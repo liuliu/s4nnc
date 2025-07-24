@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_interop_hint")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
 cc_library(
@@ -11,6 +11,12 @@ cc_library(
         "Sources/CSystem/include/",
     ],
     tags = ["swift_module=CSystem"],
+    aspect_hints = [":CSystem_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "CSystem_swift_interop",
+    module_name = "CSystem",
 )
 
 config_setting(
