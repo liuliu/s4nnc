@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "ccv",
-    commit = "757656661092665eda75d0e50654d6f183f14685",
+    commit = "73206d2f1f7458e9c1482e5f84b28c99de13c079",
     remote = "https://github.com/liuliu/ccv.git",
-    shallow_since = "1749597831 -0400",
+    shallow_since = "1753381160 -0400",
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")
@@ -37,9 +37,9 @@ ccv_setting(
 
 git_repository(
     name = "build_bazel_rules_swift",
-    commit = "3bc7bc164020a842ae08e0cf071ed35f0939dd39",
+    commit = "ea2d4bd82a94f7501d1ad9009834e75671137a96",
     remote = "https://github.com/bazelbuild/rules_swift.git",
-    shallow_since = "1654173801 -0500",
+    shallow_since = "1712285522 -0500",
 )
 
 load("@build_bazel_rules_swift//swift:repositories.bzl", "swift_rules_dependencies")
