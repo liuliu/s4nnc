@@ -1,4 +1,10 @@
+load("@build_bazel_rules_swift//swift:swift_extract_symbol_graph.bzl", "swift_extract_symbol_graph")
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+
+swift_extract_symbol_graph(
+    name = "s4nnc_symbols",
+    targets = ["//nnc:nnc", "//nnc:nnc_python", "//nnc:nnc_mujoco", "//gym:gym", "//tensorboard:tensorboard"],
+)
 
 buildifier(
     name = "buildifier",
