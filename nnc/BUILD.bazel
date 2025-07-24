@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_interop_hint")
 
 cc_library(
     name = "C_zlib",
@@ -6,6 +6,54 @@ cc_library(
     defines = ["_GNU_SOURCE"],
     linkopts = ["-lz"],
     tags = ["swift_module=C_zlib"],
+    aspect_hints = [":C_zlib_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "C_zlib_swift_interop",
+    module_name = "C_zlib",
+)
+
+cc_library(
+    name = "C_ccv",
+    hdrs = ["C_ccv/shim.h"],
+    aspect_hints = [":C_ccv_swift_interop"],
+    deps = [
+        "@ccv//lib:ccv",
+    ]
+)
+
+swift_interop_hint(
+    name = "C_ccv_swift_interop",
+    module_name = "C_ccv",
+)
+
+cc_library(
+    name = "C_nnc",
+    hdrs = ["C_nnc/shim.h"],
+    aspect_hints = [":C_nnc_swift_interop"],
+    deps = [
+        "@ccv//lib:nnc",
+    ]
+)
+
+swift_interop_hint(
+    name = "C_nnc_swift_interop",
+    module_name = "C_nnc",
+)
+
+cc_library(
+    name = "C_sqlite3",
+    hdrs = ["C_sqlite3/shim.h"],
+    aspect_hints = [":C_sqlite3_swift_interop"],
+    deps = [
+        "@ccv//lib:ccv",
+    ]
+)
+
+swift_interop_hint(
+    name = "C_sqlite3_swift_interop",
+    module_name = "SQLite3",
 )
 
 swift_library(
@@ -41,8 +89,9 @@ swift_library(
     visibility = ["//visibility:public"],
     deps = [
         ":C_zlib",
-        "@ccv//lib:ccv",
-        "@ccv//lib:nnc",
+        ":C_ccv",
+        ":C_nnc",
+        ":C_sqlite3",
         "@fpzip",
     ],
 )

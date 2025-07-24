@@ -20,6 +20,7 @@ swift_test(
     deps = [
         "//nnc",
     ],
+    discover_tests = False,
 )
 
 swift_test(
@@ -31,6 +32,7 @@ swift_test(
     deps = [
         "//nnc:nnc_python",
     ],
+    discover_tests = False,
 )
 
 swift_test(
@@ -42,4 +44,5 @@ swift_test(
     deps = [
         "//nnc:nnc_coreml",
     ],
+    discover_tests = False,
 )
