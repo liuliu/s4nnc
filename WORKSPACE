@@ -7,7 +7,7 @@ git_repository(
     name = "ccv",
     commit = "73206d2f1f7458e9c1482e5f84b28c99de13c079",
     remote = "https://github.com/liuliu/ccv.git",
-    shallow_since = "1753381160 -0400",
+    shallow_since = "1753384601 -0400",
 )
 
 load("@ccv//config:ccv.bzl", "ccv_deps", "ccv_setting")
