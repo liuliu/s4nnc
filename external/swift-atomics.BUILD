@@ -8,12 +8,12 @@ cc_library(
         "Sources/_AtomicsShims/include/",
     ],
     tags = ["swift_module=_AtomicsShims"],
-    aspect_hints = [":AtomicsShims_swift_interop"],
+    aspect_hints = [":_AtomicsShims_swift_interop"],
 )
 
 swift_interop_hint(
-    name = "AtomicsShims_swift_interop",
-    module_name = "AtomicsShims",
+    name = "_AtomicsShims_swift_interop",
+    module_name = "_AtomicsShims",
 )
 
 swift_library(
