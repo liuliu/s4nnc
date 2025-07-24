@@ -8,12 +8,12 @@ cc_library(
         "Sources/_NumericsShims/include/",
     ],
     tags = ["swift_module=_NumericsShims"],
-    aspect_hints = [":NumericsShims_swift_interop"],
+    aspect_hints = [":_NumericsShims_swift_interop"],
 )
 
 swift_interop_hint(
-    name = "NumericsShims_swift_interop",
-    module_name = "NumericsShims",
+    name = "_NumericsShims_swift_interop",
+    module_name = "_NumericsShims",
 )
 
 swift_library(
