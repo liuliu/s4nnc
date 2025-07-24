@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_interop_hint")
 
 swift_library(
     name = "gym",
@@ -37,6 +37,12 @@ cc_library(
         "-lavutil",
     ],
     tags = ["swift_module=C_ffmpeg"],
+    aspect_hints = [":C_ffmpeg_swift_interop"],
+)
+
+swift_interop_hint(
+    name = "C_ffmpeg_swift_interop",
+    module_name = "C_ffmpeg",
 )
 
 swift_library(
