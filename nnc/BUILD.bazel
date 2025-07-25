@@ -70,6 +70,13 @@ swift_interop_hint(
     module_name = "C_sfmt",
 )
 
+config_setting(
+    name = "linux_build",
+    constraint_values = [
+        "@platforms//os:linux"
+    ]
+)
+
 swift_library(
     name = "nnc",
     srcs = [
@@ -106,9 +113,11 @@ swift_library(
         ":C_ccv",
         ":C_nnc",
         ":C_sfmt",
-        ":C_sqlite3",
         "@fpzip",
-    ],
+    ] + select({
+        ":linux_build": [":C_sqlite3"],
+        "//conditions:default": []
+	}),
 )
 
 swift_library(
