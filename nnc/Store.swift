@@ -4,7 +4,12 @@ import C_nnc
 import C_zlib
 import Dispatch
 import Foundation
-import SQLite3
+
+#if canImport(SQLite3)
+  import SQLite3
+#else
+  import _SQLite3Shims
+#endif
 
 // Quantize to 4-bit.
 private let q4pEncode:

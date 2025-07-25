@@ -1,12 +1,12 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_interop_hint")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_interop_hint", "swift_library")
 
 cc_library(
     name = "C_zlib",
     hdrs = ["C_zlib/shim.h"],
+    aspect_hints = [":C_zlib_swift_interop"],
     defines = ["_GNU_SOURCE"],
     linkopts = ["-lz"],
     tags = ["swift_module=C_zlib"],
-    aspect_hints = [":C_zlib_swift_interop"],
 )
 
 swift_interop_hint(
@@ -20,7 +20,7 @@ cc_library(
     aspect_hints = [":C_ccv_swift_interop"],
     deps = [
         "@ccv//lib:ccv",
-    ]
+    ],
 )
 
 swift_interop_hint(
@@ -34,7 +34,7 @@ cc_library(
     aspect_hints = [":C_nnc_swift_interop"],
     deps = [
         "@ccv//lib:nnc",
-    ]
+    ],
 )
 
 swift_interop_hint(
@@ -48,12 +48,12 @@ cc_library(
     aspect_hints = [":C_sqlite3_swift_interop"],
     deps = [
         "@ccv//lib:ccv",
-    ]
+    ],
 )
 
 swift_interop_hint(
     name = "C_sqlite3_swift_interop",
-    module_name = "SQLite3",
+    module_name = "_SQLite3Shims",
 )
 
 cc_library(
@@ -62,7 +62,7 @@ cc_library(
     aspect_hints = [":C_sfmt_swift_interop"],
     deps = [
         "@ccv//lib:ccv",
-    ]
+    ],
 )
 
 swift_interop_hint(
@@ -73,8 +73,8 @@ swift_interop_hint(
 config_setting(
     name = "linux_build",
     constraint_values = [
-        "@platforms//os:linux"
-    ]
+        "@platforms//os:linux",
+    ],
 )
 
 swift_library(
@@ -109,15 +109,15 @@ swift_library(
     module_name = "NNC",
     visibility = ["//visibility:public"],
     deps = [
-        ":C_zlib",
         ":C_ccv",
         ":C_nnc",
         ":C_sfmt",
+        ":C_zlib",
         "@fpzip",
     ] + select({
         ":linux_build": [":C_sqlite3"],
-        "//conditions:default": []
-	}),
+        "//conditions:default": [],
+    }),
 )
 
 swift_library(
