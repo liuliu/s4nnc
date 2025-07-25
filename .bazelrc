@@ -9,6 +9,7 @@ common:win-cuda --define=using_cuda=true --define=using_cuda_nvcc=true
 common --disk_cache=.cache
 
 build --cxxopt='-std=c++17'
+build --host_cxxopt=-Wno-deprecated-declarations
 build --incompatible_enable_cc_toolchain_resolution=false
 
 try-import %workspace%/clang.bazelrc
