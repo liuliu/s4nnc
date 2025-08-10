@@ -345,6 +345,7 @@ public enum DataType {
   case Int32
   case Float16
   case UInt8
+  case BFloat16
 
   public static func from(cTensorParams: ccv_nnc_tensor_param_t) -> DataType {
     switch Int(cTensorParams.datatype & 0xff000) {
@@ -358,6 +359,8 @@ public enum DataType {
       return .Int32
     case CCV_16F:
       return .Float16
+    case CCV_16BF:
+      return .BFloat16
     case CCV_8U:
       return .UInt8
     case CCV_QX:
@@ -372,6 +375,8 @@ public enum DataType {
         return .Int32
       case CCV_16F:
         return .Float16
+      case CCV_16BF:
+        return .BFloat16
       case CCV_8U:
         return .UInt8
       default:
@@ -395,6 +400,8 @@ public enum DataType {
       return Swift.Int32(CCV_32S)
     case .Float16:
       return Swift.Int32(CCV_16F)
+    case .BFloat16:
+      return Swift.Int32(CCV_16BF)
     case .UInt8:
       return Swift.Int32(CCV_8U)
     }
@@ -431,6 +438,78 @@ extension Int32: TensorNumeric {
     public static var dataType: DataType { .Float16 }
   }
 #endif
+
+public struct BFloat16: Equatable, Hashable, Sendable, ExpressibleByFloatLiteral, Numeric,
+  CustomStringConvertible, Comparable
+{
+  public typealias Magnitude = BFloat16
+  public var bitPattern: UInt16
+  @inline(__always)
+  public init(bitPattern: UInt16) { self.bitPattern = bitPattern }
+  // Round-to-nearest-even from Float32 -> bfloat16
+  @inline(__always)
+  public init(_ value: Float) {
+    let u = value.bitPattern
+    // lsb of the would-be bfloat16
+    let lsb = (u >> 16) & 1
+    let roundingBias: UInt32 = 0x7FFF &+ lsb
+    let rounded = u &+ roundingBias
+    self.bitPattern = UInt16(truncatingIfNeeded: rounded >> 16)
+  }
+  @inline(__always)
+  public init(_ value: Double) {
+    self.init(Float(value))
+  }
+  @inline(__always)
+  public init(_ value: Int) {
+    self.init(Float(value))
+  }
+  // ExpressibleByFloatLiteral
+  @inline(__always)
+  public init(floatLiteral value: Double) { self.init(value) }
+  // ExpressibleByIntegerLiteral
+  @inline(__always)
+  public init(integerLiteral value: Int) { self.init(value) }
+  @inline(__always)
+  public init?<T>(exactly source: T) where T: BinaryInteger { self.init(Float(source)) }
+  // Back to Float32 by zero-extending the low half
+  @inline(__always)
+  public var floatValue: Float {
+    Float(bitPattern: UInt32(bitPattern) << 16)
+  }
+  // Basic ops via promotion (minimal but handy)
+  @inline(__always)
+  public static func + (lhs: BFloat16, rhs: BFloat16) -> BFloat16 {
+    BFloat16(lhs.floatValue + rhs.floatValue)
+  }
+  @inline(__always)
+  public static func - (lhs: BFloat16, rhs: BFloat16) -> BFloat16 {
+    BFloat16(lhs.floatValue - rhs.floatValue)
+  }
+  @inline(__always)
+  public static func * (lhs: BFloat16, rhs: BFloat16) -> BFloat16 {
+    BFloat16(lhs.floatValue * rhs.floatValue)
+  }
+  @inline(__always)
+  public static func / (lhs: BFloat16, rhs: BFloat16) -> BFloat16 {
+    BFloat16(lhs.floatValue / rhs.floatValue)
+  }
+  @inline(__always)
+  public static func < (l: BFloat16, r: BFloat16) -> Bool {
+    l.floatValue < r.floatValue
+  }
+  @inline(__always)
+  public static func += (lhs: inout BFloat16, rhs: BFloat16) { lhs = lhs + rhs }
+  @inline(__always)
+  public static func -= (lhs: inout BFloat16, rhs: BFloat16) { lhs = lhs - rhs }
+  @inline(__always)
+  public static func *= (lhs: inout BFloat16, rhs: BFloat16) { lhs = lhs * rhs }
+  public var description: String { String(describing: floatValue) }
+  public var magnitude: Magnitude { BFloat16(abs(floatValue)) }
+}
+extension BFloat16: TensorNumeric {
+  public static var dataType: DataType { .BFloat16 }
+}
 
 extension UInt8: TensorNumeric {
   public static var dataType: DataType { .UInt8 }
@@ -1452,6 +1531,31 @@ extension Collection where Element == Tensor<Int32> {
   }
 #endif
 
+extension Collection where Element == Tensor<BFloat16> {
+  public func reshaped(
+    format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
+    strides: TensorShape? = nil
+  ) -> [Element] {
+    return map {
+      $0.reshaped(format: format, shape: shape, offset: offset, strides: strides)
+    }
+  }
+  /**
+ * Create new tensors pointing to the same memory region but with different sizes.
+ *
+ * - Parameters:
+ *   - shapeFormat: New format and shape for the tensor.
+ *   - offset: Whether offset on each shape.
+ *   - strides: The strides on each shape.
+ * - Returns: The new tensors with different format but the same memory content.
+ */
+  public func reshaped(
+    _ shapeFormat: TensorShapeFormat, offset: TensorShape? = nil, strides: TensorShape? = nil
+  ) -> [Element] {
+    return map { $0.reshaped(shapeFormat, offset: offset, strides: strides) }
+  }
+}
+
 extension Collection where Element == Tensor<UInt8> {
   public func reshaped(
     format: TensorFormat, shape: TensorShape, offset: TensorShape? = nil,
@@ -1492,6 +1596,8 @@ extension AnyTensorStorage {
         return Tensor<Int32>(self)
       case .Float16:
         return Tensor<Float16>(self)
+      case .BFloat16:
+        return Tensor<BFloat16>(self)
       case .UInt8:
         return Tensor<UInt8>(self)
       }
@@ -1509,6 +1615,8 @@ extension AnyTensorStorage {
         return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
       case .Float16:
         return unsafeBitCast(Tensor<Float16>(self), to: Element.self)
+      case .BFloat16:
+        return unsafeBitCast(Tensor<BFloat16>(self), to: Element.self)
       case .UInt8:
         return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
       }
@@ -1526,6 +1634,8 @@ extension AnyTensorStorage {
         return Tensor<Int32>(self)
       case .Float16:
         return Tensor<Float16>(self)
+      case .BFloat16:
+        return Tensor<BFloat16>(self)
       case .UInt8:
         return Tensor<UInt8>(self)
       }
@@ -1543,6 +1653,8 @@ extension AnyTensorStorage {
         return unsafeBitCast(Tensor<Int32>(self), to: Element.self)
       case .Float16:
         return unsafeBitCast(Tensor<Float16>(self), to: Element.self)
+      case .BFloat16:
+        return unsafeBitCast(Tensor<BFloat16>(self), to: Element.self)
       case .UInt8:
         return unsafeBitCast(Tensor<UInt8>(self), to: Element.self)
       }
