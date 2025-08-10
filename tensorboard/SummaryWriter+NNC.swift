@@ -414,6 +414,8 @@ extension SummaryWriter {
             dtype.type = .dtDouble
           case .Float16:
             dtype.type = .dtHalf
+          case .BFloat16:
+            dtype.type = .dtBfloat16
           case .Int64:
             dtype.type = .dtInt64
           case .Int32:
@@ -534,12 +536,16 @@ extension SummaryWriter {
     wallTime: Double = Date().timeIntervalSince1970
   ) {
     guard value.count > 1 else {
-      addHistogram(tag, Tensor<Float>(from: value.copied(Float.self).toCPU()), step: step, wallTime: wallTime, displayName: value.name)
+      addHistogram(
+        tag, Tensor<Float>(from: value.copied(Float.self).toCPU()), step: step, wallTime: wallTime,
+        displayName: value.name)
       return
     }
     for i in 0..<value.count {
       let parameter = value[i]
-      addHistogram(tag + " \(parameter.name)", Tensor<Float>(from: parameter.copied(Float.self).toCPU()), step: step, wallTime: wallTime, displayName: parameter.name)
+      addHistogram(
+        tag + " \(parameter.name)", Tensor<Float>(from: parameter.copied(Float.self).toCPU()),
+        step: step, wallTime: wallTime, displayName: parameter.name)
     }
   }
   /// Add parameters from a model for tensorboard histograms dashboard.
@@ -552,7 +558,9 @@ extension SummaryWriter {
       return
     }
     for parameter in values {
-      addHistogram(tag + " \(parameter.name)", Tensor<Float>(from: parameter.copied(Float.self).toCPU()), step: step, wallTime: wallTime, displayName: parameter.name)
+      addHistogram(
+        tag + " \(parameter.name)", Tensor<Float>(from: parameter.copied(Float.self).toCPU()),
+        step: step, wallTime: wallTime, displayName: parameter.name)
     }
   }
 }
