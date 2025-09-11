@@ -4465,7 +4465,11 @@ extension DynamicGraph {
     deinit {
       if let externalFileWrite = externalFileWrite {
         fflush(externalFileWrite)
-        fsync(fileno(externalFileWrite))
+        #if canImport(Darwin)
+          fcntl(fileno(externalFileWrite), F_FULLFSYNC)
+        #else
+          fsync(fileno(externalFileWrite))
+        #endif
         fclose(externalFileWrite)
       }
       if let loadedBytes = loadedBytes {
@@ -4514,7 +4518,11 @@ extension DynamicGraph {
       guard let externalStore = externalStore else { return nil }
       if let externalFileWrite = externalFileWrite {
         fflush(externalFileWrite)
-        fsync(fileno(externalFileWrite))
+        #if canImport(Darwin)
+          fcntl(fileno(externalFileWrite), F_FULLFSYNC)
+        #else
+          fsync(fileno(externalFileWrite))
+        #endif
       }
       let externalFileRead = externalFileRead ?? fopen(externalStore, "rb")
       self.externalFileRead = externalFileRead
@@ -4529,7 +4537,11 @@ extension DynamicGraph {
     func flush() {
       guard let externalFileWrite = externalFileWrite else { return }
       fflush(externalFileWrite)
-      fsync(fileno(externalFileWrite))
+      #if canImport(Darwin)
+        fcntl(fileno(externalFileWrite), F_FULLFSYNC)
+      #else
+        fsync(fileno(externalFileWrite))
+      #endif
     }
   }
 
@@ -5458,8 +5470,10 @@ extension DynamicGraph {
       }
     } else {
       sqlite3_open_v2(filePath, &_sqlite, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
+      sqlite3_exec(_sqlite, "PRAGMA auto_vacuum=incremental", nil, nil, nil)
     }
     guard let sqlite = _sqlite else { return .failure(.cannotOpen) }
+    sqlite3_exec(sqlite, "PRAGMA trusted_schema=OFF", nil, nil, nil)
     sqlite3_busy_timeout(sqlite, 30_000)  // This is essential to have real-world usages.
     if flags.contains(.readOnly) {
       sqlite3_exec(_sqlite, "SAVEPOINT nnc_open_read_only", nil, nil, nil)
