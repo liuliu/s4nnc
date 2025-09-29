@@ -87,12 +87,18 @@ private let q4pEncode:
         for i in 0..<16 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F), Int32(CCV_16BF):
+      case Int32(CCV_16F):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<16 {
           f32[i] = Float(centroids[i])
         }
         ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 16)
+      case Int32(CCV_16BF):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<16 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_bfloat(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 16)
       default:
         return
       }
@@ -348,12 +354,18 @@ private let q5pEncode:
         for i in 0..<32 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F), Int32(CCV_16BF):
+      case Int32(CCV_16F):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<32 {
           f32[i] = Float(centroids[i])
         }
         ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 32)
+      case Int32(CCV_16BF):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<32 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_bfloat(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 32)
       default:
         return
       }
@@ -755,12 +767,18 @@ private let q6pEncode:
         for i in 0..<64 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F), Int32(CCV_16BF):
+      case Int32(CCV_16F):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<64 {
           f32[i] = Float(centroids[i])
         }
         ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 64)
+      case Int32(CCV_16BF):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<64 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_bfloat(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 64)
       default:
         return
       }
@@ -1071,12 +1089,18 @@ private let q7pEncode:
         for i in 0..<128 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F), Int32(CCV_16BF):
+      case Int32(CCV_16F):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<128 {
           f32[i] = Float(centroids[i])
         }
         ccv_float_to_half_precision(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 128)
+      case Int32(CCV_16BF):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<128 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_bfloat(f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 128)
       default:
         return
       }
@@ -1497,12 +1521,19 @@ private let q8pEncode:
         for i in 0..<256 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F), Int32(CCV_16BF):
+      case Int32(CCV_16F):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<256 {
           f32[i] = Float(centroids[i])
         }
         ccv_float_to_half_precision(
+          f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 256)
+      case Int32(CCV_16BF):
+        let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
+        for i in 0..<256 {
+          f32[i] = Float(centroids[i])
+        }
+        ccv_float_to_bfloat(
           f32, encodedBlock.assumingMemoryBound(to: UInt16.self), 256)
       default:
         return
