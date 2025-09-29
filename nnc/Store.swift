@@ -21,7 +21,9 @@ private let q4pEncode:
     data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    guard
+      dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+        || dataType == Int32(CCV_16BF)
     else {
       guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
         var encoded = encoded, let encodedSize = encodedSize, let params = params,
@@ -51,7 +53,7 @@ private let q4pEncode:
       elementSize = MemoryLayout<Double>.size
     case Int32(CCV_32F):
       elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
+    case Int32(CCV_16F), Int32(CCV_16BF):
       elementSize = MemoryLayout<UInt16>.size
     default:
       return 0
@@ -85,7 +87,7 @@ private let q4pEncode:
         for i in 0..<16 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F):
+      case Int32(CCV_16F), Int32(CCV_16BF):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<16 {
           f32[i] = Float(centroids[i])
@@ -120,7 +122,9 @@ private func q4pDecode(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e4b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   if tensorOut!.pointee == nil {
     tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
@@ -135,7 +139,7 @@ private func q4pDecode(
     elementSize = MemoryLayout<Double>.size
   case Int32(CCV_32F):
     elementSize = MemoryLayout<Float>.size
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     elementSize = MemoryLayout<UInt16>.size
   default:
     return 0
@@ -213,7 +217,7 @@ private func q4pDecode(
         }
       }
     }
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
       let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
       let dataBlock = data + (16 * elementSize + blockSize / 2) * blockIdx
@@ -278,7 +282,9 @@ private let q5pEncode:
     data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    guard
+      dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+        || dataType == Int32(CCV_16BF)
     else {
       guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
         var encoded = encoded, let encodedSize = encodedSize, let params = params,
@@ -308,7 +314,7 @@ private let q5pEncode:
       elementSize = MemoryLayout<Double>.size
     case Int32(CCV_32F):
       elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
+    case Int32(CCV_16F), Int32(CCV_16BF):
       elementSize = MemoryLayout<UInt16>.size
     default:
       return 0
@@ -342,7 +348,7 @@ private let q5pEncode:
         for i in 0..<32 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F):
+      case Int32(CCV_16F), Int32(CCV_16BF):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<32 {
           f32[i] = Float(centroids[i])
@@ -391,7 +397,9 @@ private func q5pDecode(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e5b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   if tensorOut!.pointee == nil {
     tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
@@ -406,7 +414,7 @@ private func q5pDecode(
     elementSize = MemoryLayout<Double>.size
   case Int32(CCV_32F):
     elementSize = MemoryLayout<Float>.size
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     elementSize = MemoryLayout<UInt16>.size
   default:
     return 0
@@ -572,7 +580,7 @@ private func q5pDecode(
         }
       }
     }
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
       let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
       let dataBlock = data + (32 * elementSize + blockSize / 8 * 5) * blockIdx
@@ -681,7 +689,9 @@ private let q6pEncode:
     data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    guard
+      dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+        || dataType == Int32(CCV_16BF)
     else {
       guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
         var encoded = encoded, let encodedSize = encodedSize, let params = params,
@@ -711,7 +721,7 @@ private let q6pEncode:
       elementSize = MemoryLayout<Double>.size
     case Int32(CCV_32F):
       elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
+    case Int32(CCV_16F), Int32(CCV_16BF):
       elementSize = MemoryLayout<UInt16>.size
     default:
       return 0
@@ -745,7 +755,7 @@ private let q6pEncode:
         for i in 0..<64 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F):
+      case Int32(CCV_16F), Int32(CCV_16BF):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<64 {
           f32[i] = Float(centroids[i])
@@ -786,7 +796,9 @@ private func q6pDecode(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e6b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   if tensorOut!.pointee == nil {
     tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
@@ -801,7 +813,7 @@ private func q6pDecode(
     elementSize = MemoryLayout<Double>.size
   case Int32(CCV_32F):
     elementSize = MemoryLayout<Float>.size
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     elementSize = MemoryLayout<UInt16>.size
   default:
     return 0
@@ -911,7 +923,7 @@ private func q6pDecode(
         }
       }
     }
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
       let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
       let dataBlock = data + (64 * elementSize + blockSize / 4 * 3) * blockIdx
@@ -992,7 +1004,9 @@ private let q7pEncode:
     data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    guard
+      dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+        || dataType == Int32(CCV_16BF)
     else {
       guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
         var encoded = encoded, let encodedSize = encodedSize, let params = params,
@@ -1022,7 +1036,7 @@ private let q7pEncode:
       elementSize = MemoryLayout<Double>.size
     case Int32(CCV_32F):
       elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
+    case Int32(CCV_16F), Int32(CCV_16BF):
       elementSize = MemoryLayout<UInt16>.size
     default:
       return 0
@@ -1057,7 +1071,7 @@ private let q7pEncode:
         for i in 0..<128 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F):
+      case Int32(CCV_16F), Int32(CCV_16BF):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<128 {
           f32[i] = Float(centroids[i])
@@ -1111,7 +1125,9 @@ private func q7pDecode(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e7b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   if tensorOut!.pointee == nil {
     tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
@@ -1126,7 +1142,7 @@ private func q7pDecode(
     elementSize = MemoryLayout<Double>.size
   case Int32(CCV_32F):
     elementSize = MemoryLayout<Float>.size
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     elementSize = MemoryLayout<UInt16>.size
   default:
     return 0
@@ -1300,7 +1316,7 @@ private func q7pDecode(
         }
       }
     }
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
       let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
       let dataBlock = data + (128 * elementSize + blockSize / 8 * 7) * blockIdx
@@ -1413,7 +1429,9 @@ private let q8pEncode:
     data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
     identifier
     in
-    guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+    guard
+      dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+        || dataType == Int32(CCV_16BF)
     else {
       guard (dataType & 0xFF000) == Int32(CCV_QX), let dimensions = dimensions, let data = data,
         var encoded = encoded, let encodedSize = encodedSize, let params = params,
@@ -1443,7 +1461,7 @@ private let q8pEncode:
       elementSize = MemoryLayout<Double>.size
     case Int32(CCV_32F):
       elementSize = MemoryLayout<Float>.size
-    case Int32(CCV_16F):
+    case Int32(CCV_16F), Int32(CCV_16BF):
       elementSize = MemoryLayout<UInt16>.size
     default:
       return 0
@@ -1479,7 +1497,7 @@ private let q8pEncode:
         for i in 0..<256 {
           f32[i] = Float(centroids[i])
         }
-      case Int32(CCV_16F):
+      case Int32(CCV_16F), Int32(CCV_16BF):
         let f32 = UnsafeMutableRawPointer(centroids).assumingMemoryBound(to: Float32.self)
         for i in 0..<256 {
           f32[i] = Float(centroids[i])
@@ -1510,7 +1528,9 @@ private func q8pDecode(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e8b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   if tensorOut!.pointee == nil {
     tensorOut!.pointee = ccv_nnc_tensor_new(nil, params, 0)
@@ -1525,7 +1545,7 @@ private func q8pDecode(
     elementSize = MemoryLayout<Double>.size
   case Int32(CCV_32F):
     elementSize = MemoryLayout<Float>.size
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     elementSize = MemoryLayout<UInt16>.size
   default:
     return 0
@@ -1564,7 +1584,7 @@ private func q8pDecode(
         f32[i] = palette[Int(u8[i])]
       }
     }
-  case Int32(CCV_16F):
+  case Int32(CCV_16F), Int32(CCV_16BF):
     DispatchQueue.concurrentPerform(iterations: numberOfBlocks) { blockIdx in
       let nI = min(blockSize, numberOfElements - blockIdx * blockSize)
       let dataBlock = data + (256 * elementSize + blockSize) * blockIdx
@@ -2503,7 +2523,9 @@ private func q4pDecodeJit(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e4b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
     dimensionCount > 0
@@ -2579,7 +2601,9 @@ private func q5pDecodeJit(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e5b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
     dimensionCount > 0
@@ -2655,7 +2679,9 @@ private func q6pDecodeJit(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e6b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
     dimensionCount > 0
@@ -2731,7 +2757,9 @@ private func q7pDecodeJit(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e7b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
     dimensionCount > 0
@@ -2807,7 +2835,9 @@ private func q8pDecodeJit(
   _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
 ) -> Int32 {
   guard identifier == 0x8a1e8b else { return 0 }
-  guard dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+  guard
+    dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
+      || dataType == Int32(CCV_16BF)
   else { return 0 }
   guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
     dimensionCount > 0
