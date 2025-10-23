@@ -778,9 +778,14 @@ extension DynamicGraph {
      */
     public static let disableMFAAttention = EnableBits(
       rawValue: UInt64(CCV_NNC_DISABLE_MFA_ATTENTION))
+    /**
+     * Disable MFA Neural Accelerators optimizations.
+     */
+    public static let disableMFANeuralAccelerators = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_MFA_NEURAL_ACCELERATORS))
     public static let allCases: [EnableBits] = [
       .disableMixedMPSGEMM, .disableMixedMPSSoftMax, .disableMmapMTLBuffer,
-      .disableMFA, .disableMFAGEMM, .disableMFAAttention
+      .disableMFA, .disableMFAGEMM, .disableMFAAttention, .disableMFANeuralAccelerators,
     ]
   }
 
