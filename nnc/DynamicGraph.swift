@@ -805,4 +805,28 @@ extension DynamicGraph {
       }
     }
   }
+
+  public struct BinaryArtifacts: Equatable {
+    public var pathsToRead: [String]
+    public var pathToWrite: String?
+    init(pathsToRead: [String], pathToWrite: String?) {
+      self.pathsToRead = pathsToRead
+      self.pathToWrite = pathToWrite
+    }
+  }
+  /**
+   * Set binary artifacts that will be used to speed up the compilations.
+   */
+  public static var binaryArtifacts = BinaryArtifacts(pathsToRead: [], pathToWrite: nil) {
+    didSet {
+      guard binaryArtifacts != oldValue else { return }
+      var pathsToRead: [UnsafePointer<CChar>?] = binaryArtifacts.pathsToRead.map { UnsafePointer(strdup($0)) }
+      pathsToRead.withUnsafeMutableBufferPointer {
+        ccv_nnc_set_binary_artifacts($0.baseAddress, Int32(binaryArtifacts.pathsToRead.count), binaryArtifacts.pathToWrite)
+      }
+      for pathToRead in pathsToRead {
+        free(UnsafeMutablePointer(mutating: pathToRead))
+      }
+    }
+  }
 }
