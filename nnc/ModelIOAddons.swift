@@ -264,3 +264,26 @@ extension Model.Parameters {
       toModel.cModel, _io, normType.rawValue, maxNorm, _streamContext)
   }
 }
+
+extension Model.Parameters {
+  public enum Move {
+    case unifiedMemory
+  }
+  public func to(_ destination: Move, streamContext: StreamContext? = nil) {
+    guard var toModel = model else {
+      fatalError()
+    }
+    // We can only copy parameters from fully compiled model, i.e., the owner of the sub-models.
+    // Try to find them.
+    while let owner = toModel.owner {
+      toModel = owner
+    }
+    let graph = toModel.graph
+    let _streamContext = (streamContext ?? graph?.streamContext)?._stream
+    switch destination {
+    case .unifiedMemory:
+      ccv_cnnp_model_parameters_to_unified_memory(
+        toModel.cModel, _io, _streamContext)
+    }
+  }
+}
