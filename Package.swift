@@ -18,7 +18,7 @@ let package = Package(
             targets: ["NNCCoreMLConversion"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/liuliu/ccv.git", branch: "unstable"),
+        .package(url: "https://github.com/liuliu/ccv.git", revision: "1b3a4c91ee47a8e49e83decfb0dbeb9a9732642c"),
         .package(url: "https://github.com/weiyanlin117/swift-fpzip-support.git", branch: "develop"),
     ],
     targets: [
