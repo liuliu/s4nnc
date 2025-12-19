@@ -1,4 +1,9 @@
+#if canImport(C_ccv)
 import C_ccv
+#elseif canImport(C_swiftpm_ccv)
+import C_swiftpm_ccv
+#endif
+
 import Foundation
 import MuJoCo
 import NIOCore

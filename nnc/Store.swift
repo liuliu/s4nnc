@@ -1,4 +1,9 @@
+#if canImport(C_ccv)
 import C_ccv
+#elseif canImport(C_swiftpm_ccv)
+import C_swiftpm_ccv
+#endif
+
 import C_fpzip
 import C_nnc
 import C_zlib
