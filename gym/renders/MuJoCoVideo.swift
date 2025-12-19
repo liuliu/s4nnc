@@ -1,8 +1,6 @@
 #if canImport(C_ccv)
 import C_ccv
-#endif
-
-#if canImport(C_swiftpm_ccv)
+#elseif canImport(C_swiftpm_ccv)
 import C_swiftpm_ccv
 #endif
 

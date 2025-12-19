@@ -18,8 +18,7 @@ let package = Package(
             targets: ["NNCCoreMLConversion"]),
     ],
     dependencies: [
-        // .package(url: "https://github.com/weiyanlin117/ccv.git", revision: "40f1209bca71af2cc8f63fb7f169d5e73a9bc91d"),
-        .package(path: "../ccv"),
+        .package(url: "https://github.com/liuliu/ccv.git", branch: "unstable"),
         .package(url: "https://github.com/weiyanlin117/swift-fpzip-support.git", branch: "develop"),
     ],
     targets: [
@@ -124,7 +123,6 @@ let package = Package(
             ]
         ),
 
-        // TODO: Enable when lib_nnc_mps_compat is exposed from ccv package
         .testTarget(
             name: "NNCCoreMLTests",
             dependencies: ["NNCCoreMLConversion"],
