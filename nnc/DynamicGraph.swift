@@ -1,4 +1,8 @@
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 
 /// A dynamic graph is a workspace for computations. All tensor variables can be tracked
 /// from a dynamic graph.

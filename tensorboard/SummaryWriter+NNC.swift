@@ -1,5 +1,14 @@
+#if canImport(C_ccv)
 import C_ccv
+#elseif canImport(C_swiftpm_ccv)
+import C_swiftpm_ccv
+#endif
+
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 import Foundation
 import NNC
 

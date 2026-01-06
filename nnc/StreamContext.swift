@@ -1,4 +1,8 @@
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 
 /// A stream context is an object that an execution can be performed upon.
 public final class StreamContext {

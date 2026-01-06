@@ -1,4 +1,8 @@
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 
 /// This protocol defines a generic constructs such that we can use DynamicGraph.AnyTensorGroup
 /// to represent either a collection of tensors from multiple GPUs or one tensor.
