@@ -1,4 +1,8 @@
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 
 public protocol DataSeries: Sequence {
   func prefetch(_ i: Int, streamContext: StreamContext?)

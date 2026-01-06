@@ -1,4 +1,8 @@
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 
 /// Hint are parameters to these operations that changes shape from input
 /// to output. It given proper stride / padding parameters for these operations.

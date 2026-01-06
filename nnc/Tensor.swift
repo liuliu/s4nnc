@@ -4,7 +4,11 @@ import C_ccv
 import C_swiftpm_ccv
 #endif
 
+#if canImport(C_nnc)
 import C_nnc
+#elseif canImport(C_swiftpm_nnc)
+import C_swiftpm_nnc
+#endif
 import Foundation
 
 public final class CmdParamsFactory {
@@ -750,9 +754,10 @@ extension AnyTensorStorage {
       // Otherwise, mostly use the source tensor format and do a data transfer.
       var input: UnsafeMutablePointer<ccv_nnc_tensor_t>? = v.cTensor
       var newt = ccv_nnc_tensor(
-        pointer + offset,
+        pointer,
         toCTensorParams(device, dataType: Element.dataType, format: vFormat, shape: inputDim),
         0)
+      newt.dataof = off_t(offset * MemoryLayout<Element>.size) 
       withUnsafeMutablePointer(to: &newt) { newt in
         var output: UnsafeMutablePointer<ccv_nnc_tensor_t>? = newt
         ccv_nnc_cmd_exec(
