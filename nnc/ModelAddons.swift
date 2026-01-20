@@ -270,15 +270,16 @@ extension ModelIOConvertible {
 public final class Pad: Model {
   public enum Mode {
     case zero
-    case replication
-    public static let clampToEdge: Mode = .replication
+    case replicate
+    case reflect
+    public static let clampToEdge: Mode = .replicate
   }
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
   public init(
-    _ mode: Mode, begin: TensorShape, end: TensorShape, name: String = ""
+    _ mode: Mode, begin: TensorShape = [], end: TensorShape = [], name: String = ""
   ) {
     var begin = begin.dims
     var end = end.dims
@@ -290,8 +291,10 @@ public final class Pad: Model {
         switch mode {
         case .zero:
           type = Int32(CCV_NNC_PAD_ZERO)
-        case .replication:
+        case .replicate:
           type = Int32(CCV_NNC_PAD_REPLICATE)
+        case .reflect:
+          type = Int32(CCV_NNC_PAD_REFLECT)
         }
         return ccv_cnnp_pad(type, begin, end, name)!
       }
@@ -308,7 +311,7 @@ extension ModelIOConvertible {
    *   - begin: The beginning pad for each dimension.
    *   - end: The end pad for each dimension.
    */
-  public func padded(_ mode: Pad.Mode, begin: TensorShape, end: TensorShape) -> Model.IO {
+  public func padded(_ mode: Pad.Mode, begin: TensorShape = [], end: TensorShape = []) -> Model.IO {
     return Pad(mode, begin: begin, end: end)(self)
   }
 }
@@ -715,11 +718,15 @@ public final class RMSNorm: Model {
     super.init(model)
   }
 
-  public init(epsilon: Float, axis: [Int], trainable: Bool? = nil, name: String = "") {
+  public init(
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
+    name: String = ""
+  ) {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
       ccv_cnnp_rmsnorm(
-        epsilon, axis32, Int32(axis.count), trainable == true ? 1 : (trainable == false ? 0 : -1),
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1),
         name))
   }
 
