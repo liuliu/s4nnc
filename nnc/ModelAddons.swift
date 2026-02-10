@@ -1,7 +1,7 @@
 #if canImport(C_nnc)
-import C_nnc
+  import C_nnc
 #elseif canImport(C_swiftpm_nnc)
-import C_swiftpm_nnc
+  import C_swiftpm_nnc
 #endif
 
 /// Sum inputs.
@@ -509,8 +509,8 @@ public final class Swish: Model {
     super.init(model)
   }
 
-  public init(name: String = "") {
-    super.init(ccv_cnnp_swish(name))
+  public init(beta: Float = 1, name: String = "") {
+    super.init(ccv_cnnp_swish(beta, name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -525,8 +525,8 @@ extension ModelIOConvertible {
   /**
    * Apply swish activation to the said IO.
    */
-  public func swish() -> Model.IO {
-    return Swish()(self)
+  public func swish(beta: Float = 1) -> Model.IO {
+    return Swish(beta: beta)(self)
   }
 }
 

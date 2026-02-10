@@ -1,7 +1,7 @@
 #if canImport(C_nnc)
-import C_nnc
+  import C_nnc
 #elseif canImport(C_swiftpm_nnc)
-import C_swiftpm_nnc
+  import C_swiftpm_nnc
 #endif
 
 public enum ReduceOp {
@@ -190,11 +190,12 @@ extension Functional {
 
   /// Swish activation
   public static func swish<T: DynamicGraph.TensorGroup>(
-    _ one: T, streamContext: StreamContext? = nil
+    _ one: T, beta: Float = 1, streamContext: StreamContext? = nil
   )
     -> T
   {
-    let params = CmdParamsFactory.factory.newParams()
+    var params = CmdParamsFactory.factory.newParams()
+    params.swish.beta = beta
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
@@ -1752,8 +1753,9 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply swish activation to the given tensor inplace.
-  public func swish(streamContext: StreamContext?) {
-    let params = CmdParamsFactory.factory.newParams()
+  public func swish(beta: Float, streamContext: StreamContext?) {
+    var params = CmdParamsFactory.factory.newParams()
+    params.swish.beta = beta
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)
     let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
@@ -1766,9 +1768,10 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply swish activation to the given tensor inplace.
-  public func swish(streamContext: StreamContext?) {
+  public func swish(beta: Float, streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
-    let params = CmdParamsFactory.factory.newParams()
+    var params = CmdParamsFactory.factory.newParams()
+    params.swish.beta = beta
     let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
     let _graph = graph.cGraph

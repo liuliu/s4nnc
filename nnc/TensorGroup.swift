@@ -106,7 +106,7 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   /// Apply tanh activation to the given tensor inplace.
   func tanh(streamContext: StreamContext?)
   /// Apply swish activation to the given tensor inplace.
-  func swish(streamContext: StreamContext?)
+  func swish(beta: Float, streamContext: StreamContext?)
   /// Chunk the current tensor into multiple ones.
   func chunked(_ numberOfChunks: Int, axis: Int, streamContext: StreamContext?) -> [Self]
 }
@@ -336,8 +336,8 @@ extension DynamicGraph_TensorGroup {
   }
   /// Apply swish activation to the given tensor inplace.
   @inlinable
-  public func swish() {
-    swish(streamContext: nil)
+  public func swish(beta: Float = 1) {
+    swish(beta: beta, streamContext: nil)
   }
   /// Chunk the current tensor into multiple ones.
   @inlinable
