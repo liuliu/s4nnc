@@ -36,15 +36,13 @@ let package = Package(
   ],
   targets: [
     // C_zlib - System zlib wrapper
-    .target(
+    .systemLibrary(
       name: "C_zlib",
       path: "nnc/C_zlib",
-      publicHeadersPath: ".",
-      cSettings: [
-        .define("_GNU_SOURCE")
-      ],
-      linkerSettings: [
-        .linkedLibrary("z")
+      pkgConfig: "zlib",
+      providers: [
+        .brew(["zlib"]),
+        .apt(["zlib1g-dev"]),
       ]
     ),
 
