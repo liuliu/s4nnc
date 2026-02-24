@@ -36,16 +36,9 @@ let package = Package(
   ],
   targets: [
     // C_zlib - System zlib wrapper
-    .target(
+    .systemLibrary(
       name: "C_zlib",
-      path: "nnc/C_zlib",
-      publicHeadersPath: ".",
-      cSettings: [
-        .define("_GNU_SOURCE")
-      ],
-      linkerSettings: [
-        .linkedLibrary("z")
-      ]
+      path: "nnc/C_zlib"
     ),
 
     // NNC - Main Swift library
