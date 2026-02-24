@@ -38,12 +38,7 @@ let package = Package(
     // C_zlib - System zlib wrapper
     .systemLibrary(
       name: "C_zlib",
-      path: "nnc/C_zlib",
-      pkgConfig: "zlib",
-      providers: [
-        .brew(["zlib"]),
-        .apt(["zlib1g-dev"]),
-      ]
+      path: "nnc/C_zlib"
     ),
 
     // NNC - Main Swift library
