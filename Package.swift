@@ -148,7 +148,11 @@ let package = Package(
         .product(name: "SystemPackage", package: "swift-system"),
       ],
       path: "tensorboard",
-      exclude: ["BUILD.bazel"]
+      exclude: [
+        "BUILD.bazel",
+        "README.md",
+        "compat",
+      ]
     ),
 
     // Test targets
