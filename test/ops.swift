@@ -87,6 +87,51 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a4.rawValue[1, 1], 4.4 - 5)
   }
 
+  func testSinCosPow() throws {
+    let dynamicGraph = DynamicGraph()
+    let pi = Float32.pi
+    let a0 = dynamicGraph.variable(Tensor<Float32>([0, pi / 2, pi], .CPU, .C(3)))
+    let sinA0 = Functional.sin(a0)
+    let cosA0 = Functional.cos(a0)
+    let powA0 = Functional.pow(a0, exponent: 2)
+    XCTAssertEqual(sinA0.rawValue.shape, [3])
+    XCTAssertEqual(cosA0.rawValue.shape, [3])
+    XCTAssertEqual(powA0.rawValue.shape, [3])
+    XCTAssertEqual(sinA0.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(sinA0.rawValue[1], 1, accuracy: 1e-5)
+    XCTAssertEqual(sinA0.rawValue[2], 0, accuracy: 1e-5)
+    XCTAssertEqual(cosA0.rawValue[0], 1, accuracy: 1e-5)
+    XCTAssertEqual(cosA0.rawValue[1], 0, accuracy: 1e-5)
+    XCTAssertEqual(cosA0.rawValue[2], -1, accuracy: 1e-5)
+    XCTAssertEqual(powA0.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(powA0.rawValue[1], (pi / 2) * (pi / 2), accuracy: 1e-5)
+    XCTAssertEqual(powA0.rawValue[2], pi * pi, accuracy: 1e-5)
+  }
+
+  func testSinCosPowModel() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = Input()
+    let model = Model([input], [input.sin(), input.cos(), input.pow(2)])
+    let pi = Float32.pi
+    let a0 = dynamicGraph.variable(Tensor<Float32>([0, pi / 2, pi], .CPU, .C(3)))
+    let outputs = model(inputs: a0)
+    let sinA0 = DynamicGraph.Tensor<Float32>(outputs[0])
+    let cosA0 = DynamicGraph.Tensor<Float32>(outputs[1])
+    let powA0 = DynamicGraph.Tensor<Float32>(outputs[2])
+    XCTAssertEqual(sinA0.rawValue.shape, [3])
+    XCTAssertEqual(cosA0.rawValue.shape, [3])
+    XCTAssertEqual(powA0.rawValue.shape, [3])
+    XCTAssertEqual(sinA0.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(sinA0.rawValue[1], 1, accuracy: 1e-5)
+    XCTAssertEqual(sinA0.rawValue[2], 0, accuracy: 1e-5)
+    XCTAssertEqual(cosA0.rawValue[0], 1, accuracy: 1e-5)
+    XCTAssertEqual(cosA0.rawValue[1], 0, accuracy: 1e-5)
+    XCTAssertEqual(cosA0.rawValue[2], -1, accuracy: 1e-5)
+    XCTAssertEqual(powA0.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(powA0.rawValue[1], (pi / 2) * (pi / 2), accuracy: 1e-5)
+    XCTAssertEqual(powA0.rawValue[2], pi * pi, accuracy: 1e-5)
+  }
+
   func testOpChunked() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
@@ -239,6 +284,8 @@ final class OpsTests: XCTestCase {
     ("testReduceMean", testReduceMean),
     ("testReduceMax", testReduceMax),
     ("testOpAdd", testOpAdd),
+    ("testSinCosPow", testSinCosPow),
+    ("testSinCosPowModel", testSinCosPowModel),
     ("testOpChunked", testOpChunked),
     ("testOpChunkedGroup", testOpChunkedGroup),
     ("testReduceSumModel", testReduceSumModel),

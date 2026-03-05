@@ -122,6 +122,33 @@ extension ModelIOConvertible {
   }
 }
 
+/// Raise every element in an input to the specified exponent.
+public final class Pow: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(exponent: Float, name: String = "") {
+    super.init(ccv_cnnp_pow(exponent, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Raise each element in the model IO to the specified exponent.
+   */
+  public func pow(_ exponent: Float) -> Model.IO {
+    return Pow(exponent: exponent)(self)
+  }
+}
+
 /// Matrix-multiplication over two inputs.
 public final class Matmul: Model {
   required init(_ model: OpaquePointer) {
@@ -500,6 +527,60 @@ extension ModelIOConvertible {
    */
   public func tanh() -> Model.IO {
     return Tanh()(self)
+  }
+}
+
+/// A sin activation model.
+public final class Sin: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_sin(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Apply sin to the said IO.
+   */
+  public func sin() -> Model.IO {
+    return Sin()(self)
+  }
+}
+
+/// A cos activation model.
+public final class Cos: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_cos(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Apply cos to the said IO.
+   */
+  public func cos() -> Model.IO {
+    return Cos()(self)
   }
 }
 

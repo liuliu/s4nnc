@@ -110,6 +110,43 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Element-wise power.
+  public static func pow<T: DynamicGraph.TensorGroup>(
+    _ one: T, exponent: Float, streamContext: StreamContext? = nil
+  )
+    -> T
+  {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.pow.exponent = exponent
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWPOW_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  /// Element-wise sine.
+  public static func sin<T: DynamicGraph.TensorGroup>(_ one: T, streamContext: StreamContext? = nil)
+    -> T
+  {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWSIN_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
+  /// Element-wise cosine.
+  public static func cos<T: DynamicGraph.TensorGroup>(_ one: T, streamContext: StreamContext? = nil)
+    -> T
+  {
+    let params = CmdParamsFactory.factory.newParams()
+    let cmd = ccv_nnc_cmd(CCV_NNC_EWCOS_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Element-wise square root.
   public static func squareRoot<T: DynamicGraph.TensorGroup>(
     _ one: T, streamContext: StreamContext? = nil
