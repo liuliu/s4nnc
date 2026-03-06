@@ -95,6 +95,33 @@ extension ModelIOConvertible {
   }
 }
 
+/// Natural log of an input.
+public final class Log: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_log(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Compute natural log for a model IO.
+   */
+  public func log() -> Model.IO {
+    return Log()(self)
+  }
+}
+
 /// Square root of a input. It will not do broadcast.
 public final class SquareRoot: Model {
   required init(_ model: OpaquePointer) {

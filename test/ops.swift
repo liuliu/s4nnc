@@ -132,6 +132,28 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(powA0.rawValue[2], pi * pi, accuracy: 1e-5)
   }
 
+  func testLog() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1, 2.7182817, 7.389056], .CPU, .C(3)))
+    let logA0 = Functional.log(a0)
+    XCTAssertEqual(logA0.rawValue.shape, [3])
+    XCTAssertEqual(logA0.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(logA0.rawValue[1], 1, accuracy: 1e-5)
+    XCTAssertEqual(logA0.rawValue[2], 2, accuracy: 1e-5)
+  }
+
+  func testLogModel() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = Input()
+    let model = Model([input], [input.log()])
+    let a0 = dynamicGraph.variable(Tensor<Float32>([1, 2.7182817, 7.389056], .CPU, .C(3)))
+    let logA0 = DynamicGraph.Tensor<Float32>(model(inputs: a0)[0])
+    XCTAssertEqual(logA0.rawValue.shape, [3])
+    XCTAssertEqual(logA0.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(logA0.rawValue[1], 1, accuracy: 1e-5)
+    XCTAssertEqual(logA0.rawValue[2], 2, accuracy: 1e-5)
+  }
+
   func testOpChunked() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2, 3.3, 4.4], .CPU, .NC(2, 2)))
@@ -286,6 +308,8 @@ final class OpsTests: XCTestCase {
     ("testOpAdd", testOpAdd),
     ("testSinCosPow", testSinCosPow),
     ("testSinCosPowModel", testSinCosPowModel),
+    ("testLog", testLog),
+    ("testLogModel", testLogModel),
     ("testOpChunked", testOpChunked),
     ("testOpChunkedGroup", testOpChunkedGroup),
     ("testReduceSumModel", testReduceSumModel),
