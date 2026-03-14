@@ -2337,6 +2337,7 @@ private let q4pEncodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(512), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
@@ -2364,6 +2365,7 @@ private let q5pEncodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
@@ -2391,6 +2393,7 @@ private let q6pEncodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(4096), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
@@ -2418,6 +2421,7 @@ private let q7pEncodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(8192), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
@@ -2445,6 +2449,7 @@ private let q8pEncodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
     let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
+    guard offset >= 0 else { return 0 }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
@@ -4534,11 +4539,17 @@ extension DynamicGraph {
     }
     deinit {
       if let externalFileWrite = externalFileWrite {
-        fflush(externalFileWrite)
+        if fflush(externalFileWrite) != 0 {
+          externalFileWriteError = true
+        }
         #if canImport(Darwin)
-          fcntl(fileno(externalFileWrite), F_FULLFSYNC)
+          if fcntl(fileno(externalFileWrite), F_FULLFSYNC) != 0 {
+            externalFileWriteError = true
+          }
         #else
-          fsync(fileno(externalFileWrite))
+          if fsync(fileno(externalFileWrite)) != 0 {
+            externalFileWriteError = true
+          }
         #endif
         fclose(externalFileWrite)
       }
@@ -4587,30 +4598,46 @@ extension DynamicGraph {
     func loadBytes(offset: Int, length: Int) -> UnsafeMutableRawPointer? {
       guard let externalStore = externalStore else { return nil }
       if let externalFileWrite = externalFileWrite {
-        fflush(externalFileWrite)
+        if fflush(externalFileWrite) != 0 {
+          externalFileWriteError = true
+        }
         #if canImport(Darwin)
-          fcntl(fileno(externalFileWrite), F_FULLFSYNC)
+          if fcntl(fileno(externalFileWrite), F_FULLFSYNC) != 0 {
+            externalFileWriteError = true
+          }
         #else
-          fsync(fileno(externalFileWrite))
+          if fsync(fileno(externalFileWrite)) != 0 {
+            externalFileWriteError = true
+          }
         #endif
       }
       let externalFileRead = externalFileRead ?? fopen(externalStore, "rb")
+      guard let externalFileRead = externalFileRead else { return nil }
       self.externalFileRead = externalFileRead
-      fseek(externalFileRead, offset, SEEK_SET)
-      if length > loadedBytesLength {
-        loadedBytesLength = length
-        loadedBytes = realloc(loadedBytes, loadedBytesLength)
+      guard fseek(externalFileRead, offset, SEEK_SET) == 0 else { return nil }
+      let requiredLength = max(length, 1)
+      if requiredLength > loadedBytesLength || loadedBytes == nil {
+        guard let resizedBytes = realloc(loadedBytes, requiredLength) else { return nil }
+        loadedBytes = resizedBytes
+        loadedBytesLength = requiredLength
       }
-      fread(loadedBytes, 1, length, externalFileRead)
+      guard fread(loadedBytes, 1, length, externalFileRead) == length else { return nil }
       return loadedBytes
     }
     func flush() {
       guard let externalFileWrite = externalFileWrite else { return }
-      fflush(externalFileWrite)
+      if fflush(externalFileWrite) != 0 {
+        externalFileWriteError = true
+        return
+      }
       #if canImport(Darwin)
-        fcntl(fileno(externalFileWrite), F_FULLFSYNC)
+        if fcntl(fileno(externalFileWrite), F_FULLFSYNC) != 0 {
+          externalFileWriteError = true
+        }
       #else
-        fsync(fileno(externalFileWrite))
+        if fsync(fileno(externalFileWrite)) != 0 {
+          externalFileWriteError = true
+        }
       #endif
     }
   }
