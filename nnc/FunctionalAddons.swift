@@ -340,6 +340,7 @@ extension Functional {
     }
     public static let Float32 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_32F))
     public static let Float16 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_16F))
+    public static let Int8 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_8I))
     public static let TF32 = GEMMFlag(rawValue: Int32(CCV_NNC_GEMM_32TF))
   }
 
