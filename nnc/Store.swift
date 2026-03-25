@@ -1705,7 +1705,7 @@ private let i8xEncode:
     return 1
   }
 
-private func i8xDecode(
+private func i8xDecodeImpl(
   _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
   _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
   _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
@@ -1746,9 +1746,26 @@ private func i8xDecode(
     maxDecodedElements == numberOfElements
       || (maxDecodedElements > 0 && maxDecodedElements % rowLength == 0)
   else { return 0 }
-  ccv_nnc_dequantize_8i_rowwise(
-    data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), dataSize, rowLength, decoded,
-    maxDecodedElements)
+  let originalScaleOffset = (numberOfElements + 127) & -128
+  let originalScaleSize = (numberOfElements / rowLength) * elementSize
+  guard dataSize >= originalScaleOffset + originalScaleSize else { return 0 }
+  if maxDecodedElements == numberOfElements {
+    ccv_nnc_dequantize_8i_rowwise(
+      data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), dataSize, rowLength, decoded,
+      maxDecodedElements)
+  } else {
+    let partialScaleOffset = (maxDecodedElements + 127) & -128
+    let partialScaleSize = (maxDecodedElements / rowLength) * elementSize
+    let partialDataSize = partialScaleOffset + partialScaleSize
+    let partialData = UnsafeMutableRawPointer.allocate(
+      byteCount: partialDataSize, alignment: MemoryLayout<UInt64>.alignment)
+    defer { partialData.deallocate() }
+    memcpy(partialData, data, maxDecodedElements)
+    memcpy(partialData + partialScaleOffset, data + originalScaleOffset, partialScaleSize)
+    ccv_nnc_dequantize_8i_rowwise(
+      partialData, dataType, Int32(CCV_TENSOR_CPU_MEMORY), partialDataSize, rowLength, decoded,
+      maxDecodedElements)
+  }
   decodedSize[0] = maxDecodedElements * elementSize
   return 1
 }
@@ -1762,12 +1779,12 @@ private let i8xDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    return i8xDecode(
+    return i8xDecodeImpl(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
 
-private func i8xDecodeJit(
+private func i8xDecodeJitImpl(
   _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
   _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
   _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
@@ -1791,7 +1808,7 @@ private func i8xDecodeJit(
       decodedSize[0] = dataSize
       return 1
     }
-    return i8xDecode(
+    return i8xDecodeImpl(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -1800,14 +1817,14 @@ private func i8xDecodeJit(
     numberOfElements *= Int(dimensions[i])
   }
   guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
-    return i8xDecode(
+    return i8xDecodeImpl(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
   let rowwiseParams = ccv_nnc_tensor_8i_rowwise(params)
   let encodedDataSize = ccv_nnc_tensor_data_size_without_padding(rowwiseParams)
   guard dataSize >= encodedDataSize && decodedSize[0] >= encodedDataSize else {
-    return i8xDecode(
+    return i8xDecodeImpl(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -1828,7 +1845,7 @@ private let i8xDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    return i8xDecodeJit(
+    return i8xDecodeJitImpl(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -3420,7 +3437,7 @@ private let i8xDecodeJitWithExternalStore:
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    return i8xDecodeJit(
+    return i8xDecodeJitImpl(
       mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -4734,7 +4751,7 @@ private let i8xDecodeWithExternalStore:
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    return i8xDecode(
+    return i8xDecodeImpl(
       mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
