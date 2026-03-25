@@ -1,5 +1,6 @@
 import NNC
 import XCTest
+import C_nnc
 
 final class StoreTests: XCTestCase {
 
