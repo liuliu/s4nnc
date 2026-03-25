@@ -630,6 +630,98 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testWriteTensorAndReadBackWithI8X() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(16, 128))
+    for i in 0..<16 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i) * 0.25 + Float16(j - 64) * 0.125
+      }
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .i8x)
+      readout = store.read("a", codec: .i8x)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .i8x)
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<16 {
+      for j in 0..<128 {
+        XCTAssertEqual(varf[i, j], tensor[i, j], accuracy: 0.25)
+      }
+    }
+  }
+
+  func testWriteTensorAndReadBackPartialWithI8X() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(16, 128))
+    for i in 0..<16 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i) * 0.5 + Float16(j % 17) * 0.25
+      }
+    }
+    let varf = graph.variable(.CPU, .NC(2, 128), of: Float16.self)
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .i8x)
+      store.read("a", variable: varf, codec: .i8x)
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .i8x)
+    for i in 0..<2 {
+      for j in 0..<128 {
+        XCTAssertEqual(varf[i, j], tensor[i, j], accuracy: 0.25)
+      }
+    }
+  }
+
+  func testWriteTensorAndReadBackWithI8XJit() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(16, 128))
+    for i in 0..<16 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i - 8) * 0.25 + Float16(j) * 0.0625
+      }
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("a", tensor: tensor, codec: .i8x)
+      readout = store.read("a", codec: [.i8x, .jit])
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, .i8x)
+    XCTAssertNotNil(readout)
+    XCTAssertEqual(Int(readout!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
+    XCTAssertEqual(Int(readout!.cTensor.pointee.info.datatype & 0xf00), CCV_NNC_QX_8I_ROWWISE)
+  }
+
+  func testWriteTensorAndReadBackWithI8XAndExternalStore() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(16, 128))
+    for i in 0..<16 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i) * 0.125 + Float16(j - 32) * 0.1875
+      }
+    }
+    var readout: AnyTensor? = nil
+    var readoutCodec: DynamicGraph.Store.Codec? = nil
+    graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
+      store.write("a", tensor: tensor, codec: [.externalData, .i8x])
+      readout = store.read("a", codec: [.externalData, .i8x])
+      readoutCodec = store.codec(for: "a")
+    }
+    XCTAssertEqual(readoutCodec!, [.i8x, .externalData])
+    let varf = Tensor<Float16>(readout!)
+    for i in 0..<16 {
+      for j in 0..<128 {
+        XCTAssertEqual(varf[i, j], tensor[i, j], accuracy: 0.25)
+      }
+    }
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -668,6 +760,13 @@ final class StoreTests: XCTestCase {
     (
       "testWriteTensorAndReadBackWithQ8PAndExternalStore",
       testWriteTensorAndReadBackWithQ8PAndExternalStore
+    ),
+    ("testWriteTensorAndReadBackWithI8X", testWriteTensorAndReadBackWithI8X),
+    ("testWriteTensorAndReadBackPartialWithI8X", testWriteTensorAndReadBackPartialWithI8X),
+    ("testWriteTensorAndReadBackWithI8XJit", testWriteTensorAndReadBackWithI8XJit),
+    (
+      "testWriteTensorAndReadBackWithI8XAndExternalStore",
+      testWriteTensorAndReadBackWithI8XAndExternalStore
     ),
     ("testWriteTensorAndReadBackCodec", testWriteTensorAndReadBackCodec),
   ]
