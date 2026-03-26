@@ -1705,13 +1705,15 @@ private let i8xEncode:
     return 1
   }
 
-private func i8xDecodeImpl(
-  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
-  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
-  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
-  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
-) -> Int32 {
+private let i8xDecode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
   guard identifier == 0x8a1e9b else { return 0 }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
@@ -1770,7 +1772,7 @@ private func i8xDecodeImpl(
   return 1
 }
 
-private let i8xDecode:
+private let i8xDecodeJit:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
     ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
@@ -1779,18 +1781,6 @@ private let i8xDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    return i8xDecodeImpl(
-      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-      tensorOut, decoded, decodedSize)
-  }
-
-private func i8xDecodeJitImpl(
-  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
-  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
-  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
-  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?
-) -> Int32 {
   guard identifier == 0x8a1e9b else { return 0 }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
@@ -1808,7 +1798,7 @@ private func i8xDecodeJitImpl(
       decodedSize[0] = dataSize
       return 1
     }
-    return i8xDecodeImpl(
+    return i8xDecode(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -1817,14 +1807,14 @@ private func i8xDecodeJitImpl(
     numberOfElements *= Int(dimensions[i])
   }
   guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
-    return i8xDecodeImpl(
+    return i8xDecode(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
   let rowwiseParams = ccv_nnc_tensor_8i_rowwise(params)
   let encodedDataSize = ccv_nnc_tensor_data_size_without_padding(rowwiseParams)
   guard dataSize >= encodedDataSize && decodedSize[0] >= encodedDataSize else {
-    return i8xDecodeImpl(
+    return i8xDecode(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -1835,20 +1825,6 @@ private func i8xDecodeJitImpl(
   decodedSize[0] = encodedDataSize
   return 1
 }
-
-private let i8xDecodeJit:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
-    return i8xDecodeJitImpl(
-      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-      tensorOut, decoded, decodedSize)
-  }
 
 private let fpzipEncode:
   @convention(c) (
@@ -2371,6 +2347,25 @@ private let q8pAndEzm7Encode:
       identifier)
   }
 
+private let i8xAndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
+    in
+    guard
+      i8xEncode(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+        identifier) == 0
+    else { return 1 }
+    return ezm7Encode(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+      identifier)
+  }
+
 private let fpzipAndZipEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -2478,6 +2473,25 @@ private let q8pAndEzm7EncodeWithExternalStore:
     in
     guard
       q8pEncodeWithExternalStore(
+        data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+        identifier) == 0
+    else { return 1 }
+    return ezm7EncodeWithExternalStore(
+      data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+      identifier)
+  }
+
+private let i8xAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+    identifier
+    in
+    guard
+      i8xEncodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
         identifier) == 0
     else { return 1 }
@@ -3437,7 +3451,7 @@ private let i8xDecodeJitWithExternalStore:
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    return i8xDecodeJitImpl(
+    return i8xDecodeJit(
       mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -4751,7 +4765,7 @@ private let i8xDecodeWithExternalStore:
     let offset = Int(data.load(as: UInt64.self))
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
-    return i8xDecodeImpl(
+    return i8xDecode(
       mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
   }
@@ -5132,6 +5146,8 @@ extension DynamicGraph {
             return q7pAndEzm7EncodeWithExternalStore
           } else if contains(.ezm7) && contains(.q8p) {
             return q8pAndEzm7EncodeWithExternalStore
+          } else if contains(.ezm7) && contains(.i8x) {
+            return i8xAndEzm7EncodeWithExternalStore
           } else if contains(.ezm7) {
             return ezm7EncodeWithExternalStore
           } else if contains(.q4p) {
@@ -5165,6 +5181,8 @@ extension DynamicGraph {
             return q7pAndEzm7Encode  // Prefer q7p, if it is longer (because 256 palette), use ezm7.
           } else if contains(.ezm7) && contains(.q8p) {
             return q8pAndEzm7Encode  // Prefer q8p, if it is longer (because 256 palette), use ezm7.
+          } else if contains(.ezm7) && contains(.i8x) {
+            return i8xAndEzm7Encode  // Prefer i8x, if it is longer (because 256 palette), use ezm7.
           } else if contains(.ezm7) {
             // .ezm7 is not supported with other lossless formats
             guard self == .ezm7 else { return nil }
