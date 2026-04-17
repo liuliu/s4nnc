@@ -176,6 +176,30 @@ extension ModelIOConvertible {
   }
 }
 
+/// Rotate half.
+public final class RotateHalf: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_rotate_half(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func rotateHalf(_ input: ModelIOConvertible) -> Model.IO {
+    return RotateHalf()(input)
+  }
+}
+
 /// Matrix-multiplication over two inputs.
 public final class Matmul: Model {
   required init(_ model: OpaquePointer) {
