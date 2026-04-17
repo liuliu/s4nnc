@@ -375,6 +375,19 @@ extension Functional {
     return T(outputs[0])
   }
 
+  /// Rotate half of the last dimension.
+  public static func rotateHalf<T: DynamicGraph.TensorGroup>(
+    _ one: T, streamContext: StreamContext? = nil
+  ) -> T {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    let cmd = ccv_nnc_cmd(CCV_NNC_ROTATE_HALF_FORWARD, nil, params, 0)
+    let outputs = exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1,
+      streamContext: streamContext)
+    return T(outputs[0])
+  }
+
   /// Complex number multiplication
   public static func cmul<T: DynamicGraph.TensorGroup>(
     left: T, right: T, streamContext: StreamContext? = nil
