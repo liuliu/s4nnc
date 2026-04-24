@@ -42,6 +42,15 @@ public final class Add: Model {
   }
 }
 
+extension Functional {
+  public static func add(
+    left: ModelIOConvertible, right: ModelIOConvertible, leftScalar: Float32 = 1,
+    rightScalar: Float32 = 1
+  ) -> Model.IO {
+    return Add(leftScalar: leftScalar, rightScalar: rightScalar)(left, right)
+  }
+}
+
 /// Multiply two inputs together. It will do broadcast if needed.
 public final class Mul: Model {
   required init(_ model: OpaquePointer) {

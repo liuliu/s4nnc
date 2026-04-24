@@ -28,6 +28,23 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(tv3.rawValue[0], 1.1 * 2.2 - 0.2, accuracy: 1e-5)
   }
 
+  func testFunctionalAddModel() throws {
+    let dynamicGraph = DynamicGraph()
+
+    func AddModel() -> Model {
+      let i0 = Input()
+      let i1 = Input()
+      let i2 = Functional.add(left: i0, right: i1, leftScalar: 2, rightScalar: -1)
+      return Model([i0, i1], [i2])
+    }
+
+    let addModel = AddModel()
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+    let tv2 = DynamicGraph.Tensor<Float32>(addModel(inputs: tv0, tv1)[0])
+    XCTAssertEqual(tv2.rawValue[0], 1.1 * 2 - 2.2, accuracy: 1e-5)
+  }
+
   func testConvolutionTransposeModel() throws {
     let dynamicGraph = DynamicGraph()
 
@@ -80,6 +97,20 @@ final class ModelTests: XCTestCase {
     let tv3 = DynamicGraph.Tensor<Float32>(muladd(inputs: tv1)[0])
     XCTAssertEqual(tv2.rawValue[0], 2.1, accuracy: 1e-5)
     XCTAssertEqual(tv3.rawValue[0], 0, accuracy: 1e-5)
+  }
+
+  func testReplicated() throws {
+    let dynamicGraph = DynamicGraph()
+
+    let relu = ReLU().replicated(2)
+    let tv0 = dynamicGraph.variable(Tensor<Float32>([-1.1], .CPU, .C(1)))
+    let tv1 = dynamicGraph.variable(Tensor<Float32>([2.2], .CPU, .C(1)))
+    let outputs = relu(inputs: tv0, tv1)
+    XCTAssertEqual(outputs.count, 2)
+    let tv2 = DynamicGraph.Tensor<Float32>(outputs[0])
+    let tv3 = DynamicGraph.Tensor<Float32>(outputs[1])
+    XCTAssertEqual(tv2.rawValue[0], 0, accuracy: 1e-5)
+    XCTAssertEqual(tv3.rawValue[0], 2.2, accuracy: 1e-5)
   }
 
   func testModelWithScalar() throws {
@@ -506,9 +537,11 @@ final class ModelTests: XCTestCase {
 
   static let allTests = [
     ("testModel", testModel),
+    ("testFunctionalAddModel", testFunctionalAddModel),
     ("testConvolutionTransposeModel", testConvolutionTransposeModel),
     ("testModelBuilder", testModelBuilder),
     ("testSequential", testSequential),
+    ("testReplicated", testReplicated),
     ("testModelWithScalar", testModelWithScalar),
     ("testModelWithParameter", testModelWithParameter),
     ("testModelDiv", testModelDiv),

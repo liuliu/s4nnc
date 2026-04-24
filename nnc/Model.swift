@@ -531,6 +531,28 @@ extension Model {
 
 }
 
+/// A model that applies another model independently across replicated inputs.
+public final class Replicated: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(_ model: Model, count: Int, trainable: Bool? = nil, name: String = "") {
+    precondition(count > 1)
+    let cModel = ccv_cnnp_replicated(
+      model.cModel, Int32(count), trainable == true ? 1 : (trainable == false ? 0 : -1), name)!
+    super.init(cModel)
+    // Extending the lifetime through parent initialization and owner notification.
+    withExtendedLifetime(model) {}
+  }
+}
+
+extension Model {
+  public func replicated(_ count: Int, trainable: Bool? = nil, name: String = "") -> Replicated {
+    return Replicated(self, count: count, trainable: trainable, name: name)
+  }
+}
+
 /// Model Inputs for Functional Model
 
 public final class Input: Model.IO {
