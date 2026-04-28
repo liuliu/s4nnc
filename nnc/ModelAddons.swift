@@ -1659,21 +1659,43 @@ public final class ScaledDotProductAttention: Model {
 
   public init(
     scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
+    isVariableLength: Bool = false,
+    maxSequenceLength: (query: Int, keyValue: Int)? = nil,
     flags: Functional.GEMMFlag = [], multiHeadOutputProjectionFused: Bool = false,
     noBias: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
+    precondition(
+      !isVariableLength || maxSequenceLength != nil,
+      "maxSequenceLength must be provided for variable-length scaled dot product attention")
+    precondition(
+      !isVariableLength || !hasAttentionMask,
+      "variable-length scaled dot product attention does not support attentionMask")
+    precondition(
+      !isVariableLength || !multiHeadOutputProjectionFused,
+      "variable-length scaled dot product attention does not support multiHeadOutputProjectionFused")
+    let maxSequenceLength = maxSequenceLength ?? (query: 0, keyValue: 0)
     super.init(
       ccv_cnnp_scaled_dot_product_attention(
-        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, Int32(flags.rawValue),
+        scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, isVariableLength ? 1 : 0,
+        Int32(maxSequenceLength.query), Int32(maxSequenceLength.keyValue), Int32(flags.rawValue),
         multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
     queries q: T, keys k: T, values v: T, attentionMask: T? = nil,
+    sequenceOffsets: (query: T, keyValue: T)? = nil,
     streamContext: StreamContext? = nil
   ) -> T {
-    if let attentionMask = attentionMask {
+    precondition(
+      attentionMask == nil || sequenceOffsets == nil,
+      "attentionMask and sequenceOffsets cannot both be provided")
+    if let sequenceOffsets = sequenceOffsets {
+      let outputs = self(
+        inputs: q, k, v, sequenceOffsets.query, sequenceOffsets.keyValue,
+        streamContext: streamContext)
+      return T(outputs[0])
+    } else if let attentionMask = attentionMask {
       let outputs = self(inputs: q, k, v, attentionMask, streamContext: streamContext)
       return T(outputs[0])
     } else {
