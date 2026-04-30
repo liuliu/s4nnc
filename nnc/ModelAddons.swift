@@ -24,6 +24,17 @@ public final class Sum: Model {
   }
 }
 
+extension Functional {
+  public static func sum(_ inputs: [ModelIOConvertible]) -> Model.IO {
+    precondition(inputs.count >= 2)
+    return Sum()(inputs)
+  }
+
+  public static func sum(_ inputs: ModelIOConvertible...) -> Model.IO {
+    return sum(inputs)
+  }
+}
+
 /// Add two inputs together. It will do broadcast if needed.
 public final class Add: Model {
   required init(_ model: OpaquePointer) {
@@ -70,7 +81,7 @@ public final class Mul: Model {
 }
 
 extension Functional {
-  public static func mul(left: ModelIOConvertible, right: ModelIOConvertible, scalar: Float)
+  public static func mul(left: ModelIOConvertible, right: ModelIOConvertible, scalar: Float = 1)
     -> Model.IO
   {
     return Mul(scalar: scalar)(left, right)
@@ -92,6 +103,12 @@ public final class Div: Model {
   ) -> T {
     let outputs = self(inputs: left, right, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func div(left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
+    return Div(reciprocal: false)(left, right)
   }
 }
 
@@ -234,10 +251,10 @@ public final class Matmul: Model {
 
 extension Functional {
   public static func matmul(
-    left: ModelIOConvertible, right: ModelIOConvertible, leftTranspose: (Int, Int),
-    rightTranspose: (Int, Int)
+    left: ModelIOConvertible, right: ModelIOConvertible, leftTranspose: (Int, Int) = (0, 0),
+    rightTranspose: (Int, Int) = (0, 0), flags: Functional.GEMMFlag = []
   ) -> Model.IO {
-    return Matmul(transposeA: leftTranspose, transposeB: rightTranspose)(left, right)
+    return Matmul(transposeA: leftTranspose, transposeB: rightTranspose, flags: flags)(left, right)
   }
 }
 
@@ -746,6 +763,14 @@ public final class MaskedFill: Model {
   }
 }
 
+extension Functional {
+  public static func maskedFill(
+    input: ModelIOConvertible, mask: ModelIOConvertible, equalTo: Float, fillWith: Float
+  ) -> Model.IO {
+    return MaskedFill(equalTo: equalTo, fillWith: fillWith)(input, mask)
+  }
+}
+
 /// The dropout model.
 public final class Dropout: Model {
   required init(_ model: OpaquePointer) {
@@ -779,6 +804,12 @@ public final class Scalmul: Model {
   ) -> T {
     let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func scalmul(left: Float, right: ModelIOConvertible) -> Model.IO {
+    return Scalmul(left)(right)
   }
 }
 
@@ -993,6 +1024,14 @@ public final class MaxPool: Model {
   }
 }
 
+extension Functional {
+  public static func maxPool(
+    _ one: ModelIOConvertible, filterSize: [Int], hint: Hint = Hint()
+  ) -> Model.IO {
+    return MaxPool(filterSize: filterSize, hint: hint)(one)
+  }
+}
+
 /// average pooling model.
 public final class AveragePool: Model {
   required init(_ model: OpaquePointer) {
@@ -1009,6 +1048,14 @@ public final class AveragePool: Model {
   ) -> T {
     let outputs = self(inputs: input, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func averagePool(
+    _ one: ModelIOConvertible, filterSize: [Int], hint: Hint = Hint()
+  ) -> Model.IO {
+    return AveragePool(filterSize: filterSize, hint: hint)(one)
   }
 }
 
@@ -1423,6 +1470,14 @@ public final class IndexSelect: Model {
   ) -> T where U.ElementNumeric == Float32, T.AnyTensor == U.AnyTensor {
     let outputs = self(inputs: x, index, streamContext: streamContext)
     return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func indexSelect(
+    input: ModelIOConvertible, index: ModelIOConvertible
+  ) -> Model.IO {
+    return IndexSelect()(input, index)
   }
 }
 
@@ -1890,6 +1945,14 @@ public final class ScatterAdd: Model {
 extension Functional {
   public static func scatterAdd(
     count: Int, _ input: ModelIOConvertible, index: ModelIOConvertible
+  )
+    -> Model.IO
+  {
+    return ScatterAdd(count: count)(input, index)
+  }
+
+  public static func scatterAdd(
+    count: Int, input: ModelIOConvertible, index: ModelIOConvertible
   )
     -> Model.IO
   {

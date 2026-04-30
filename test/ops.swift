@@ -254,6 +254,24 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(a2.rawValue[1, 1], 3.3)
   }
 
+  func testIndexSelectModel() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = Input()
+    let index = Input()
+    let model = Model([input, index], [Functional.indexSelect(input: input, index: index)])
+    let vectors = dynamicGraph.variable(
+      Tensor<Float32>([1, 2, 3, 4, 5, 6, 7, 8], .CPU, .NC(4, 2)))
+    let indices = dynamicGraph.variable(Tensor<Int32>([2, 0, 3], .CPU, .C(3)))
+    let selected = DynamicGraph.Tensor<Float32>(model(inputs: vectors, indices)[0])
+    XCTAssertEqual(selected.rawValue.shape, [3, 2])
+    XCTAssertEqual(selected.rawValue[0, 0], 5)
+    XCTAssertEqual(selected.rawValue[0, 1], 6)
+    XCTAssertEqual(selected.rawValue[1, 0], 1)
+    XCTAssertEqual(selected.rawValue[1, 1], 2)
+    XCTAssertEqual(selected.rawValue[2, 0], 7)
+    XCTAssertEqual(selected.rawValue[2, 1], 8)
+  }
+
   func testSort() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 3.2, 2.3, 4.4], .CPU, .NC(2, 2)))
