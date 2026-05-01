@@ -148,6 +148,33 @@ extension ModelIOConvertible {
   }
 }
 
+/// Natural exponent of an input.
+public final class Exp: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_exp(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Compute natural exponent for a model IO.
+   */
+  public func exp() -> Model.IO {
+    return Exp()(self)
+  }
+}
+
 /// Square root of a input. It will not do broadcast.
 public final class SquareRoot: Model {
   required init(_ model: OpaquePointer) {
@@ -604,6 +631,33 @@ extension ModelIOConvertible {
    */
   public func tanh() -> Model.IO {
     return Tanh()(self)
+  }
+}
+
+/// A softplus activation model.
+public final class Softplus: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(name: String = "") {
+    super.init(ccv_cnnp_softplus(name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  /**
+   * Apply softplus activation to the said IO.
+   */
+  public func softplus() -> Model.IO {
+    return Softplus()(self)
   }
 }
 

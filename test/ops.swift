@@ -142,6 +142,21 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(logA0.rawValue[2], 2, accuracy: 1e-5)
   }
 
+  func testExpSoftplus() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([-1, 0, 1], .CPU, .C(3)))
+    let expA0 = Functional.exp(a0)
+    let softplusA0 = Functional.softplus(a0)
+    XCTAssertEqual(expA0.rawValue.shape, [3])
+    XCTAssertEqual(softplusA0.rawValue.shape, [3])
+    XCTAssertEqual(expA0.rawValue[0], 0.36787945, accuracy: 1e-5)
+    XCTAssertEqual(expA0.rawValue[1], 1, accuracy: 1e-5)
+    XCTAssertEqual(expA0.rawValue[2], 2.7182817, accuracy: 1e-5)
+    XCTAssertEqual(softplusA0.rawValue[0], 0.3132617, accuracy: 1e-5)
+    XCTAssertEqual(softplusA0.rawValue[1], 0.6931472, accuracy: 1e-5)
+    XCTAssertEqual(softplusA0.rawValue[2], 1.3132616, accuracy: 1e-5)
+  }
+
   func testLogModel() throws {
     let dynamicGraph = DynamicGraph()
     let input = Input()
@@ -152,6 +167,24 @@ final class OpsTests: XCTestCase {
     XCTAssertEqual(logA0.rawValue[0], 0, accuracy: 1e-5)
     XCTAssertEqual(logA0.rawValue[1], 1, accuracy: 1e-5)
     XCTAssertEqual(logA0.rawValue[2], 2, accuracy: 1e-5)
+  }
+
+  func testExpSoftplusModel() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = Input()
+    let model = Model([input], [input.exp(), input.softplus()])
+    let a0 = dynamicGraph.variable(Tensor<Float32>([-1, 0, 1], .CPU, .C(3)))
+    let outputs = model(inputs: a0)
+    let expA0 = DynamicGraph.Tensor<Float32>(outputs[0])
+    let softplusA0 = DynamicGraph.Tensor<Float32>(outputs[1])
+    XCTAssertEqual(expA0.rawValue.shape, [3])
+    XCTAssertEqual(softplusA0.rawValue.shape, [3])
+    XCTAssertEqual(expA0.rawValue[0], 0.36787945, accuracy: 1e-5)
+    XCTAssertEqual(expA0.rawValue[1], 1, accuracy: 1e-5)
+    XCTAssertEqual(expA0.rawValue[2], 2.7182817, accuracy: 1e-5)
+    XCTAssertEqual(softplusA0.rawValue[0], 0.3132617, accuracy: 1e-5)
+    XCTAssertEqual(softplusA0.rawValue[1], 0.6931472, accuracy: 1e-5)
+    XCTAssertEqual(softplusA0.rawValue[2], 1.3132616, accuracy: 1e-5)
   }
 
   func testOpChunked() throws {
