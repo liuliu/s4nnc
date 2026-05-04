@@ -309,6 +309,49 @@ extension Functional {
   }
 }
 
+/// Gated delta recurrent update.
+public final class GatedDelta: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(logDecay: Bool, name: String = "") {
+    super.init(ccv_cnnp_gated_delta(logDecay ? 1 : 0, name))
+  }
+
+  public func callAsFunction(
+    queries q: ModelIOConvertible, keys k: ModelIOConvertible, values v: ModelIOConvertible,
+    logDecay: ModelIOConvertible, beta: ModelIOConvertible, state: ModelIOConvertible
+  ) -> (output: Model.IO, state: Model.IO) {
+    let outputs = self(q, k, v, logDecay, beta, state)
+    return (outputs[0], outputs[1])
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    queries q: T, keys k: T, values v: T, logDecay: T, beta: T, state: T,
+    streamContext: StreamContext? = nil
+  ) -> (output: T, state: T) {
+    let outputs = self(inputs: q, k, v, logDecay, beta, state, streamContext: streamContext)
+    return (T(outputs[0]), T(outputs[1]))
+  }
+
+  public func callAsFunction(
+    queries q: ModelIOConvertible, keys k: ModelIOConvertible, values v: ModelIOConvertible,
+    decay: ModelIOConvertible, beta: ModelIOConvertible, state: ModelIOConvertible
+  ) -> (output: Model.IO, state: Model.IO) {
+    let outputs = self(q, k, v, decay, beta, state)
+    return (outputs[0], outputs[1])
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    queries q: T, keys k: T, values v: T, decay: T, beta: T, state: T,
+    streamContext: StreamContext? = nil
+  ) -> (output: T, state: T) {
+    let outputs = self(inputs: q, k, v, decay, beta, state, streamContext: streamContext)
+    return (T(outputs[0]), T(outputs[1]))
+  }
+}
+
 /// A linear layer model.
 public final class Dense: Model {
   required init(_ model: OpaquePointer) {
