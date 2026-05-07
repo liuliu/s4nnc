@@ -776,6 +776,32 @@ public final class Swish: Model {
   }
 }
 
+/// A swish-gated multiply activation model.
+public final class SwishMul: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(beta: Float = 1, scale: Float = 1, name: String = "") {
+    super.init(ccv_cnnp_swish_mul(beta, scale, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ value: T, _ gate: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: value, gate, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+extension Functional {
+  public static func swishMul(
+    value: ModelIOConvertible, gate: ModelIOConvertible, beta: Float = 1, scale: Float = 1
+  ) -> Model.IO {
+    return SwishMul(beta: beta, scale: scale)(value, gate)
+  }
+}
+
 extension ModelIOConvertible {
   /**
    * Apply swish activation to the said IO.
@@ -937,13 +963,13 @@ public final class LayerNorm: Model {
   }
 
   public init(
-    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
-    name: String = ""
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, scale: Float = 1,
+    trainable: Bool? = nil, name: String = ""
   ) {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
       ccv_cnnp_layer_norm(
-        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0, scale,
         trainable == true ? 1 : (trainable == false ? 0 : -1),
         name))
   }
@@ -988,13 +1014,13 @@ public final class RMSNorm: Model {
   }
 
   public init(
-    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
-    name: String = ""
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, scale: Float = 1,
+    trainable: Bool? = nil, name: String = ""
   ) {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
       ccv_cnnp_rmsnorm(
-        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0, scale,
         trainable == true ? 1 : (trainable == false ? 0 : -1),
         name))
   }
@@ -1003,6 +1029,32 @@ public final class RMSNorm: Model {
     _ input: T, streamContext: StreamContext? = nil
   ) -> T {
     let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// RMSNorm followed by a swish-gated multiply.
+public final class RMSNormGated: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
+    name: String = ""
+  ) {
+    let axis32: [Int32] = axis.map { Int32($0) }
+    super.init(
+      ccv_cnnp_rmsnorm_gated(
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1),
+        name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, _ gate: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, gate, streamContext: streamContext)
     return T(outputs[0])
   }
 }
