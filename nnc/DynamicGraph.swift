@@ -149,6 +149,12 @@ public final class DynamicGraph {
         to: ccv_nnc_tensor_view_t.self)
       return cTensorView.pointee.contiguous == 1
     }
+
+    @inline(__always)
+    public func joined() {
+      let _graph = graph.cGraph
+      ccv_nnc_tensor_variable_wait(_graph, _tensor)
+    }
   }
 
   /**
@@ -176,6 +182,7 @@ public final class DynamicGraph {
     // If we did type conversion, we need to hold a reference to its parent.
     public subscript(indices: Int...) -> Element {
       get {
+        joined()
         if let rawValue = _rawValue {
           return rawValue[indices, Element.self]
         }
