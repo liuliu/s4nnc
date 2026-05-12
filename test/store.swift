@@ -699,6 +699,161 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(Int(readout!.cTensor.pointee.info.datatype & 0xf00), CCV_NNC_QX_8I_ROWWISE)
   }
 
+  func testWriteTensorAndReadBackWithI8XFormats() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
+    for i in 0..<4 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i - 2) * 0.125 + Float16(j % 29 - 14) * 0.0625
+      }
+    }
+    var imatrix: Tensor<Float> = Tensor(.CPU, .C(128))
+    for i in 0..<128 {
+      imatrix[i] = 1 + Float(i % 11) * 0.125
+    }
+    let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
+      ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
+      ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
+      ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
+      ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
+      ("iq2xs", .i8x(.iq2xs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)),
+      ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
+      ("iq3xxs", .i8x(.iq3xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)),
+    ]
+    var readouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var jitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var readoutCodecs = Array<DynamicGraph.Store.Codec?>(repeating: nil, count: formats.count)
+    var writeError: Error? = nil
+    graph.openStore("test/tmp.db") { store in
+      for (index, format) in formats.enumerated() {
+        do {
+          try store.write(
+            "i8x-format-\(format.0)", tensor: tensor, strict: true, codec: format.1,
+            imatrix: imatrix)
+        } catch {
+          writeError = error
+          return
+        }
+        readouts[index] = store.read("i8x-format-\(format.0)", codec: format.1)
+        var jitCodec = format.1
+        jitCodec.insert(.jit)
+        jitReadouts[index] = store.read("i8x-format-\(format.0)", codec: jitCodec)
+        readoutCodecs[index] = store.codec(for: "i8x-format-\(format.0)")
+      }
+    }
+    XCTAssertNil(writeError)
+    for (index, format) in formats.enumerated() {
+      XCTAssertEqual(readoutCodecs[index]!, format.1)
+      XCTAssertNotNil(readouts[index])
+      let decoded = Tensor<Float16>(readouts[index]!)
+      for i in 0..<4 {
+        for j in 0..<128 {
+          XCTAssertEqual(Float(decoded[i, j]), Float(tensor[i, j]), accuracy: 2)
+        }
+      }
+      XCTAssertNotNil(jitReadouts[index])
+      XCTAssertEqual(Int(jitReadouts[index]!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
+      XCTAssertEqual(
+        Int(jitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
+        CCV_NNC_QX_8I_ROWWISE_X)
+      XCTAssertEqual(jitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
+    }
+  }
+
+  func testWriteTensorAndReadBackWithI8XFormatsAndExternalStore() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
+    for i in 0..<4 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i) * 0.25 - Float16(j % 23) * 0.03125
+      }
+    }
+    var imatrix: Tensor<Float> = Tensor(.CPU, .C(128))
+    for i in 0..<128 {
+      imatrix[i] = 0.5 + Float(i % 7) * 0.25
+    }
+    let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
+      ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
+      ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
+      ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
+      ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
+      ("iq2xs", .i8x(.iq2xs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)),
+      ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
+      ("iq3xxs", .i8x(.iq3xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)),
+    ]
+    var readouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var jitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var readoutCodecs = Array<DynamicGraph.Store.Codec?>(repeating: nil, count: formats.count)
+    var writeError: Error? = nil
+    graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
+      for (index, format) in formats.enumerated() {
+        var codec = format.1
+        codec.insert(.externalData)
+        do {
+          try store.write(
+            "i8x-external-format-\(format.0)", tensor: tensor, strict: true, codec: codec,
+            imatrix: imatrix)
+        } catch {
+          writeError = error
+          return
+        }
+        readouts[index] = store.read("i8x-external-format-\(format.0)", codec: codec)
+        var jitCodec = codec
+        jitCodec.insert(.jit)
+        jitReadouts[index] = store.read("i8x-external-format-\(format.0)", codec: jitCodec)
+        readoutCodecs[index] = store.codec(for: "i8x-external-format-\(format.0)")
+      }
+    }
+    XCTAssertNil(writeError)
+    for (index, format) in formats.enumerated() {
+      var codec = format.1
+      codec.insert(.externalData)
+      XCTAssertEqual(readoutCodecs[index]!, codec)
+      XCTAssertNotNil(readouts[index])
+      let decoded = Tensor<Float16>(readouts[index]!)
+      for i in 0..<4 {
+        for j in 0..<128 {
+          XCTAssertEqual(Float(decoded[i, j]), Float(tensor[i, j]), accuracy: 2)
+        }
+      }
+      XCTAssertNotNil(jitReadouts[index])
+      XCTAssertEqual(Int(jitReadouts[index]!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
+      XCTAssertEqual(
+        Int(jitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
+        CCV_NNC_QX_8I_ROWWISE_X)
+      XCTAssertEqual(jitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
+    }
+  }
+
+  func testWriteTensorWithI8XFormatRejectsInvalidImatrix() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
+    for i in 0..<4 {
+      for j in 0..<128 {
+        tensor[i, j] = Float16(i + j) * 0.03125
+      }
+    }
+    var imatrix: Tensor<Float> = Tensor(.CPU, .C(127))
+    for i in 0..<127 {
+      imatrix[i] = 1
+    }
+    var rejected = false
+    var unexpectedError: Error? = nil
+    graph.openStore("test/tmp.db") { store in
+      do {
+        try store.write(
+          "i8x-invalid-imatrix", tensor: tensor, strict: true, codec: .i8x(.q4k),
+          imatrix: imatrix)
+      } catch DynamicGraph.Store.ModelWriteError.invalidI8XImatrix {
+        rejected = true
+      } catch {
+        unexpectedError = error
+      }
+    }
+    XCTAssertTrue(rejected)
+    XCTAssertNil(unexpectedError)
+  }
+
   func testWriteTensorAndReadBackWithI8XAndExternalStore() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float16> = Tensor(.CPU, .NC(16, 128))
@@ -765,6 +920,15 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithI8X", testWriteTensorAndReadBackWithI8X),
     ("testWriteTensorAndReadBackPartialWithI8X", testWriteTensorAndReadBackPartialWithI8X),
     ("testWriteTensorAndReadBackWithI8XJit", testWriteTensorAndReadBackWithI8XJit),
+    ("testWriteTensorAndReadBackWithI8XFormats", testWriteTensorAndReadBackWithI8XFormats),
+    (
+      "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
+      testWriteTensorAndReadBackWithI8XFormatsAndExternalStore
+    ),
+    (
+      "testWriteTensorWithI8XFormatRejectsInvalidImatrix",
+      testWriteTensorWithI8XFormatRejectsInvalidImatrix
+    ),
     (
       "testWriteTensorAndReadBackWithI8XAndExternalStore",
       testWriteTensorAndReadBackWithI8XAndExternalStore
