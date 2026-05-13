@@ -20,15 +20,45 @@ import Foundation
   import _SQLite3Shims
 #endif
 
-private func isI8XFormat(_ format: Int32) -> Bool {
+private func i8xXIdentifier(for format: Int32) -> UInt32? {
   switch format {
-  case Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K),
-    Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S),
-    Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S),
-    Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS):
-    return true
+  case Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K):
+    return 0x8a1eab
+  case Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K):
+    return 0x8a1eac
+  case Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K):
+    return 0x8a1ead
+  case Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S):
+    return 0x8a1eae
+  case Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS):
+    return 0x8a1eaf
+  case Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S):
+    return 0x8a1eb0
+  case Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS):
+    return 0x8a1eb1
   default:
-    return false
+    return nil
+  }
+}
+
+private func i8xXFormat(from identifier: UInt32) -> Int32? {
+  switch identifier & 0x0fff_ffff {
+  case 0x8a1eab:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)
+  case 0x8a1eac:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)
+  case 0x8a1ead:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)
+  case 0x8a1eae:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)
+  case 0x8a1eaf:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)
+  case 0x8a1eb0:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)
+  case 0x8a1eb1:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)
+  default:
+    return nil
   }
 }
 
@@ -1846,7 +1876,7 @@ private func i8xXEncode(
   _ params: UnsafeMutablePointer<ccv_nnc_tensor_param_t>?,
   _ identifier: UnsafeMutablePointer<UInt32>?
 ) -> Int32 {
-  guard isI8XFormat(format) else { return 0 }
+  guard let i8xIdentifier = i8xXIdentifier(for: format) else { return 0 }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
       || dataType == Int32(CCV_16BF)
@@ -1863,12 +1893,12 @@ private func i8xXEncode(
     memcpy(encoded, data, copiedSize)
     encodedSize[0] = copiedSize
     params.pointee.datatype = originalDataType
-    params.pointee.reserved = format
-    identifier?[0] = 0x8a1eab
+    params.pointee.reserved = 0
+    identifier?[0] = i8xIdentifier
     return 1
   }
   guard let data = data, let dimensions = dimensions, let encoded = encoded,
-    let encodedSize = encodedSize, let params = params, dimensionCount > 0
+    let encodedSize = encodedSize, dimensionCount > 0
   else { return 0 }
   let rowLength = Int(dimensions[Int(dimensionCount) - 1])
   guard rowLength > 0 else { return 0 }
@@ -1905,8 +1935,7 @@ private func i8xXEncode(
   }
   guard quantizedSize > 0 else { return 0 }
   encodedSize[0] = quantizedSize
-  params.pointee.reserved = format
-  identifier?[0] = 0x8a1eab
+  identifier?[0] = i8xIdentifier
   return 1
 }
 
@@ -2009,9 +2038,7 @@ private let i8xXDecode:
   ) -> Int32 = {
   data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
   decoded, decodedSize in
-  guard identifier == 0x8a1eab else { return 0 }
-  let format = params.reserved
-  guard isI8XFormat(format) else { return 0 }
+  guard let format = i8xXFormat(from: identifier) else { return 0 }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
       || dataType == Int32(CCV_16BF)
@@ -2081,9 +2108,7 @@ private let i8xXDecodeJit:
   ) -> Int32 = {
   data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
   decoded, decodedSize in
-  guard identifier == 0x8a1eab else { return 0 }
-  let format = params.reserved
-  guard isI8XFormat(format) else { return 0 }
+  guard let format = i8xXFormat(from: identifier) else { return 0 }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
       || dataType == Int32(CCV_16BF)
@@ -3865,7 +3890,7 @@ private let uDecodeJit:
       return i8xDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -4505,7 +4530,7 @@ private let uDecodeJitWithExternalStoreFread:
       return i8xDecodeJitWithExternalEagerFread(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecodeJitWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -4904,7 +4929,7 @@ private let uDecodeJitWithExternalStoreMmap:
       return i8xDecodeJitWithExternalEagerMmap(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecodeJitWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5302,7 +5327,7 @@ private let uDecodeJitWithExternalOnDemand:
       return i8xDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecodeJitWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5516,7 +5541,7 @@ private let uDecodeWithExternalOnDemand:
       return i8xDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5578,7 +5603,7 @@ private let uDecodeWithExternalStore:
       return i8xDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5635,7 +5660,7 @@ private let uDecode:
       return i8xDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1:
       return i8xXDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6216,17 +6241,15 @@ extension DynamicGraph {
     public func codec(for key: String) -> Codec? {
       var selectCodec: OpaquePointer? = nil
       sqlite3_prepare_v2(
-        OpaquePointer(store.sqlite), "SELECT type, datatype FROM tensors WHERE name=?1", -1,
-        &selectCodec, nil)
+        OpaquePointer(store.sqlite), "SELECT type FROM tensors WHERE name=?1", -1, &selectCodec,
+        nil)
       let SQLITE_TRANSIENT = unsafeBitCast(
         OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
       sqlite3_bind_text(selectCodec, 1, key, -1, SQLITE_TRANSIENT)
       let codec: Codec?
       if sqlite3_step(selectCodec) == SQLITE_ROW {
         let type = sqlite3_column_int64(selectCodec, 0)
-        let datatype = sqlite3_column_int64(selectCodec, 1)
         let identifier = (type >> 32) & 0xffff_ffff
-        let reserved = Int32((datatype >> 32) & 0xffff_ffff)
         var detected: Codec
         switch identifier & 0x0fff_ffff {
         case 0x217:
@@ -6248,24 +6271,19 @@ extension DynamicGraph {
         case 0x8a1e9b:
           detected = .i8x
         case 0x8a1eab:
-          switch reserved {
-          case Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K):
-            detected = .i8x(.q4k)
-          case Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K):
-            detected = .i8x(.q3k)
-          case Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K):
-            detected = .i8x(.q2k)
-          case Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S):
-            detected = .i8x(.iq2s)
-          case Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS):
-            detected = .i8x(.iq2xs)
-          case Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S):
-            detected = .i8x(.iq3s)
-          case Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS):
-            detected = .i8x(.iq3xxs)
-          default:
-            detected = []
-          }
+          detected = .i8x(.q4k)
+        case 0x8a1eac:
+          detected = .i8x(.q3k)
+        case 0x8a1ead:
+          detected = .i8x(.q2k)
+        case 0x8a1eae:
+          detected = .i8x(.iq2s)
+        case 0x8a1eaf:
+          detected = .i8x(.iq2xs)
+        case 0x8a1eb0:
+          detected = .i8x(.iq3s)
+        case 0x8a1eb1:
+          detected = .i8x(.iq3xxs)
         default:
           detected = []
         }
