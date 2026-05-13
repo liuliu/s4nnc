@@ -713,10 +713,12 @@ final class StoreTests: XCTestCase {
     }
     let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
       ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
+      ("q5k", .i8x(.q5k), Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)),
       ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
       ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
       ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
       ("iq2xs", .i8x(.iq2xs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)),
+      ("iq2xxs", .i8x(.iq2xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS)),
       ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
       ("iq3xxs", .i8x(.iq3xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)),
     ]
@@ -774,10 +776,12 @@ final class StoreTests: XCTestCase {
     }
     let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
       ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
+      ("q5k", .i8x(.q5k), Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)),
       ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
       ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
       ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
       ("iq2xs", .i8x(.iq2xs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)),
+      ("iq2xxs", .i8x(.iq2xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS)),
       ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
       ("iq3xxs", .i8x(.iq3xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)),
     ]
