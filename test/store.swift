@@ -1,8 +1,24 @@
 import NNC
 import XCTest
 import C_nnc
+import Foundation
 
 final class StoreTests: XCTestCase {
+  private func removeFiles(_ paths: String...) {
+    for path in paths {
+      try? FileManager.default.removeItem(atPath: path)
+    }
+  }
+
+  private func trailerOffset(_ path: String) -> UInt64 {
+    guard let fp = fopen(path, "rb") else { return 0 }
+    defer { fclose(fp) }
+    guard fseek(fp, 60, SEEK_SET) == 0 else { return 0 }
+    var bytes = [UInt8](repeating: 0, count: 4)
+    let readBytes = bytes.withUnsafeMutableBytes { fread($0.baseAddress, 1, 4, fp) }
+    guard readBytes == 4 else { return 0 }
+    return bytes.reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
+  }
 
   func testReadNonexistTensor() throws {
     let graph = DynamicGraph()
@@ -882,6 +898,90 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testMakeTrailerStoreAndReadBackWithExternalData() throws {
+    let sqliteStore = "test/tmp_trailer.db"
+    let externalStore = "test/tmp_trailer.db-tensordata"
+    let trailerStore = "test/tmp_trailer_combined.db"
+    let bogusExternalStore = "test/tmp_trailer_bogus"
+    removeFiles(sqliteStore, externalStore, trailerStore, bogusExternalStore)
+
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float32> = Tensor(.CPU, .C(4))
+    tensor[0] = 1.25
+    tensor[1] = -2.5
+    tensor[2] = 3.75
+    tensor[3] = -4.125
+    graph.openStore(sqliteStore, externalStore: externalStore) { store in
+      store.write("raw", tensor: tensor, codec: .externalData)
+    }
+
+    try DynamicGraph.Store.makeTrailerStore(
+      sqliteStore, externalStore: externalStore, to: trailerStore)
+    XCTAssertFalse(DynamicGraph.Store.isTrailerStore(sqliteStore))
+    XCTAssertTrue(DynamicGraph.Store.isTrailerStore(trailerStore))
+    XCTAssertEqual(trailerOffset(trailerStore) % 16_384, 0)
+
+    var readout: AnyTensor? = nil
+    var mmapReadout: AnyTensor? = nil
+    graph.openStore(trailerStore, externalStore: bogusExternalStore) { store in
+      readout = store.read("raw", codec: .externalData)
+      mmapReadout = store.read("raw", codec: [.externalData(.mmap), .jit])
+    }
+    XCTAssertFalse(FileManager.default.fileExists(atPath: bogusExternalStore))
+    let varf = Tensor<Float32>(readout!)
+    let mmapVarf = Tensor<Float32>(mmapReadout!)
+    for i in 0..<4 {
+      XCTAssertEqual(varf[i], tensor[i])
+      XCTAssertEqual(mmapVarf[i], tensor[i])
+    }
+  }
+
+  func testTrailerStoreReadsTrailerAndWritesExternalStore() throws {
+    let sqliteStore = "test/tmp_trailer_write.db"
+    let externalStore = "test/tmp_trailer_write.db-tensordata"
+    let trailerStore = "test/tmp_trailer_write_combined.db"
+    let sidecarExternalStore = "test/tmp_trailer_write_sidecar"
+    removeFiles(sqliteStore, externalStore, trailerStore, sidecarExternalStore)
+
+    let graph = DynamicGraph()
+    var original: Tensor<Float32> = Tensor(.CPU, .C(3))
+    original[0] = 1
+    original[1] = 2
+    original[2] = 3
+    graph.openStore(sqliteStore, externalStore: externalStore) { store in
+      store.write("original", tensor: original, codec: .externalData)
+    }
+    try DynamicGraph.Store.makeTrailerStore(
+      sqliteStore, externalStore: externalStore, to: trailerStore)
+
+    var added: Tensor<Float32> = Tensor(.CPU, .C(3))
+    added[0] = -1
+    added[1] = -2
+    added[2] = -3
+    var originalReadout: AnyTensor? = nil
+    var writeError: Error? = nil
+    graph.openStore(trailerStore, externalStore: sidecarExternalStore) { store in
+      do {
+        try store.write("added", tensor: added, strict: true, codec: .externalData)
+      } catch {
+        writeError = error
+      }
+      originalReadout = store.read("original", codec: .externalData)
+    }
+    XCTAssertNil(writeError)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: sidecarExternalStore))
+    let originalVarf = Tensor<Float32>(originalReadout!)
+    for i in 0..<3 {
+      XCTAssertEqual(originalVarf[i], original[i])
+    }
+
+    var originalReopenReadout: AnyTensor? = nil
+    graph.openStore(trailerStore, externalStore: sidecarExternalStore) { store in
+      originalReopenReadout = store.read("original", codec: .externalData)
+    }
+    XCTAssertNotNil(originalReopenReadout)
+  }
+
   static let allTests = [
     ("testReadNonexistTensor", testReadNonexistTensor),
     ("testReadExistTensorWithShape", testReadExistTensorWithShape),
@@ -936,6 +1036,14 @@ final class StoreTests: XCTestCase {
     (
       "testWriteTensorAndReadBackWithI8XAndExternalStore",
       testWriteTensorAndReadBackWithI8XAndExternalStore
+    ),
+    (
+      "testMakeTrailerStoreAndReadBackWithExternalData",
+      testMakeTrailerStoreAndReadBackWithExternalData
+    ),
+    (
+      "testTrailerStoreReadsTrailerAndWritesExternalStore",
+      testTrailerStoreReadsTrailerAndWritesExternalStore
     ),
     ("testWriteTensorAndReadBackCodec", testWriteTensorAndReadBackCodec),
   ]

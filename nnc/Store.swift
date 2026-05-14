@@ -20,6 +20,8 @@ import Foundation
   import _SQLite3Shims
 #endif
 
+private let trailerStoreOffsetHeaderRange = 60..<64
+
 private func i8xXIdentifier(for format: Int32) -> UInt32? {
   switch format {
   case Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K):
@@ -3147,10 +3149,9 @@ private let ezm7EncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
-    let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded, length: length) else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
-    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    encoded.storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
     return 1
   }
@@ -3171,11 +3172,12 @@ private let q4pEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
-    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length) else {
+      return 0
+    }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(512), as: UInt32.self)
-    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3199,11 +3201,12 @@ private let q5pEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
-    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length) else {
+      return 0
+    }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(1024), as: UInt32.self)
-    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3227,11 +3230,12 @@ private let q6pEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
-    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length) else {
+      return 0
+    }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(4096), as: UInt32.self)
-    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3255,11 +3259,12 @@ private let q7pEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
-    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length) else {
+      return 0
+    }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(8192), as: UInt32.self)
-    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3283,11 +3288,12 @@ private let q8pEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0] - MemoryLayout<UInt32>.size
-    let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded + MemoryLayout<UInt32>.size, length: length) else {
+      return 0
+    }
     encodedSize[0] = 8 + 8 + 8  // Block size, start offset, length.
     encoded.storeBytes(of: UInt32(16_384), as: UInt32.self)
-    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(offset), as: UInt64.self)
+    (encoded + MemoryLayout<UInt64>.size).storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size * 2).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3311,10 +3317,9 @@ private let i8xEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
-    let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded, length: length) else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
-    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    encoded.storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3337,10 +3342,9 @@ private func i8xXEncodeWithExternalStore(
   else { return 0 }
   let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
   let length = encodedSize[0]
-  let offset = store.writeBytes(encoded, length: length)
-  guard offset >= 0 else { return 0 }
+  guard let offset = store.writeBytes(encoded, length: length) else { return 0 }
   encodedSize[0] = 8 + 8  // Start offset, length.
-  encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+  encoded.storeBytes(of: offset, as: UInt64.self)
   (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
   if let identifier = identifier {
     identifier[0] = identifier[0] | 0x1000_0000
@@ -3501,10 +3505,9 @@ private let fpzipEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
-    let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded, length: length) else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
-    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    encoded.storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3528,10 +3531,9 @@ private let zipEncodeWithExternalStore:
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = encodedSize[0]
-    let offset = store.writeBytes(encoded, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(encoded, length: length) else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
-    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    encoded.storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = identifier[0] | 0x1000_0000
@@ -3554,10 +3556,9 @@ private let encodeWithExternalStore:
     guard MemoryLayout<UInt64>.size * 2 <= encodedSize[0] else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     let length = dataSize
-    let offset = store.writeBytes(data, length: length)
-    guard offset >= 0 else { return 0 }
+    guard let offset = store.writeBytes(data, length: length) else { return 0 }
     encodedSize[0] = 8 + 8  // Start offset, length.
-    encoded.storeBytes(of: UInt64(offset), as: UInt64.self)
+    encoded.storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
     if let identifier = identifier {
       identifier[0] = 0x1000_0000
@@ -4024,7 +4025,7 @@ private let fpzipDecodeWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     let fileData = UnsafeRawPointer(mappedData)
@@ -4046,7 +4047,7 @@ private let zipDecodeWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     let fileData = UnsafeRawPointer(mappedData)
@@ -4068,7 +4069,7 @@ private let ezm7DecodeWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     let fileData = UnsafeRawPointer(mappedData)
@@ -4094,7 +4095,7 @@ private let decodeWithExternalStore:
       let decodedSize = decodedSize, dimensionCount > 0, dataSize >= 8 + 8
     else { return 0 }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     guard let bytes = store.loadBytes(offset: offset, length: length) else { return 0 }
     let copiedSize = min(Int(length), decodedSize[0])
@@ -4117,7 +4118,7 @@ private let q4pDecodeJitWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q4pDecodeJit(
@@ -4139,7 +4140,7 @@ private let q5pDecodeJitWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q5pDecodeJit(
@@ -4161,7 +4162,7 @@ private let q6pDecodeJitWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q6pDecodeJit(
@@ -4183,7 +4184,7 @@ private let q7pDecodeJitWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q7pDecodeJit(
@@ -4205,7 +4206,7 @@ private let q8pDecodeJitWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q8pDecodeJit(
@@ -4226,7 +4227,7 @@ private let i8xDecodeJitWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return i8xDecodeJit(
@@ -4247,7 +4248,7 @@ private let i8xXDecodeJitWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return i8xXDecodeJit(
@@ -4275,7 +4276,7 @@ private let q4pDecodeJitWithExternalEagerFread:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4301,8 +4302,9 @@ private let q4pDecodeJitWithExternalEagerFread:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -4328,7 +4330,7 @@ private let q5pDecodeJitWithExternalEagerFread:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4354,8 +4356,9 @@ private let q5pDecodeJitWithExternalEagerFread:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -4381,7 +4384,7 @@ private let q6pDecodeJitWithExternalEagerFread:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4407,8 +4410,9 @@ private let q6pDecodeJitWithExternalEagerFread:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -4434,7 +4438,7 @@ private let q7pDecodeJitWithExternalEagerFread:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4460,8 +4464,9 @@ private let q7pDecodeJitWithExternalEagerFread:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -4487,7 +4492,7 @@ private let q8pDecodeJitWithExternalEagerFread:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4514,8 +4519,9 @@ private let q8pDecodeJitWithExternalEagerFread:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -4540,7 +4546,7 @@ private let i8xDecodeJitWithExternalEagerFread:
     }
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4561,8 +4567,9 @@ private let i8xDecodeJitWithExternalEagerFread:
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      rowwiseParams, store.externalStore, off_t(offset),
+      rowwiseParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0
     return 1
@@ -4584,9 +4591,10 @@ private let decodeWithExternalEagerFread:
         tensorOut, decoded, decodedSize)
     }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      params, location.filePath, off_t(location.offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4673,7 +4681,7 @@ private let q4pDecodeJitWithExternalEagerMmap:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4699,9 +4707,9 @@ private let q4pDecodeJitWithExternalEagerMmap:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      min(max(0, store.externalFileSize - offset), length), 0)
+      palettizeParams, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4726,7 +4734,7 @@ private let q5pDecodeJitWithExternalEagerMmap:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4752,9 +4760,9 @@ private let q5pDecodeJitWithExternalEagerMmap:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      min(max(0, store.externalFileSize - offset), length), 0)
+      palettizeParams, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4779,7 +4787,7 @@ private let q6pDecodeJitWithExternalEagerMmap:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4805,9 +4813,9 @@ private let q6pDecodeJitWithExternalEagerMmap:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      min(max(0, store.externalFileSize - offset), length), 0)
+      palettizeParams, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4832,7 +4840,7 @@ private let q7pDecodeJitWithExternalEagerMmap:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4858,9 +4866,9 @@ private let q7pDecodeJitWithExternalEagerMmap:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      min(max(0, store.externalFileSize - offset), length), 0)
+      palettizeParams, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4885,7 +4893,7 @@ private let q8pDecodeJitWithExternalEagerMmap:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4912,9 +4920,9 @@ private let q8pDecodeJitWithExternalEagerMmap:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      palettizeParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      min(max(0, store.externalFileSize - offset), length), 0)
+      palettizeParams, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -4938,7 +4946,7 @@ private let i8xDecodeJitWithExternalEagerMmap:
     }
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -4959,9 +4967,9 @@ private let i8xDecodeJitWithExternalEagerMmap:
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      rowwiseParams, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      min(max(0, store.externalFileSize - offset), length), 0)
+      rowwiseParams, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0
     return 1
   }
@@ -4975,17 +4983,19 @@ private let decodeWithExternalEagerMmap:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    guard let data = data, let decodedSize = decodedSize, dimensionCount > 0 else { return 0 }
+    guard let data = data, let decodedSize = decodedSize, dimensionCount > 0, dataSize >= 8 + 8
+    else { return 0 }
     guard tensorOut!.pointee == nil, dataType == params.datatype else {
       return decodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
+    let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    guard let mappedData = store.mappedBytes(offset: offset, length: length) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_raw(
-      params, store.externalMmap.map { $0.assumingMemoryBound(to: UInt8.self) + offset },
-      max(0, store.externalFileSize - offset), 0)
+      params, mappedData.pointer, mappedData.length, 0)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -5072,7 +5082,7 @@ private let q4pDecodeJitWithExternalOnDemand:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -5098,8 +5108,9 @@ private let q4pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -5125,7 +5136,7 @@ private let q5pDecodeJitWithExternalOnDemand:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -5151,8 +5162,9 @@ private let q5pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -5178,7 +5190,7 @@ private let q6pDecodeJitWithExternalOnDemand:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -5204,8 +5216,9 @@ private let q6pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -5231,7 +5244,7 @@ private let q7pDecodeJitWithExternalOnDemand:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -5257,8 +5270,9 @@ private let q7pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -5284,7 +5298,7 @@ private let q8pDecodeJitWithExternalOnDemand:
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -5311,8 +5325,9 @@ private let q8pDecodeJitWithExternalOnDemand:
         blockSize: blockSize, mappedData, length, dataType, dimensions, dimensionCount, identifier,
         context, params, tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      palettizeParams, store.externalStore, off_t(offset),
+      palettizeParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
@@ -5337,7 +5352,7 @@ private let i8xDecodeJitWithExternalOnDemand:
     }
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     var numberOfElements = Int(dimensions[0])
@@ -5358,8 +5373,9 @@ private let i8xDecodeJitWithExternalOnDemand:
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      rowwiseParams, store.externalStore, off_t(offset),
+      rowwiseParams, location.filePath, off_t(location.offset),
       Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0
     return 1
@@ -5381,9 +5397,10 @@ private let decodeWithExternalOnDemand:
         tensorOut, decoded, decodedSize)
     }
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
+    guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      params, store.externalStore, off_t(offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
+      params, location.filePath, off_t(location.offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_ON_DEMAND))
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
@@ -5464,7 +5481,7 @@ private let q4pDecodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q4pDecode(
@@ -5486,7 +5503,7 @@ private let q5pDecodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q5pDecode(
@@ -5508,7 +5525,7 @@ private let q6pDecodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q6pDecode(
@@ -5530,7 +5547,7 @@ private let q7pDecodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q7pDecode(
@@ -5552,7 +5569,7 @@ private let q8pDecodeWithExternalStore:
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 + 8 else { return 0 }
     let blockSize = Int(data.load(as: UInt32.self))
-    let offset = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
+    let offset = (data + MemoryLayout<UInt64>.size).load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size * 2).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return q8pDecode(
@@ -5573,7 +5590,7 @@ private let i8xDecodeWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return i8xDecode(
@@ -5594,7 +5611,7 @@ private let i8xXDecodeWithExternalStore:
     let identifier = identifier & 0x0fff_ffff
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
     guard let data = data, dataSize >= 8 + 8 else { return 0 }
-    let offset = Int(data.load(as: UInt64.self))
+    let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let mappedData = store.loadBytes(offset: offset, length: length)
     return i8xXDecode(
@@ -5786,44 +5803,66 @@ extension DynamicGraph {
   @usableFromInline
   final class _Store {
     let sqlite: UnsafeMutableRawPointer
+    let filePath: String
     let flags: Store.OpenFlag
     let externalStore: String?
+    let trailerStoreOffset: Int?
     let chunkSize: Int
     var loadedBytesLength: Int
     var loadedBytes: UnsafeMutableRawPointer?
     var externalFileRead: UnsafeMutablePointer<FILE>?
+    var externalFileReadPath: String?
     var externalFileWrite: UnsafeMutablePointer<FILE>?
     var externalFileWriteError: Bool
     var i8xImatrix: NNC.Tensor<Float>?
-    private var _externalFileSize: Int = 0
-    var externalFileSize: Int { _externalFileSize }
-    private var _externalMmap: UnsafeMutableRawPointer? = nil
-    var externalMmap: UnsafeRawPointer? {
-      if let _externalMmap = _externalMmap {
-        return UnsafeRawPointer(_externalMmap)
+    private var _externalStoreMmap: UnsafeMutableRawPointer?
+    private var _externalStoreMmapSize: Int
+    private var _trailerStoreMmap: UnsafeMutableRawPointer?
+    private var _trailerStoreMmapSize: Int
+    private var externalStoreMmap: UnsafeRawPointer? {
+      if let externalStoreMmap = _externalStoreMmap {
+        return UnsafeRawPointer(externalStoreMmap)
       }
-      guard let externalStore = externalStore else { return nil }
-      let fp = fopen(externalStore, "rb")
-      let fd = fileno(fp)
-      fseek(fp, 0, SEEK_END)
-      let externalFileSize = ftell(fp)
-      let externalMmap = mmap(nil, externalFileSize, PROT_READ, MAP_PRIVATE, fd, 0)
-      fclose(fp)
-      _externalMmap = externalMmap
-      _externalFileSize = externalFileSize
-      return UnsafeRawPointer(externalMmap)
+      guard let externalStore = externalStore, let mappedFile = mmapFile(externalStore) else {
+        return nil
+      }
+      _externalStoreMmap = mappedFile.pointer
+      _externalStoreMmapSize = mappedFile.size
+      return UnsafeRawPointer(mappedFile.pointer)
     }
-    init(sqlite: OpaquePointer, flags: Store.OpenFlag, externalStore: String?, chunkSize: Int) {
+    private var externalStoreMmapSize: Int { _externalStoreMmapSize }
+    private var trailerStoreMmap: UnsafeRawPointer? {
+      if let trailerStoreMmap = _trailerStoreMmap {
+        return UnsafeRawPointer(trailerStoreMmap)
+      }
+      guard let mappedFile = mmapFile(filePath) else { return nil }
+      _trailerStoreMmap = mappedFile.pointer
+      _trailerStoreMmapSize = mappedFile.size
+      return UnsafeRawPointer(mappedFile.pointer)
+    }
+    private var trailerStoreMmapSize: Int { _trailerStoreMmapSize }
+
+    init(
+      sqlite: OpaquePointer, filePath: String, flags: Store.OpenFlag, externalStore: String?,
+      trailerStoreOffset: Int?, chunkSize: Int
+    ) {
       self.sqlite = UnsafeMutableRawPointer(sqlite)
+      self.filePath = filePath
       self.flags = flags
       self.externalStore = externalStore
+      self.trailerStoreOffset = trailerStoreOffset
       self.chunkSize = chunkSize
       externalFileRead = nil
+      externalFileReadPath = nil
       externalFileWrite = nil
       externalFileWriteError = false
       i8xImatrix = nil
       loadedBytes = nil
       loadedBytesLength = 0
+      _externalStoreMmap = nil
+      _externalStoreMmapSize = 0
+      _trailerStoreMmap = nil
+      _trailerStoreMmapSize = 0
     }
     deinit {
       if let externalFileWrite = externalFileWrite {
@@ -5847,8 +5886,11 @@ extension DynamicGraph {
       if let externalFileRead = externalFileRead {
         fclose(externalFileRead)
       }
-      if let _externalMmap = _externalMmap {
-        munmap(_externalMmap, _externalFileSize)
+      if let externalStoreMmap = _externalStoreMmap {
+        munmap(externalStoreMmap, _externalStoreMmapSize)
+      }
+      if let trailerStoreMmap = _trailerStoreMmap {
+        munmap(trailerStoreMmap, _trailerStoreMmapSize)
       }
       // If the database is opened with WAL mode, this makes sure everything write back to the main
       // database, much easier to operate without worrying the data left in the wal log.
@@ -5860,31 +5902,79 @@ extension DynamicGraph {
       }
       sqlite3_close(OpaquePointer(sqlite))
     }
+    func externalReadLocation(offset encodedOffset: UInt64) -> (filePath: String, offset: Int)? {
+      guard encodedOffset <= UInt64(Int.max) else { return nil }
+      let offset = Int(encodedOffset)
+      if let trailerStoreOffset = trailerStoreOffset {
+        guard offset <= Int.max - trailerStoreOffset else { return nil }
+        return (filePath, trailerStoreOffset + offset)
+      }
+      guard let externalStore = externalStore else { return nil }
+      return (externalStore, offset)
+    }
+    private func mmapFile(_ filePath: String) -> (pointer: UnsafeMutableRawPointer, size: Int)? {
+      guard let fp = fopen(filePath, "rb") else { return nil }
+      defer { fclose(fp) }
+      let fd = fileno(fp)
+      guard fseek(fp, 0, SEEK_END) == 0 else { return nil }
+      let fileSize = ftell(fp)
+      guard fileSize > 0 else { return nil }
+      let mapped = mmap(nil, fileSize, PROT_READ, MAP_PRIVATE, fd, 0)
+      guard let mapped = mapped, mapped != UnsafeMutableRawPointer(bitPattern: -1) else {
+        return nil
+      }
+      return (mapped, fileSize)
+    }
+    func mappedBytes(offset encodedOffset: UInt64, length: Int)
+      -> (pointer: UnsafeRawPointer, length: Int)?
+    {
+      guard encodedOffset <= UInt64(Int.max) else { return nil }
+      let offset = Int(encodedOffset)
+      if let trailerStoreOffset = trailerStoreOffset {
+        guard offset <= Int.max - trailerStoreOffset else { return nil }
+        let mappedOffset = trailerStoreOffset + offset
+        guard let trailerStoreMmap = trailerStoreMmap, mappedOffset < trailerStoreMmapSize else {
+          return nil
+        }
+        return (
+          trailerStoreMmap + mappedOffset,
+          min(trailerStoreMmapSize - mappedOffset, length)
+        )
+      }
+      guard let externalStoreMmap = externalStoreMmap, offset < externalStoreMmapSize else {
+        return nil
+      }
+      return (
+        externalStoreMmap + offset,
+        min(externalStoreMmapSize - offset, length)
+      )
+    }
     // Return offset of where the bytes written to.
-    func writeBytes(_ bytes: UnsafeRawPointer, length: Int) -> Int {
+    func writeBytes(_ bytes: UnsafeRawPointer, length: Int) -> UInt64? {
       let externalFileWrite = externalFileWrite ?? fopen(externalStore, "wb+")
-      guard let externalFileWrite = externalFileWrite else { return -1 }
+      guard let externalFileWrite = externalFileWrite else { return nil }
       self.externalFileWrite = externalFileWrite
       let offset = ftell(externalFileWrite)
       if offset == -1 {
         externalFileWriteError = true
-        return -1
+        return nil
       }
       let alignedOffset = (offset + chunkSize - 1) / chunkSize * chunkSize
       if fseek(externalFileWrite, alignedOffset, SEEK_SET) != 0 {
         externalFileWriteError = true
-        return -1
+        return nil
       }
       let bytesWritten = fwrite(bytes, 1, length, externalFileWrite)
       if bytesWritten != length {
         externalFileWriteError = true
-        return -1
+        return nil
       }
-      return alignedOffset
+      let storedOffset = UInt64(alignedOffset)
+      return storedOffset
     }
     // Return a pointer that later can be munmap.
-    func loadBytes(offset: Int, length: Int) -> UnsafeMutableRawPointer? {
-      guard let externalStore = externalStore else { return nil }
+    func loadBytes(offset encodedOffset: UInt64, length: Int) -> UnsafeMutableRawPointer? {
+      guard let location = externalReadLocation(offset: encodedOffset) else { return nil }
       if let externalFileWrite = externalFileWrite {
         if fflush(externalFileWrite) != 0 {
           externalFileWriteError = true
@@ -5899,10 +5989,18 @@ extension DynamicGraph {
           }
         #endif
       }
-      let externalFileRead = externalFileRead ?? fopen(externalStore, "rb")
+      if externalFileReadPath != location.filePath {
+        if let externalFileRead = externalFileRead {
+          fclose(externalFileRead)
+        }
+        externalFileRead = nil
+        externalFileReadPath = nil
+      }
+      let externalFileRead = externalFileRead ?? fopen(location.filePath, "rb")
       guard let externalFileRead = externalFileRead else { return nil }
       self.externalFileRead = externalFileRead
-      guard fseek(externalFileRead, offset, SEEK_SET) == 0 else { return nil }
+      self.externalFileReadPath = location.filePath
+      guard fseek(externalFileRead, location.offset, SEEK_SET) == 0 else { return nil }
       let requiredLength = max(length, 1)
       if requiredLength > loadedBytesLength || loadedBytes == nil {
         guard let resizedBytes = realloc(loadedBytes, requiredLength) else { return nil }
@@ -5934,6 +6032,114 @@ extension DynamicGraph {
    * A key-value based parameter store.
    */
   public struct Store {
+    public enum TrailerStoreError: Error {
+      case invalidAlignment
+      case invalidStore
+      case outputExists
+      case cannotOpenInput
+      case cannotCreateOutput
+      case offsetTooLarge
+      case copyError
+    }
+    fileprivate static func trailerOffset(in filePath: String) -> UInt64? {
+      guard let fp = fopen(filePath, "rb") else { return nil }
+      defer { fclose(fp) }
+      var header = [UInt8](repeating: 0, count: trailerStoreOffsetHeaderRange.upperBound)
+      let headerCount = header.count
+      let readBytes = header.withUnsafeMutableBytes { fread($0.baseAddress, 1, headerCount, fp) }
+      guard readBytes == headerCount else { return nil }
+      var offset: UInt32 = 0
+      for byte in header[trailerStoreOffsetHeaderRange] {
+        offset = (offset << 8) | UInt32(byte)
+      }
+      guard offset > 0 else { return nil }
+      guard fseek(fp, 0, SEEK_END) == 0 else { return nil }
+      let fileSize = ftell(fp)
+      guard fileSize > 0, offset >= 100, UInt64(offset) <= UInt64(fileSize) else { return nil }
+      return UInt64(offset)
+    }
+    public static func isTrailerStore(_ filePath: String) -> Bool {
+      trailerOffset(in: filePath) != nil
+    }
+    public static func makeTrailerStore(
+      _ sqliteStore: String, externalStore: String, to output: String, alignment: Int = 16_384
+    ) throws {
+      guard alignment > 0 else { throw TrailerStoreError.invalidAlignment }
+      guard !FileManager.default.fileExists(atPath: output) else {
+        throw TrailerStoreError.outputExists
+      }
+      guard let sqliteInput = fopen(sqliteStore, "rb") else {
+        throw TrailerStoreError.cannotOpenInput
+      }
+      guard let externalInput = fopen(externalStore, "rb") else {
+        fclose(sqliteInput)
+        throw TrailerStoreError.cannotOpenInput
+      }
+      defer {
+        fclose(sqliteInput)
+        fclose(externalInput)
+      }
+      guard let outputFile = fopen(output, "wb+") else {
+        throw TrailerStoreError.cannotCreateOutput
+      }
+      defer { fclose(outputFile) }
+      let bufferSize = 1 << 20
+      let buffer = UnsafeMutableRawPointer.allocate(byteCount: bufferSize, alignment: 16)
+      defer { buffer.deallocate() }
+      func copyBytes(from input: UnsafeMutablePointer<FILE>, to output: UnsafeMutablePointer<FILE>)
+        throws -> UInt64
+      {
+        var copied: UInt64 = 0
+        while true {
+          let readBytes = fread(buffer, 1, bufferSize, input)
+          if readBytes > 0 {
+            guard fwrite(buffer, 1, readBytes, output) == readBytes else {
+              throw TrailerStoreError.copyError
+            }
+            copied += UInt64(readBytes)
+          }
+          if readBytes < bufferSize {
+            guard feof(input) != 0 else { throw TrailerStoreError.copyError }
+            return copied
+          }
+        }
+      }
+      let sqliteSize = try copyBytes(from: sqliteInput, to: outputFile)
+      guard sqliteSize >= 100 else { throw TrailerStoreError.invalidStore }
+      let trailerOffset =
+        (sqliteSize + UInt64(alignment - 1)) / UInt64(alignment) * UInt64(alignment)
+      guard trailerOffset <= UInt64(UInt32.max) else { throw TrailerStoreError.offsetTooLarge }
+      if trailerOffset > sqliteSize {
+        let paddingSize = Int(trailerOffset - sqliteSize)
+        memset(buffer, 0, min(paddingSize, bufferSize))
+        var remaining = paddingSize
+        while remaining > 0 {
+          let writeSize = min(remaining, bufferSize)
+          guard fwrite(buffer, 1, writeSize, outputFile) == writeSize else {
+            throw TrailerStoreError.copyError
+          }
+          remaining -= writeSize
+        }
+      }
+      _ = try copyBytes(from: externalInput, to: outputFile)
+      var trailerOffsetBE = UInt32(trailerOffset).bigEndian
+      guard fseek(outputFile, trailerStoreOffsetHeaderRange.lowerBound, SEEK_SET) == 0 else {
+        throw TrailerStoreError.copyError
+      }
+      guard
+        withUnsafeBytes(of: &trailerOffsetBE, {
+          fwrite($0.baseAddress, 1, MemoryLayout<UInt32>.size, outputFile)
+        }) == MemoryLayout<UInt32>.size
+      else { throw TrailerStoreError.copyError }
+      guard fflush(outputFile) == 0 else { throw TrailerStoreError.copyError }
+      #if canImport(Darwin)
+        guard fcntl(fileno(outputFile), F_FULLFSYNC) == 0 else {
+          throw TrailerStoreError.copyError
+        }
+      #else
+        guard fsync(fileno(outputFile)) == 0 else { throw TrailerStoreError.copyError }
+      #endif
+    }
     public struct OpenFlag: OptionSet {
       public let rawValue: Int
       public init(rawValue: Int) {
@@ -7138,6 +7344,9 @@ extension DynamicGraph {
     externalStore: String? = nil, chunkSize: Int = 16_384,
     procedure: (_ store: Store) throws -> SuccessResult
   ) rethrows -> Result<SuccessResult, OpenError> {
+    let trailerStoreOffset = Store.trailerOffset(in: filePath).flatMap {
+      $0 <= UInt64(Int.max) ? Int($0) : nil
+    }
     var _sqlite: OpaquePointer? = nil
     if flags.contains(.readOnly) {
       if sqlite3_libversion_number() >= 3_022_000 {
@@ -7159,7 +7368,9 @@ extension DynamicGraph {
       sqlite3_exec(_sqlite, "PRAGMA auto_vacuum=incremental", nil, nil, nil)
     }
     let store = Store(
-      _Store(sqlite: sqlite, flags: flags, externalStore: externalStore, chunkSize: chunkSize),
+      _Store(
+        sqlite: sqlite, filePath: filePath, flags: flags, externalStore: externalStore,
+        trailerStoreOffset: trailerStoreOffset, chunkSize: chunkSize),
       graph: self)
     return .success(try procedure(store))
   }
