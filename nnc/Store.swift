@@ -1748,9 +1748,30 @@ private let i8xEncode:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    let quantizedSize = ccv_nnc_quantize_8i_rowwise(
-      data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, encoded,
-      encodedSize[0])
+    var imatrix: NNC.Tensor<Float>? = nil
+    var imatrixPointer: UnsafePointer<Float>? = nil
+    if let context = context {
+      let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context).takeUnretainedValue()
+      imatrix = store.i8xImatrix
+      if let currentImatrix = imatrix {
+        let imatrixCount = TensorShape(dims: currentImatrix.cTensor.pointee.info.dim).reduce(1, *)
+        guard currentImatrix.kind == .CPU, imatrixCount >= rowLength else { return 0 }
+        imatrixPointer = UnsafePointer(
+          currentImatrix.cTensor.pointee.data.ptr.bindMemory(to: Float.self, capacity: imatrixCount))
+      }
+    }
+    let quantizedSize: Int
+    if let imatrix = imatrix {
+      quantizedSize = withExtendedLifetime(imatrix) {
+        ccv_nnc_quantize_8i_rowwise(
+          data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength,
+          imatrixPointer, encoded, encodedSize[0])
+      }
+    } else {
+      quantizedSize = ccv_nnc_quantize_8i_rowwise(
+        data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, nil, encoded,
+        encodedSize[0])
+    }
     guard quantizedSize > 0 else { return 0 }
     encodedSize[0] = quantizedSize
     identifier?[0] = 0x8a1e9b
@@ -6931,13 +6952,7 @@ extension DynamicGraph {
       _ imatrix: NNC.Tensor<Float>?, for tensor: UnsafeMutablePointer<ccv_nnc_tensor_t>,
       codec: Codec
     ) -> NNC.Tensor<Float>? {
-      guard let imatrix = imatrix, let format = codec.i8xFormat else { return nil }
-      switch format {
-      case .none:
-        return nil
-      default:
-        break
-      }
+      guard let imatrix = imatrix, codec.i8xFormat != nil else { return nil }
       let shape = TensorShape(dims: tensor.pointee.info.dim)
       guard let rowLength = shape.last, rowLength > 0 else {
         return nil
@@ -6969,7 +6984,7 @@ extension DynamicGraph {
         let validatedImatrix = validatedI8XImatrix(imatrix, for: tensor.cTensor, codec: codec)
         if strict, imatrix != nil, validatedImatrix == nil {
           switch codec.i8xFormat {
-          case .some(.none), nil:
+          case nil:
             break
           default:
             throw ModelWriteError.invalidI8XImatrix
@@ -7032,7 +7047,7 @@ extension DynamicGraph {
           let validatedImatrix = validatedI8XImatrix(imatrix, for: raw, codec: codec)
           if strict, imatrix != nil, validatedImatrix == nil {
             switch codec.i8xFormat {
-            case .some(.none), nil:
+            case nil:
               break
             default:
               throw ModelWriteError.invalidI8XImatrix

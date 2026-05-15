@@ -715,6 +715,56 @@ final class StoreTests: XCTestCase {
     XCTAssertEqual(Int(readout!.cTensor.pointee.info.datatype & 0xf00), CCV_NNC_QX_8I_ROWWISE)
   }
 
+  func testWriteTensorAndReadBackWithI8XImatrix() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(16, 8))
+    let values: [Float] = [
+      -49.257720, 0.349063, 0.214409, -0.305378,
+      -0.365815, 0.553977, -0.809149, 0.585139,
+    ]
+    for i in 0..<16 {
+      for j in 0..<8 {
+        tensor[i, j] = values[j]
+      }
+    }
+    var imatrix: Tensor<Float> = Tensor(.CPU, .C(8))
+    imatrix[0] = 0
+    for i in 1..<8 {
+      imatrix[i] = 1
+    }
+    var unweightedReadout: AnyTensor? = nil
+    var weightedReadout: AnyTensor? = nil
+    var weightedCodec: DynamicGraph.Store.Codec? = nil
+    var writeError: Error? = nil
+    graph.openStore("test/tmp.db") { store in
+      store.write("i8x-unweighted", tensor: tensor, codec: .i8x)
+      do {
+        try store.write(
+          "i8x-weighted", tensor: tensor, strict: true, codec: .i8x, imatrix: imatrix)
+      } catch {
+        writeError = error
+      }
+      unweightedReadout = store.read("i8x-unweighted", codec: .i8x)
+      weightedReadout = store.read("i8x-weighted", codec: .i8x)
+      weightedCodec = store.codec(for: "i8x-weighted")
+    }
+    XCTAssertNil(writeError)
+    XCTAssertEqual(weightedCodec!, .i8x)
+    let unweighted = Tensor<Float>(unweightedReadout!)
+    let weighted = Tensor<Float>(weightedReadout!)
+    var unweightedSSE: Float = 0
+    var weightedSSE: Float = 0
+    for i in 0..<16 {
+      for j in 0..<8 {
+        let unweightedDiff = tensor[i, j] - unweighted[i, j]
+        let weightedDiff = tensor[i, j] - weighted[i, j]
+        unweightedSSE += imatrix[j] * unweightedDiff * unweightedDiff
+        weightedSSE += imatrix[j] * weightedDiff * weightedDiff
+      }
+    }
+    XCTAssertLessThan(weightedSSE, unweightedSSE * 0.25)
+  }
+
   func testWriteTensorAndReadBackWithI8XFormats() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
@@ -857,20 +907,23 @@ final class StoreTests: XCTestCase {
     for i in 0..<127 {
       imatrix[i] = 1
     }
-    var rejected = false
+    var rejected = 0
     var unexpectedError: Error? = nil
     graph.openStore("test/tmp.db") { store in
-      do {
-        try store.write(
-          "i8x-invalid-imatrix", tensor: tensor, strict: true, codec: .i8x(.q4k),
-          imatrix: imatrix)
-      } catch DynamicGraph.Store.ModelWriteError.invalidI8XImatrix {
-        rejected = true
-      } catch {
-        unexpectedError = error
+      let codecs: [DynamicGraph.Store.Codec] = [.i8x, .i8x(.q4k)]
+      for (index, codec) in codecs.enumerated() {
+        do {
+          try store.write(
+            "i8x-invalid-imatrix-\(index)", tensor: tensor, strict: true, codec: codec,
+            imatrix: imatrix)
+        } catch DynamicGraph.Store.ModelWriteError.invalidI8XImatrix {
+          rejected += 1
+        } catch {
+          unexpectedError = error
+        }
       }
     }
-    XCTAssertTrue(rejected)
+    XCTAssertEqual(rejected, 2)
     XCTAssertNil(unexpectedError)
   }
 
@@ -1024,6 +1077,7 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithI8X", testWriteTensorAndReadBackWithI8X),
     ("testWriteTensorAndReadBackPartialWithI8X", testWriteTensorAndReadBackPartialWithI8X),
     ("testWriteTensorAndReadBackWithI8XJit", testWriteTensorAndReadBackWithI8XJit),
+    ("testWriteTensorAndReadBackWithI8XImatrix", testWriteTensorAndReadBackWithI8XImatrix),
     ("testWriteTensorAndReadBackWithI8XFormats", testWriteTensorAndReadBackWithI8XFormats),
     (
       "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
