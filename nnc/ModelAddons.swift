@@ -229,6 +229,24 @@ extension ModelIOConvertible {
   }
 }
 
+/// Walsh-Hadamard transform over the last dimension.
+public final class WalshHadamardTransform: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(scale: Float = 1, name: String = "") {
+    super.init(ccv_cnnp_walsh_hadamard_transform(scale, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 /// Rotate half.
 public final class RotateHalf: Model {
   required init(_ model: OpaquePointer) {
