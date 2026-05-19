@@ -43,4 +43,10 @@ public protocol AnyModel {
    * it returns).
    */
   func cancel()
+  /**
+   * Mark this model is ready to enter a evaluation. Without this, when start a model run, it will
+   * reset the cancel flag. With this, between asyncEnter and the actual model evaluation, if other
+   * threads called cancel can successfully cancel that evaluation after asyncEnter.
+   */
+  func asyncEnter()
 }

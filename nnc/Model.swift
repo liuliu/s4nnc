@@ -486,6 +486,14 @@ extension Model {
   public func cancel() {
     ccv_cnnp_model_cancel(cModel)
   }
+  /**
+   * Mark this model is ready to enter a evaluation. Without this, when start a model run, it will
+   * reset the cancel flag. With this, between asyncEnter and the actual model evaluation, if other
+   * threads called cancel can successfully cancel that evaluation after asyncEnter.
+   */
+  public func asyncEnter() {
+    ccv_cnnp_model_async_enter(cModel)
+  }
 }
 
 /// MARK - Functional and Sequential Models
