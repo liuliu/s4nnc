@@ -333,8 +333,8 @@ public final class GatedDelta: Model {
     super.init(model)
   }
 
-  public init(logDecay: Bool, name: String = "") {
-    super.init(ccv_cnnp_gated_delta(logDecay ? 1 : 0, name))
+  public init(logDecay: Bool, stateCheckpointCount: Int = 0, name: String = "") {
+    super.init(ccv_cnnp_gated_delta(logDecay ? 1 : 0, Int32(stateCheckpointCount), name))
   }
 
   public func callAsFunction(
@@ -1881,7 +1881,7 @@ public final class ScaledDotProductAttention: Model {
 
   public init(
     scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
-    isVariableLength: Bool = false,
+    hasAttentionSinks: Bool = false, isVariableLength: Bool = false,
     maxSequenceLength: (query: Int, keyValue: Int)? = nil,
     flags: Functional.GEMMFlag = [], multiHeadOutputProjectionFused: Bool = false,
     noBias: Bool = false, trainable: Bool? = nil, name: String = ""
@@ -1900,29 +1900,44 @@ public final class ScaledDotProductAttention: Model {
       ccv_cnnp_scaled_dot_product_attention(
         scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, isVariableLength ? 1 : 0,
         Int32(maxSequenceLength.query), Int32(maxSequenceLength.keyValue), Int32(flags.rawValue),
-        multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
+        hasAttentionSinks ? 1 : 0, multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
     queries q: T, keys k: T, values v: T, attentionMask: T? = nil,
-    sequenceOffsets: (query: T, keyValue: T)? = nil,
+    attentionSinks: T? = nil, sequenceOffsets: (query: T, keyValue: T)? = nil,
     streamContext: StreamContext? = nil
   ) -> T {
     precondition(
       attentionMask == nil || sequenceOffsets == nil,
       "attentionMask and sequenceOffsets cannot both be provided")
-    if let sequenceOffsets = sequenceOffsets {
-      let outputs = self(
-        inputs: q, k, v, sequenceOffsets.query, sequenceOffsets.keyValue,
-        streamContext: streamContext)
-      return T(outputs[0])
-    } else if let attentionMask = attentionMask {
-      let outputs = self(inputs: q, k, v, attentionMask, streamContext: streamContext)
-      return T(outputs[0])
+    if let attentionSinks {
+      if let sequenceOffsets = sequenceOffsets {
+        let outputs = self(
+          inputs: q, k, v, sequenceOffsets.query, sequenceOffsets.keyValue, attentionSinks,
+          streamContext: streamContext)
+        return T(outputs[0])
+      } else if let attentionMask = attentionMask {
+        let outputs = self(inputs: q, k, v, attentionMask, attentionSinks, streamContext: streamContext)
+        return T(outputs[0])
+      } else {
+        let outputs = self(inputs: q, k, v, attentionSinks, streamContext: streamContext)
+        return T(outputs[0])
+      }
     } else {
-      let outputs = self(inputs: q, k, v, streamContext: streamContext)
-      return T(outputs[0])
+      if let sequenceOffsets = sequenceOffsets {
+        let outputs = self(
+          inputs: q, k, v, sequenceOffsets.query, sequenceOffsets.keyValue,
+          streamContext: streamContext)
+        return T(outputs[0])
+      } else if let attentionMask = attentionMask {
+        let outputs = self(inputs: q, k, v, attentionMask, streamContext: streamContext)
+        return T(outputs[0])
+      } else {
+        let outputs = self(inputs: q, k, v, streamContext: streamContext)
+        return T(outputs[0])
+      }
     }
   }
 }
