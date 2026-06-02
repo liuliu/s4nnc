@@ -853,6 +853,8 @@ final class StoreTests: XCTestCase {
     ]
     var readouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var jitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var mmapJitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var onDemandJitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var readoutCodecs = Array<DynamicGraph.Store.Codec?>(repeating: nil, count: formats.count)
     var writeError: Error? = nil
     graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
@@ -874,6 +876,20 @@ final class StoreTests: XCTestCase {
         readoutCodecs[index] = store.codec(for: "i8x-external-format-\(format.0)")
       }
     }
+    graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
+      for (index, format) in formats.enumerated() {
+        var mmapJitCodec = format.1
+        mmapJitCodec.insert(.externalData(.mmap))
+        mmapJitCodec.insert(.jit)
+        mmapJitReadouts[index] = store.read(
+          "i8x-external-format-\(format.0)", codec: mmapJitCodec)
+        var onDemandJitCodec = format.1
+        onDemandJitCodec.insert(.externalOnDemand)
+        onDemandJitCodec.insert(.jit)
+        onDemandJitReadouts[index] = store.read(
+          "i8x-external-format-\(format.0)", codec: onDemandJitCodec)
+      }
+    }
     XCTAssertNil(writeError)
     for (index, format) in formats.enumerated() {
       var codec = format.1
@@ -892,6 +908,19 @@ final class StoreTests: XCTestCase {
         Int(jitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
         CCV_NNC_QX_8I_ROWWISE_X)
       XCTAssertEqual(jitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
+      XCTAssertNotNil(mmapJitReadouts[index])
+      XCTAssertEqual(Int(mmapJitReadouts[index]!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
+      XCTAssertEqual(
+        Int(mmapJitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
+        CCV_NNC_QX_8I_ROWWISE_X)
+      XCTAssertEqual(mmapJitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
+      XCTAssertNotNil(onDemandJitReadouts[index])
+      XCTAssertEqual(
+        Int(onDemandJitReadouts[index]!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
+      XCTAssertEqual(
+        Int(onDemandJitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
+        CCV_NNC_QX_8I_ROWWISE_X)
+      XCTAssertEqual(onDemandJitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
     }
   }
 

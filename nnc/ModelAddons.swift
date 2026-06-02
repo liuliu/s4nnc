@@ -1883,7 +1883,8 @@ public final class ScaledDotProductAttention: Model {
     scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
     hasAttentionSinks: Bool = false, isVariableLength: Bool = false,
     maxSequenceLength: (query: Int, keyValue: Int)? = nil,
-    flags: Functional.GEMMFlag = [], multiHeadOutputProjectionFused: Bool = false,
+    slidingWindow: Int = 0, flags: Functional.GEMMFlag = [],
+    multiHeadOutputProjectionFused: Bool = false,
     noBias: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     precondition(
@@ -1895,12 +1896,21 @@ public final class ScaledDotProductAttention: Model {
     precondition(
       !isVariableLength || !multiHeadOutputProjectionFused,
       "variable-length scaled dot product attention does not support multiHeadOutputProjectionFused")
+    precondition(slidingWindow >= 0, "slidingWindow must be non-negative")
+    precondition(
+      slidingWindow == 0 || isCausal,
+      "slidingWindow requires causal scaled dot product attention")
+    precondition(
+      slidingWindow == 0 || !isVariableLength,
+      "variable-length scaled dot product attention does not support slidingWindow")
+    precondition(slidingWindow <= Int(Int32.max), "slidingWindow must fit in Int32")
     let maxSequenceLength = maxSequenceLength ?? (query: 0, keyValue: 0)
     super.init(
       ccv_cnnp_scaled_dot_product_attention(
         scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, isVariableLength ? 1 : 0,
         Int32(maxSequenceLength.query), Int32(maxSequenceLength.keyValue), Int32(flags.rawValue),
-        hasAttentionSinks ? 1 : 0, multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
+        hasAttentionSinks ? 1 : 0, Int32(slidingWindow),
+        multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
