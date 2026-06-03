@@ -1750,12 +1750,18 @@ private let i8xEncode:
     }
     var imatrix: NNC.Tensor<Float>? = nil
     var imatrixPointer: UnsafePointer<Float>? = nil
+    var imatrixCount = 0
     if let context = context {
       let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context).takeUnretainedValue()
       imatrix = store.i8xImatrix
       if let currentImatrix = imatrix {
-        let imatrixCount = TensorShape(dims: currentImatrix.cTensor.pointee.info.dim).reduce(1, *)
-        guard currentImatrix.kind == .CPU, imatrixCount >= rowLength else { return 0 }
+        imatrixCount = TensorShape(dims: currentImatrix.cTensor.pointee.info.dim).reduce(1, *)
+        guard currentImatrix.kind == .CPU, imatrixCount >= rowLength,
+          imatrixCount % rowLength == 0
+        else { return 0 }
+        let imatrixSlices = imatrixCount / rowLength
+        let rowCount = numberOfElements / rowLength
+        guard imatrixSlices > 0, rowCount % imatrixSlices == 0 else { return 0 }
         imatrixPointer = UnsafePointer(
           currentImatrix.cTensor.pointee.data.ptr.bindMemory(to: Float.self, capacity: imatrixCount))
       }
@@ -1765,11 +1771,11 @@ private let i8xEncode:
       quantizedSize = withExtendedLifetime(imatrix) {
         ccv_nnc_quantize_8i_rowwise(
           data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength,
-          imatrixPointer, encoded, encodedSize[0])
+          imatrixPointer, imatrixCount, encoded, encodedSize[0])
       }
     } else {
       quantizedSize = ccv_nnc_quantize_8i_rowwise(
-        data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, nil, encoded,
+        data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, nil, 0, encoded,
         encodedSize[0])
     }
     guard quantizedSize > 0 else { return 0 }
@@ -1942,12 +1948,18 @@ private func i8xXEncode(
   guard requiredSize > 0, requiredSize <= encodedSize[0] else { return 0 }
   var imatrix: NNC.Tensor<Float>? = nil
   var imatrixPointer: UnsafePointer<Float>? = nil
+  var imatrixCount = 0
   if let context = context {
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context).takeUnretainedValue()
     imatrix = store.i8xImatrix
     if let currentImatrix = imatrix {
-      let imatrixCount = TensorShape(dims: currentImatrix.cTensor.pointee.info.dim).reduce(1, *)
-      guard currentImatrix.kind == .CPU, imatrixCount >= rowLength else { return 0 }
+      imatrixCount = TensorShape(dims: currentImatrix.cTensor.pointee.info.dim).reduce(1, *)
+      guard currentImatrix.kind == .CPU, imatrixCount >= rowLength,
+        imatrixCount % rowLength == 0
+      else { return 0 }
+      let imatrixSlices = imatrixCount / rowLength
+      let rowCount = numberOfElements / rowLength
+      guard imatrixSlices > 0, rowCount % imatrixSlices == 0 else { return 0 }
       imatrixPointer = UnsafePointer(
         currentImatrix.cTensor.pointee.data.ptr.bindMemory(to: Float.self, capacity: imatrixCount))
     }
@@ -1957,11 +1969,11 @@ private func i8xXEncode(
     quantizedSize = withExtendedLifetime(imatrix) {
       ccv_nnc_quantize_8i_rowwise_x(
         data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, format,
-        imatrixPointer, encoded, encodedSize[0])
+        imatrixPointer, imatrixCount, encoded, encodedSize[0])
     }
   } else {
     quantizedSize = ccv_nnc_quantize_8i_rowwise_x(
-      data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, format, nil,
+      data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, format, nil, 0,
       encoded, encodedSize[0])
   }
   guard quantizedSize > 0 else { return 0 }
@@ -7103,8 +7115,19 @@ extension DynamicGraph {
       guard let rowLength = shape.last, rowLength > 0 else {
         return nil
       }
+      let numberOfElements = shape.reduce(1, *)
+      guard numberOfElements % rowLength == 0 else {
+        return nil
+      }
+      let rowCount = numberOfElements / rowLength
       let imatrixCount = TensorShape(dims: imatrix.cTensor.pointee.info.dim).reduce(1, *)
-      guard imatrix.kind == .CPU, imatrixCount >= rowLength else {
+      guard imatrix.kind == .CPU, imatrixCount >= rowLength,
+        imatrixCount % rowLength == 0
+      else {
+        return nil
+      }
+      let imatrixSlices = imatrixCount / rowLength
+      guard imatrixSlices > 0, rowCount % imatrixSlices == 0 else {
         return nil
       }
       return imatrix

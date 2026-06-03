@@ -1952,6 +1952,64 @@ public final class ScaledDotProductAttention: Model {
   }
 }
 
+/// Scaled-dot-product arg partition model.
+public final class ScaledDotProductArgPartition: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    kth: Int, scale: Float, isCausal: Bool = false, compressionRatio: Int,
+    trainable: Bool? = nil, name: String = ""
+  ) {
+    precondition(kth > 0, "kth must be positive")
+    precondition(compressionRatio > 0, "compressionRatio must be positive")
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.scaled_dot_product_arg_partition.scale = scale
+    params.scaled_dot_product_arg_partition.kth = Int32(kth)
+    params.scaled_dot_product_arg_partition.is_causal = isCausal ? 1 : 0
+    params.scaled_dot_product_arg_partition.compression_ratio = Int32(compressionRatio)
+    let cmd = ccv_nnc_cmd(CCV_NNC_SCALED_DOT_PRODUCT_ARG_PARTITION_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputs = [io, io, io]
+    let outputs = [Int32(CCV_CNNP_IO)]
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs, Int32(outputs.count),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+}
+
+/// Sparse indexed attention model.
+public final class SparseIndexedAttention: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    scale: Float, isCausal: Bool = false, hasAttentionSinks: Bool = false,
+    trainable: Bool? = nil, name: String = ""
+  ) {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.sparse_indexed_attention.scale = scale
+    params.sparse_indexed_attention.is_causal = isCausal ? 1 : 0
+    params.sparse_indexed_attention.attention_sinks = hasAttentionSinks ? 1 : 0
+    let cmd = ccv_nnc_cmd(CCV_NNC_SPARSE_INDEXED_ATTENTION_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputCount = hasAttentionSinks ? 7 : 6
+    let inputs = Array(repeating: io, count: inputCount)
+    let outputs = [Int32(CCV_CNNP_IO)]
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs, Int32(outputs.count),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+}
+
 /// Debug model.
 public final class Debug: Model {
   required init(_ model: OpaquePointer) {
