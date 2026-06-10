@@ -28,6 +28,8 @@ private func i8xXIdentifier(for format: Int32) -> UInt32? {
     return 0x8a1eab
   case Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K):
     return 0x8a1eb3
+  case Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K):
+    return 0x8a1eb4
   case Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K):
     return 0x8a1eac
   case Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K):
@@ -53,6 +55,8 @@ private func i8xXFormat(from identifier: UInt32) -> Int32? {
     return Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)
   case 0x8a1eb3:
     return Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)
+  case 0x8a1eb4:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)
   case 0x8a1eac:
     return Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)
   case 0x8a1ead:
@@ -2008,6 +2012,19 @@ private let i8xXQ5KEncode:
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
+private let i8xXQ6KEncode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
 private let i8xXQ3KEncode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -2806,6 +2823,19 @@ private let i8xXQ5KAndEzm7Encode:
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
+private let i8xXQ6KAndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
 private let i8xXQ3KAndEzm7Encode:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -3072,6 +3102,19 @@ private let i8xXQ5KAndEzm7EncodeWithExternalStore:
   identifier in
   i8xXAndEzm7EncodeWithExternalStore(
     format: Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXQ6KAndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K), data, dataSize, dataType, dimensions,
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
@@ -3408,6 +3451,19 @@ private let i8xXQ5KEncodeWithExternalStore:
   identifier in
   i8xXEncodeWithExternalStore(
     format: Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXQ6KEncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K), data, dataSize, dataType, dimensions,
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
@@ -4036,7 +4092,7 @@ private let uDecodeJit:
       return i8xDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -4732,7 +4788,7 @@ private let uDecodeJitWithExternalStoreFread:
       return i8xDecodeJitWithExternalEagerFread(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecodeJitWithExternalEagerFread(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5181,7 +5237,7 @@ private let uDecodeJitWithExternalStoreMmap:
       return i8xDecodeJitWithExternalEagerMmap(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecodeJitWithExternalEagerMmap(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5635,7 +5691,7 @@ private let uDecodeJitWithExternalOnDemand:
       return i8xDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5849,7 +5905,7 @@ private let uDecodeWithExternalOnDemand:
       return i8xDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5911,7 +5967,7 @@ private let uDecodeWithExternalStore:
       return i8xDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5968,7 +6024,7 @@ private let uDecode:
       return i8xDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
-    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3:
+    case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
       return i8xXDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6343,6 +6399,7 @@ extension DynamicGraph {
       public static let i8x = Codec(rawValue: 1 << 12)
       private static let i8xQ4K = Codec(rawValue: 1 << 13)
       private static let i8xQ5K = Codec(rawValue: 1 << 14)
+      private static let i8xQ6K = Codec(rawValue: 1 << 22)
       private static let i8xQ3K = Codec(rawValue: 1 << 15)
       private static let i8xQ2K = Codec(rawValue: 1 << 16)
       private static let i8xIQ2S = Codec(rawValue: 1 << 17)
@@ -6351,7 +6408,7 @@ extension DynamicGraph {
       private static let i8xIQ3XXS = Codec(rawValue: 1 << 20)
       private static let i8xIQ2XXS = Codec(rawValue: 1 << 21)
       private static let i8xFormatMask: Codec = [
-        .i8xQ4K, .i8xQ5K, .i8xQ3K, .i8xQ2K, .i8xIQ2S, .i8xIQ2XS, .i8xIQ3S,
+        .i8xQ4K, .i8xQ5K, .i8xQ6K, .i8xQ3K, .i8xQ2K, .i8xIQ2S, .i8xIQ2XS, .i8xIQ3S,
         .i8xIQ3XXS, .i8xIQ2XXS,
       ]
       public static let jit = Codec(rawValue: 1 << 8)
@@ -6373,6 +6430,7 @@ extension DynamicGraph {
         case none
         case q4k
         case q5k
+        case q6k
         case q3k
         case q2k
         case iq2s
@@ -6389,6 +6447,8 @@ extension DynamicGraph {
           return [.i8x, .i8xQ4K]
         case .q5k:
           return [.i8x, .i8xQ5K]
+        case .q6k:
+          return [.i8x, .i8xQ6K]
         case .q3k:
           return [.i8x, .i8xQ3K]
         case .q2k:
@@ -6414,6 +6474,8 @@ extension DynamicGraph {
           return .q4k
         case .i8xQ5K:
           return .q5k
+        case .i8xQ6K:
+          return .q6k
         case .i8xQ3K:
           return .q3k
         case .i8xQ2K:
@@ -6444,6 +6506,8 @@ extension DynamicGraph {
           return i8xXQ4KEncode
         case .q5k:
           return i8xXQ5KEncode
+        case .q6k:
+          return i8xXQ6KEncode
         case .q3k:
           return i8xXQ3KEncode
         case .q2k:
@@ -6474,6 +6538,8 @@ extension DynamicGraph {
           return i8xXQ4KAndEzm7Encode
         case .q5k:
           return i8xXQ5KAndEzm7Encode
+        case .q6k:
+          return i8xXQ6KAndEzm7Encode
         case .q3k:
           return i8xXQ3KAndEzm7Encode
         case .q2k:
@@ -6504,6 +6570,8 @@ extension DynamicGraph {
           return i8xXQ4KEncodeWithExternalStore
         case .q5k:
           return i8xXQ5KEncodeWithExternalStore
+        case .q6k:
+          return i8xXQ6KEncodeWithExternalStore
         case .q3k:
           return i8xXQ3KEncodeWithExternalStore
         case .q2k:
@@ -6534,6 +6602,8 @@ extension DynamicGraph {
           return i8xXQ4KAndEzm7EncodeWithExternalStore
         case .q5k:
           return i8xXQ5KAndEzm7EncodeWithExternalStore
+        case .q6k:
+          return i8xXQ6KAndEzm7EncodeWithExternalStore
         case .q3k:
           return i8xXQ3KAndEzm7EncodeWithExternalStore
         case .q2k:
@@ -6800,6 +6870,8 @@ extension DynamicGraph {
           detected = .i8x(.q4k)
         case 0x8a1eb3:
           detected = .i8x(.q5k)
+        case 0x8a1eb4:
+          detected = .i8x(.q6k)
         case 0x8a1eac:
           detected = .i8x(.q3k)
         case 0x8a1ead:

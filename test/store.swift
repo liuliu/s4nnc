@@ -767,19 +767,20 @@ final class StoreTests: XCTestCase {
 
   func testWriteTensorAndReadBackWithI8XFormats() throws {
     let graph = DynamicGraph()
-    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 256))
     for i in 0..<4 {
-      for j in 0..<128 {
+      for j in 0..<256 {
         tensor[i, j] = Float16(i - 2) * 0.125 + Float16(j % 29 - 14) * 0.0625
       }
     }
-    var imatrix: Tensor<Float> = Tensor(.CPU, .C(128))
-    for i in 0..<128 {
+    var imatrix: Tensor<Float> = Tensor(.CPU, .C(256))
+    for i in 0..<256 {
       imatrix[i] = 1 + Float(i % 11) * 0.125
     }
     let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
       ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
       ("q5k", .i8x(.q5k), Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)),
+      ("q6k", .i8x(.q6k), Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)),
       ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
       ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
       ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
@@ -815,7 +816,7 @@ final class StoreTests: XCTestCase {
       XCTAssertNotNil(readouts[index])
       let decoded = Tensor<Float16>(readouts[index]!)
       for i in 0..<4 {
-        for j in 0..<128 {
+        for j in 0..<256 {
           XCTAssertEqual(Float(decoded[i, j]), Float(tensor[i, j]), accuracy: 2)
         }
       }
@@ -830,19 +831,20 @@ final class StoreTests: XCTestCase {
 
   func testWriteTensorAndReadBackWithI8XFormatsAndExternalStore() throws {
     let graph = DynamicGraph()
-    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
+    var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 256))
     for i in 0..<4 {
-      for j in 0..<128 {
+      for j in 0..<256 {
         tensor[i, j] = Float16(i) * 0.25 - Float16(j % 23) * 0.03125
       }
     }
-    var imatrix: Tensor<Float> = Tensor(.CPU, .C(128))
-    for i in 0..<128 {
+    var imatrix: Tensor<Float> = Tensor(.CPU, .C(256))
+    for i in 0..<256 {
       imatrix[i] = 0.5 + Float(i % 7) * 0.25
     }
     let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
       ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
       ("q5k", .i8x(.q5k), Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)),
+      ("q6k", .i8x(.q6k), Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)),
       ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
       ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
       ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
@@ -898,7 +900,7 @@ final class StoreTests: XCTestCase {
       XCTAssertNotNil(readouts[index])
       let decoded = Tensor<Float16>(readouts[index]!)
       for i in 0..<4 {
-        for j in 0..<128 {
+        for j in 0..<256 {
           XCTAssertEqual(Float(decoded[i, j]), Float(tensor[i, j]), accuracy: 2)
         }
       }
