@@ -799,10 +799,15 @@ extension DynamicGraph {
      */
     public static let disableMFAAppleNeuralEngine = EnableBits(
       rawValue: UInt64(CCV_NNC_DISABLE_MFA_ANE))
+    /**
+     * Disable specializing M for MFA GEMM shader.
+     */
+    public static let disableMFAGEMMSpecializingM = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_MFA_GEMM_SPECIALIZING_M))
     public static let allCases: [EnableBits] = [
       .disableMixedMPSGEMM, .disableMixedMPSSoftMax, .disableMmapMTLBuffer,
       .disableMFA, .disableMFAGEMM, .disableMFAAttention, .disableMFANeuralAccelerators,
-      .disableMFAAppleNeuralEngine
+      .disableMFAAppleNeuralEngine, .disableMFAGEMMSpecializingM
     ]
   }
 
