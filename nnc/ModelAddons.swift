@@ -309,8 +309,8 @@ public final class Cmul: Model {
     super.init(model)
   }
 
-  public init(name: String = "") {
-    super.init(ccv_cnnp_cmul(name))
+  public init(conjugate: Bool = false, name: String = "") {
+    super.init(ccv_cnnp_cmul(conjugate ? 1 : 0, name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
