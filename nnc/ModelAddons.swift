@@ -373,7 +373,7 @@ extension Functional {
   }
 }
 
-/// Comlex number multiplication over two inputs.
+/// Complex number multiplication over two inputs, optionally conjugating the right input.
 public final class Cmul: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
@@ -2060,6 +2060,7 @@ public final class SparseIndexedAttention: Model {
 
   public init(
     scale: Float, isCausal: Bool = false, hasAttentionSinks: Bool = false,
+    slidingWindow: Int = 0,
     trainable: Bool? = nil, name: String = ""
   ) {
     var params = CmdParamsFactory.factory.newParams()
@@ -2067,6 +2068,7 @@ public final class SparseIndexedAttention: Model {
     params.sparse_indexed_attention.scale = scale
     params.sparse_indexed_attention.is_causal = isCausal ? 1 : 0
     params.sparse_indexed_attention.attention_sinks = hasAttentionSinks ? 1 : 0
+    params.sparse_indexed_attention.sliding_window = Int32(slidingWindow)
     let cmd = ccv_nnc_cmd(CCV_NNC_SPARSE_INDEXED_ATTENTION_FORWARD, nil, params, 0)
     var io = ccv_cnnp_cmd_exec_io_t()
     io.type = Int32(CCV_CNNP_IO)
