@@ -247,6 +247,39 @@ public final class WalshHadamardTransform: Model {
   }
 }
 
+/// Hyper-connection split, fused pre-weighted residual reduction, or expansion.
+/// Expansion computes `post * block + transpose(combination) * residual`.
+public final class HyperConnection: Model {
+  public enum Operation {
+    case split
+    case splitWeightedSum
+    case expand
+
+    fileprivate var cValue: Int32 {
+      switch self {
+      case .split: return 0
+      case .splitWeightedSum: return 1
+      case .expand: return 2
+      }
+    }
+  }
+
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    count: Int, sinkhornIterations: Int = 20, epsilon: Float = 1.0e-6,
+    operation: Operation = .split, name: String = ""
+  ) {
+    precondition(count > 0 && count <= 16, "count must be between 1 and 16")
+    precondition(sinkhornIterations > 0, "sinkhornIterations must be positive")
+    super.init(
+      ccv_cnnp_hyper_connection(
+        Int32(count), Int32(sinkhornIterations), epsilon, operation.cValue, name))
+  }
+}
+
 /// Rotate half.
 public final class RotateHalf: Model {
   required init(_ model: OpaquePointer) {
