@@ -280,6 +280,43 @@ public final class HyperConnection: Model {
   }
 }
 
+/// Emulates a lower-precision data format while retaining the input storage datatype.
+public final class ConformDataFormat: Model {
+  public enum DataFormat {
+    case FP8E4M3
+
+    fileprivate var cValue: Int32 {
+      switch self {
+      case .FP8E4M3: return Int32(CCV_NNC_FP8_E4M3)
+      }
+    }
+  }
+
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    _ dataFormat: DataFormat, preservedTail: Int = 0, trainable: Bool? = nil,
+    name: String = ""
+  ) {
+    precondition(preservedTail >= 0, "preservedTail must be non-negative")
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.conform_data_format.datatype = dataFormat.cValue
+    params.conform_data_format.preserved_tail = Int32(preservedTail)
+    let cmd = ccv_nnc_cmd(CCV_NNC_CONFORM_DATA_FORMAT_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputs = [io]
+    let outputs = [Int32(CCV_CNNP_IO)]
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs, Int32(outputs.count),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+}
+
 /// Rotate half.
 public final class RotateHalf: Model {
   required init(_ model: OpaquePointer) {
