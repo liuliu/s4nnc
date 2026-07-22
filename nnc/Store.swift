@@ -4345,15 +4345,14 @@ private let i8xXDecodeJitWithExternalStore:
       tensorOut, decoded, decodedSize)
   }
 
-private let q4pDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func q4pDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8 + 8
     else { return 0 }
@@ -4394,20 +4393,19 @@ private let q4pDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
-private let q5pDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func q5pDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8 + 8
     else { return 0 }
@@ -4448,20 +4446,19 @@ private let q5pDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
-private let q6pDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func q6pDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8 + 8
     else { return 0 }
@@ -4502,20 +4499,19 @@ private let q6pDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
-private let q7pDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func q7pDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8 + 8
     else { return 0 }
@@ -4556,20 +4552,19 @@ private let q7pDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
-private let q8pDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func q8pDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8 + 8
     else { return 0 }
@@ -4611,20 +4606,19 @@ private let q8pDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       palettizeParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
-private let i8xDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func i8xDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8
     else { return 0 }
@@ -4659,20 +4653,19 @@ private let i8xDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       rowwiseParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0
     return 1
   }
 
-private let i8xXDecodeJitWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func i8xXDecodeJitWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
       dimensionCount > 0, dataSize >= 8 + 8
     else { return 0 }
@@ -4708,20 +4701,19 @@ private let i8xXDecodeJitWithExternalEagerFread:
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
       rowwiseParams, location.filePath, off_t(location.offset),
-      Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      memoryMapFlags)
     decodedSize[0] = 0
     return 1
   }
 
-private let decodeWithExternalEagerFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func decodeWithExternalEagerFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard let data = data, let decodedSize = decodedSize, dimensionCount > 0 else { return 0 }
     guard tensorOut!.pointee == nil, dataType == params.datatype else {
       return decodeWithExternalStore(
@@ -4732,20 +4724,19 @@ private let decodeWithExternalEagerFread:
     let offset = data.load(as: UInt64.self)
     guard let location = store.externalReadLocation(offset: offset) else { return 0 }
     tensorOut!.pointee = ccv_nnc_tensor_new_from_file(
-      params, location.filePath, off_t(location.offset), Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+      params, location.filePath, off_t(location.offset), memoryMapFlags)
     decodedSize[0] = 0  // Mark that there is nothing to be copied.
     return 1
   }
 
-private let uDecodeJitWithExternalStoreFread:
-  @convention(c) (
-    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
-    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
-    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
-  ) -> Int32 = {
-    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
-    decoded, decodedSize
-    in
+private func uDecodeJitWithExternalStoreFile(
+  _ data: UnsafeRawPointer?, _ dataSize: Int, _ dataType: Int32,
+  _ dimensions: UnsafePointer<Int32>?, _ dimensionCount: Int32, _ identifier: UInt32,
+  _ context: UnsafeMutableRawPointer?, _ params: ccv_nnc_tensor_param_t,
+  _ tensorOut: UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+  _ decoded: UnsafeMutableRawPointer?, _ decodedSize: UnsafeMutablePointer<Int>?,
+  _ memoryMapFlags: Int32
+) -> Int32 {
     guard (identifier & 0x1000_0000) != 0 else {
       return uDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -4765,38 +4756,66 @@ private let uDecodeJitWithExternalStoreFread:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1e4b:
-      return q4pDecodeJitWithExternalEagerFread(
+      return q4pDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1e5b:
-      return q5pDecodeJitWithExternalEagerFread(
+      return q5pDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1e6b:
-      return q6pDecodeJitWithExternalEagerFread(
+      return q6pDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1e7b:
-      return q7pDecodeJitWithExternalEagerFread(
+      return q7pDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1e8b:
-      return q8pDecodeJitWithExternalEagerFread(
+      return q8pDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1e9b:
-      return i8xDecodeJitWithExternalEagerFread(
+      return i8xDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2, 0x8a1eb3, 0x8a1eb4:
-      return i8xXDecodeJitWithExternalEagerFread(
+      return i8xXDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     default:
-      return decodeWithExternalEagerFread(
+      return decodeWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
-        tensorOut, decoded, decodedSize)
+        tensorOut, decoded, decodedSize, memoryMapFlags)
     }
+  }
+
+private let uDecodeJitWithExternalStoreFread:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    uDecodeJitWithExternalStoreFile(
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+      decoded, decodedSize, Int32(CCV_NNC_TENSOR_MEMORY_MAP_EAGER))
+  }
+
+private let uDecodeJitWithExternalStoreWholeFile:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UInt32, UnsafeMutableRawPointer?,
+    ccv_nnc_tensor_param_t, UnsafeMutablePointer<UnsafeMutablePointer<ccv_nnc_tensor_t>?>?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?
+  ) -> Int32 = {
+    data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+    decoded, decodedSize
+    in
+    uDecodeJitWithExternalStoreFile(
+      data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
+      decoded, decodedSize, Int32(CCV_NNC_TENSOR_MEMORY_MAP_WHOLE_FILE))
   }
 
 private let q4pDecodeJitWithExternalEagerMmap:
@@ -6413,9 +6432,11 @@ extension DynamicGraph {
       ]
       public static let jit = Codec(rawValue: 1 << 8)
       public static let externalData = Codec(rawValue: 1 << 9)
+      private static let externalDataWholeFile = Codec(rawValue: 1 << 23)
       public enum DataReadingOptions {
         case mmap
         case fread
+        case wholeFile
       }
       public static func externalData(_ readingOptions: DataReadingOptions = .fread) -> Codec {
         switch readingOptions {
@@ -6423,6 +6444,8 @@ extension DynamicGraph {
           return Codec(rawValue: 1 << 9)
         case .mmap:
           return Codec(rawValue: 1 << 10)
+        case .wholeFile:
+          return .externalDataWholeFile
         }
       }
       public static let externalOnDemand = Codec(rawValue: 1 << 11)
@@ -6631,7 +6654,9 @@ extension DynamicGraph {
           ) -> Int32
         )?
       {
-        let externalData = contains(.externalOnDemand) || contains(.externalData)
+        let externalData =
+          contains(.externalOnDemand) || contains(.externalData)
+          || contains(.externalDataWholeFile)
         if externalData {
           if let i8xXAndEzm7Encode = i8xXAndEzm7EncodeWithExternalStore, contains(.ezm7) {
             return i8xXAndEzm7Encode
@@ -6741,6 +6766,7 @@ extension DynamicGraph {
         let isJit = contains(.jit)
         let externalDataFread = contains(.externalData(.fread))
         let externalDataMmap = contains(.externalData(.mmap))
+        let externalDataWholeFile = contains(.externalDataWholeFile)
         let externalOnDemand = contains(.externalOnDemand)
         switch self {
         case .ezm7:
@@ -6764,6 +6790,8 @@ extension DynamicGraph {
         default:
           if isJit && externalOnDemand {
             return uDecodeJitWithExternalOnDemand
+          } else if isJit && externalDataWholeFile {
+            return uDecodeJitWithExternalStoreWholeFile
           } else if isJit && externalDataFread {
             return uDecodeJitWithExternalStoreFread
           } else if isJit && externalDataMmap {
@@ -6772,7 +6800,7 @@ extension DynamicGraph {
             return uDecodeJit
           } else if externalOnDemand {
             return uDecodeWithExternalOnDemand
-          } else if externalDataFread || externalDataMmap {
+          } else if externalDataFread || externalDataMmap || externalDataWholeFile {
             return uDecodeWithExternalStore
           } else {
             return uDecode

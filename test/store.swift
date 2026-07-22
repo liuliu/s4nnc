@@ -856,6 +856,7 @@ final class StoreTests: XCTestCase {
     var readouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var jitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var mmapJitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
+    var wholeFileJitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var onDemandJitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var readoutCodecs = Array<DynamicGraph.Store.Codec?>(repeating: nil, count: formats.count)
     var writeError: Error? = nil
@@ -885,6 +886,11 @@ final class StoreTests: XCTestCase {
         mmapJitCodec.insert(.jit)
         mmapJitReadouts[index] = store.read(
           "i8x-external-format-\(format.0)", codec: mmapJitCodec)
+        var wholeFileJitCodec = format.1
+        wholeFileJitCodec.insert(.externalData(.wholeFile))
+        wholeFileJitCodec.insert(.jit)
+        wholeFileJitReadouts[index] = store.read(
+          "i8x-external-format-\(format.0)", codec: wholeFileJitCodec)
         var onDemandJitCodec = format.1
         onDemandJitCodec.insert(.externalOnDemand)
         onDemandJitCodec.insert(.jit)
@@ -916,6 +922,13 @@ final class StoreTests: XCTestCase {
         Int(mmapJitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
         CCV_NNC_QX_8I_ROWWISE_X)
       XCTAssertEqual(mmapJitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
+      XCTAssertNotNil(wholeFileJitReadouts[index])
+      XCTAssertEqual(
+        Int(wholeFileJitReadouts[index]!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
+      XCTAssertEqual(
+        Int(wholeFileJitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
+        CCV_NNC_QX_8I_ROWWISE_X)
+      XCTAssertEqual(wholeFileJitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
       XCTAssertNotNil(onDemandJitReadouts[index])
       XCTAssertEqual(
         Int(onDemandJitReadouts[index]!.cTensor.pointee.info.datatype & 0xff000), CCV_QX)
