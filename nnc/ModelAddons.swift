@@ -280,6 +280,39 @@ public final class HyperConnection: Model {
   }
 }
 
+/// Selects and groups routed MoE experts. With `singleInputToken`, the activation
+/// remains one row for a broadcast-capable expert operation; larger inputs are
+/// grouped by expert as usual.
+public final class MoERouting: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    kth: Int, weightScale: Float = 1, preselected: Bool = false,
+    singleInputToken: Bool = false, name: String = ""
+  ) {
+    precondition(kth > 0, "kth must be positive")
+    precondition(weightScale > 0, "weightScale must be positive")
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.moe_routing.kth = Int32(kth)
+    params.moe_routing.weight_scale = weightScale
+    params.moe_routing.preselected = preselected ? 1 : 0
+    params.moe_routing.flags = singleInputToken
+      ? Int32(CCV_NNC_MOE_ROUTING_SINGLE_INPUT_TOKEN) : 0
+    let cmd = ccv_nnc_cmd(CCV_NNC_MOE_ROUTING_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputs = [io, io, io]
+    let outputs = Array(repeating: Int32(CCV_CNNP_IO), count: 5)
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs,
+        Int32(outputs.count), 0, name))
+  }
+}
+
 /// Emulates a lower-precision data format while retaining the input storage datatype.
 public final class ConformDataFormat: Model {
   public enum DataFormat {
@@ -870,8 +903,21 @@ public final class SwishMul: Model {
     super.init(model)
   }
 
-  public init(beta: Float = 1, scale: Float = 1, name: String = "") {
-    super.init(ccv_cnnp_swish_mul(beta, scale, name))
+  public init(beta: Float = 1, scale: Float = 1, clamp: Float = 0, name: String = "") {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.swish_mul.beta = beta
+    params.swish_mul.scale = scale
+    params.swish_mul.clamp = clamp
+    let cmd = ccv_nnc_cmd(CCV_NNC_SWISH_MUL_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputs = [io, io]
+    let outputs = [Int32(CCV_CNNP_IO)]
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs,
+        Int32(outputs.count), 0, name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -884,9 +930,10 @@ public final class SwishMul: Model {
 
 extension Functional {
   public static func swishMul(
-    value: ModelIOConvertible, gate: ModelIOConvertible, beta: Float = 1, scale: Float = 1
+    value: ModelIOConvertible, gate: ModelIOConvertible, beta: Float = 1, scale: Float = 1,
+    clamp: Float = 0
   ) -> Model.IO {
-    return SwishMul(beta: beta, scale: scale)(value, gate)
+    return SwishMul(beta: beta, scale: scale, clamp: clamp)(value, gate)
   }
 }
 
@@ -2326,6 +2373,31 @@ public final class SegmentedDense: Model {
     _ input: T, indices: U, counts: U, streamContext: StreamContext? = nil
   ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
     let outputs = self(inputs: input, indices, counts, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// Two segmented expert projections followed by weighted, clamped SwiGLU.
+public final class SegmentedSwiGLU: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    segments: Int, count: Int, clamp: Float = 0, trainable: Bool? = nil,
+    name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_segmented_swiglu(
+        Int32(segments), Int32(count), clamp,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
+    _ input: T, indices: U, counts: U, weight: T,
+    streamContext: StreamContext? = nil
+  ) -> T where U.ElementNumeric == Int32, T.AnyTensor == U.AnyTensor {
+    let outputs = self(inputs: input, indices, counts, weight, streamContext: streamContext)
     return T(outputs[0])
   }
 }
