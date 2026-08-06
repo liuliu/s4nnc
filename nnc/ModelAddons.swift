@@ -425,8 +425,8 @@ public final class Cmul: Model {
 }
 
 extension Functional {
-  public static func cmul(left: ModelIOConvertible, right: ModelIOConvertible) -> Model.IO {
-    return Cmul()(left, right)
+  public static func cmul(left: ModelIOConvertible, right: ModelIOConvertible, conjugate: Bool = false) -> Model.IO {
+    return Cmul(conjugate: conjugate)(left, right)
   }
 }
 
@@ -1164,6 +1164,37 @@ public final class RMSNorm: Model {
     _ input: T, streamContext: StreamContext? = nil
   ) -> T {
     let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
+/// RMSNorm followed by a complex multiply.
+public final class RMSNormCmul: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(epsilon: Float, axis: [Int], name: String = "") {
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.rmsnorm_cmul.axis = toCDimensions(axis)
+    params.rmsnorm_cmul.count = Int32(axis.count)
+    params.rmsnorm_cmul.epsilon = epsilon
+    let cmd = ccv_nnc_cmd(CCV_NNC_RMSNORM_CMUL_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputs = [io, io]
+    let outputs = [Int32(CCV_CNNP_IO)]
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs,
+        Int32(outputs.count), 0, name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, _ multiplier: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, multiplier, streamContext: streamContext)
     return T(outputs[0])
   }
 }
@@ -2076,7 +2107,7 @@ public final class ScaledDotProductArgPartition: Model {
   }
 
   public init(
-    kth: Int, scale: Float, isCausal: Bool = false, compressionRatio: Int,
+    kth: Int, scale: Float, isCausal: Bool, compressionRatio: Int, queryOffset: Int,
     trainable: Bool? = nil, name: String = ""
   ) {
     precondition(kth > 0, "kth must be positive")
@@ -2087,6 +2118,7 @@ public final class ScaledDotProductArgPartition: Model {
     params.scaled_dot_product_arg_partition.kth = Int32(kth)
     params.scaled_dot_product_arg_partition.is_causal = isCausal ? 1 : 0
     params.scaled_dot_product_arg_partition.compression_ratio = Int32(compressionRatio)
+    params.scaled_dot_product_arg_partition.query_offset = Int32(queryOffset)
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALED_DOT_PRODUCT_ARG_PARTITION_FORWARD, nil, params, 0)
     var io = ccv_cnnp_cmd_exec_io_t()
     io.type = Int32(CCV_CNNP_IO)
@@ -2305,27 +2337,29 @@ public final class ScatterAdd: Model {
     super.init(model)
   }
 
-  public init(count: Int, name: String = "") {
+  public init(count: Int, countPerOutput: Int? = nil, name: String = "") {
     super.init(
-      ccv_cnnp_scatter_add(Int32(count), name))
+      ccv_cnnp_scatter_add(Int32(count), Int32(countPerOutput ?? 0), name))
   }
 }
 
 extension Functional {
   public static func scatterAdd(
-    count: Int, _ input: ModelIOConvertible, index: ModelIOConvertible
+    count: Int, countPerOutput: Int? = nil, _ input: ModelIOConvertible,
+    index: ModelIOConvertible
   )
     -> Model.IO
   {
-    return ScatterAdd(count: count)(input, index)
+    return ScatterAdd(count: count, countPerOutput: countPerOutput)(input, index)
   }
 
   public static func scatterAdd(
-    count: Int, input: ModelIOConvertible, index: ModelIOConvertible
+    count: Int, countPerOutput: Int? = nil, input: ModelIOConvertible,
+    index: ModelIOConvertible
   )
     -> Model.IO
   {
-    return ScatterAdd(count: count)(input, index)
+    return ScatterAdd(count: count, countPerOutput: countPerOutput)(input, index)
   }
 }
 
