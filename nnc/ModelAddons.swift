@@ -2003,6 +2003,10 @@ public final class Variable<Element: TensorNumeric>: Model {
           kind, dataType: Element.dataType, format: dimensionFormat.format,
           shape: dimensionFormat.shape), name))
   }
+
+  public func full(_ value: Float) -> Model.IO {
+    return Model(ccv_cnnp_set(value, nil))(self)
+  }
 }
 
 extension Variable: ModelIOConvertible {
