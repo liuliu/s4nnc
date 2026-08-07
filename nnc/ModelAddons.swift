@@ -1174,21 +1174,16 @@ public final class RMSNormCmul: Model {
     super.init(model)
   }
 
-  public init(epsilon: Float, axis: [Int], name: String = "") {
-    var params = CmdParamsFactory.factory.newParams()
-    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    params.rmsnorm_cmul.axis = toCDimensions(axis)
-    params.rmsnorm_cmul.count = Int32(axis.count)
-    params.rmsnorm_cmul.epsilon = epsilon
-    let cmd = ccv_nnc_cmd(CCV_NNC_RMSNORM_CMUL_FORWARD, nil, params, 0)
-    var io = ccv_cnnp_cmd_exec_io_t()
-    io.type = Int32(CCV_CNNP_IO)
-    let inputs = [io, io]
-    let outputs = [Int32(CCV_CNNP_IO)]
+  public init(
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
+    name: String = ""
+  ) {
+    let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
-      ccv_cnnp_cmd_exec(
-        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs,
-        Int32(outputs.count), 0, name))
+      ccv_cnnp_rmsnorm_cmul(
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1),
+        name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
