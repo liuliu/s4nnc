@@ -2013,10 +2013,14 @@ extension Variable: ModelIOConvertible {
 extension ModelIOConvertible {
   /// Move the value to another Model.IO. This is a special operation that can perform optimizations
   /// violates SSA. Use it with extreme care.
-  public func moved(to output: ModelIOConvertible, name: String = "")
+  public func moved(
+    to output: ModelIOConvertible, flags: Model.EnableBits = [], name: String = ""
+  )
     -> Model.IO
   {
-    return Model(ccv_cnnp_move(name))(self, output)
+    let move = Model(ccv_cnnp_move(name))
+    move.flags = flags
+    return move(self, output)
   }
 }
 
