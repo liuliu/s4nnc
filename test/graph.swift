@@ -322,6 +322,17 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a0.rawValue[2], Float32(e2 / sum), accuracy: 1e-5)
   }
 
+  func testLogSumExp() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(
+      Tensor<Float32>([1000, 1001, 1002, -1000, -1001, -1002], .CPU, .NC(2, 3)))
+    let b0 = Functional.logSumExp(a0, axis: [1])
+    let adjustment = Float32(log(1 + exp(-1.0) + exp(-2.0)))
+    XCTAssertEqual(b0.rawValue.shape, [2, 1])
+    XCTAssertEqual(b0.rawValue[0, 0], 1002 + adjustment, accuracy: 1e-5)
+    XCTAssertEqual(b0.rawValue[1, 0], -1000 + adjustment, accuracy: 1e-5)
+  }
+
   func testArgmax() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.2, 2.2, 3.2, 3.4], .CPU, .C(4)))
@@ -335,6 +346,18 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(b10.rawValue[0, 2], 1)
     XCTAssertEqual(b11.rawValue[0, 0], 1)
     XCTAssertEqual(b11.rawValue[1, 0], 2)
+  }
+
+  func testGumbelArgmax() throws {
+    let dynamicGraph = DynamicGraph()
+    let a0 = dynamicGraph.variable(Tensor<Float32>([-100, -100, 100, -100], .CPU, .C(4)))
+    let b0 = Functional.gumbelArgmax(a0, axis: 0)
+    XCTAssertEqual(b0.rawValue[0], 2)
+    let a1 = dynamicGraph.variable(
+      Tensor<Float32>([-100, 100, -100, -100, -100, 100], .CPU, .NC(2, 3)))
+    let b1 = Functional.gumbelArgmax(a1, axis: 1)
+    XCTAssertEqual(b1.rawValue[0, 0], 1)
+    XCTAssertEqual(b1.rawValue[1, 0], 2)
   }
 
   func testMaskedFill() throws {
@@ -430,7 +453,9 @@ final class GraphTests: XCTestCase {
     ("testTanh", testTanh),
     ("testSwish", testSwish),
     ("testSoftmax", testSoftmax),
+    ("testLogSumExp", testLogSumExp),
     ("testArgmax", testArgmax),
+    ("testGumbelArgmax", testGumbelArgmax),
     ("testMaskedFill", testMaskedFill),
     ("testPermute", testPermute),
     ("testPermuteAndGetASubset", testPermuteAndGetASubset),
