@@ -355,7 +355,7 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(b0.rawValue[0], 2)
     let a1 = dynamicGraph.variable(
       Tensor<Float32>([-100, 100, -100, -100, -100, 100], .CPU, .NC(2, 3)))
-    let b1 = Functional.gumbelArgmax(a1, axis: 1)
+    let b1 = Functional.gumbelArgmax(a1, axis: 1, scale: 0)
     XCTAssertEqual(b1.rawValue[0, 0], 1)
     XCTAssertEqual(b1.rawValue[1, 0], 2)
   }

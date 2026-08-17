@@ -286,12 +286,13 @@ extension Functional {
 
   /// Log-sum-exp reduction.
   public static func logSumExp<T: DynamicGraph.TensorGroup>(
-    _ one: T, axis: [Int], streamContext: StreamContext? = nil
+    _ one: T, axis: [Int], scale: Float = 1, streamContext: StreamContext? = nil
   ) -> T {
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.reduce.axis = toCDimensions(axis)
     params.reduce.count = Int32(axis.count)
+    params.reduce.scale = scale
     let cmd = ccv_nnc_cmd(CCV_NNC_REDUCE_LOGSUMEXP_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1,
@@ -332,13 +333,15 @@ extension Functional {
 
   /// Gumbel argmax
   public static func gumbelArgmax(
-    _ one: DynamicGraph.AnyTensor, axis: Int, streamContext: StreamContext? = nil
+    _ one: DynamicGraph.AnyTensor, axis: Int, scale: Float = 1,
+    streamContext: StreamContext? = nil
   )
     -> DynamicGraph.Tensor<Int32>
   {
     var params = CmdParamsFactory.factory.newParams()
     params.reduce.axis.0 = Int32(axis)
     params.reduce.count = 1
+    params.reduce.scale = scale
     let cmd = ccv_nnc_cmd(CCV_NNC_GUMBEL_ARGMAX_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
@@ -347,7 +350,7 @@ extension Functional {
 
   /// Gumbel argmax
   public static func gumbelArgmax(
-    _ one: DynamicGraph.Group<DynamicGraph.AnyTensor>, axis: Int,
+    _ one: DynamicGraph.Group<DynamicGraph.AnyTensor>, axis: Int, scale: Float = 1,
     streamContext: StreamContext? = nil
   )
     -> DynamicGraph.Group<DynamicGraph.Tensor<Int32>>
@@ -355,6 +358,7 @@ extension Functional {
     var params = CmdParamsFactory.factory.newParams()
     params.reduce.axis.0 = Int32(axis)
     params.reduce.count = 1
+    params.reduce.scale = scale
     let cmd = ccv_nnc_cmd(CCV_NNC_GUMBEL_ARGMAX_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
