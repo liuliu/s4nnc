@@ -1333,6 +1333,39 @@ extension DynamicGraph.Group {
   }
 }
 
+extension DynamicGraph_TensorGroup {
+  /// Fill elements of this tensor where `leftValue` is less than `rightValue`.
+  public func fill(
+    _ value: Float, if leftValue: Self, lessThan rightValue: Self,
+    streamContext: StreamContext?
+  ) {
+    guard !untyped.isEmpty else { return }
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.fill_if_less_than.value = value
+    let cmd = ccv_nnc_cmd(CCV_NNC_FILL_IF_LESS_THAN_FORWARD, nil, params, 0)
+    Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, leftValue, rightValue, outputs: [self],
+      streamContext: streamContext)
+  }
+
+  /// Return a tensor with elements filled where `leftValue` is less than `rightValue`.
+  public func filled(
+    _ value: Float, if leftValue: Self, lessThan rightValue: Self,
+    streamContext: StreamContext?
+  ) -> Self {
+    guard !untyped.isEmpty else { return self }
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.fill_if_less_than.value = value
+    let cmd = ccv_nnc_cmd(CCV_NNC_FILL_IF_LESS_THAN_FORWARD, nil, params, 0)
+    let outputs = Functional.exec(
+      cmd: cmd, hint: ccv_nnc_no_hint, inputs: self, leftValue, rightValue, outputSize: 1,
+      streamContext: streamContext)
+    return Self(outputs[0])
+  }
+}
+
 extension DynamicGraph.Tensor {
   /// Interpolate from this tensor to the other tensor.
   public func lerp(

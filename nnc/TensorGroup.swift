@@ -71,6 +71,15 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   func toCPU(streamContext: StreamContext?) -> Self
   /// Fill the given tensor with a value.
   func full(_ value: Float, streamContext: StreamContext?)
+  /// Fill elements of this tensor where `leftValue` is less than `rightValue`.
+  func fill(
+    _ value: Float, if leftValue: Self, lessThan rightValue: Self,
+    streamContext: StreamContext?)
+  /// Return a tensor with elements filled where `leftValue` is less than `rightValue`.
+  func filled(
+    _ value: Float, if leftValue: Self, lessThan rightValue: Self,
+    streamContext: StreamContext?
+  ) -> Self
   /// Interpolate from this tensor to the other tensor.
   func lerp(_ weight: Float, to: Self, streamContext: StreamContext?)
   /// Clamp the given tensor between two values.
@@ -111,6 +120,22 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   func swish(beta: Float, streamContext: StreamContext?)
   /// Chunk the current tensor into multiple ones.
   func chunked(_ numberOfChunks: Int, axis: Int, streamContext: StreamContext?) -> [Self]
+}
+
+extension DynamicGraph {
+  /// A deferred element-wise less-than condition between two tensors or tensor groups.
+  public struct LessThanCondition<T: DynamicGraph_TensorGroup> {
+    @usableFromInline
+    let leftValue: T
+    @usableFromInline
+    let rightValue: T
+
+    @usableFromInline
+    init(leftValue: T, rightValue: T) {
+      self.leftValue = leftValue
+      self.rightValue = rightValue
+    }
+  }
 }
 
 extension DynamicGraph_TensorGroup {
@@ -253,6 +278,46 @@ extension DynamicGraph_TensorGroup {
   @inlinable
   public func full(_ value: Float = 0) {
     full(value, streamContext: nil)
+  }
+  /// Fill elements of this tensor where `leftValue` is less than `rightValue`.
+  @inlinable
+  public func fill(_ value: Float, if leftValue: Self, lessThan rightValue: Self) {
+    fill(value, if: leftValue, lessThan: rightValue, streamContext: nil)
+  }
+  /// Fill elements of this tensor where the condition is true.
+  @inlinable
+  public func fill(
+    _ value: Float, if condition: DynamicGraph.LessThanCondition<Self>,
+    streamContext: StreamContext?
+  ) {
+    fill(
+      value, if: condition.leftValue, lessThan: condition.rightValue,
+      streamContext: streamContext)
+  }
+  /// Fill elements of this tensor where the condition is true.
+  @inlinable
+  public func fill(_ value: Float, if condition: DynamicGraph.LessThanCondition<Self>) {
+    fill(value, if: condition, streamContext: nil)
+  }
+  /// Return a tensor with elements filled where `leftValue` is less than `rightValue`.
+  @inlinable
+  public func filled(_ value: Float, if leftValue: Self, lessThan rightValue: Self) -> Self {
+    filled(value, if: leftValue, lessThan: rightValue, streamContext: nil)
+  }
+  /// Return a tensor with elements filled where the condition is true.
+  @inlinable
+  public func filled(
+    _ value: Float, if condition: DynamicGraph.LessThanCondition<Self>,
+    streamContext: StreamContext?
+  ) -> Self {
+    filled(
+      value, if: condition.leftValue, lessThan: condition.rightValue,
+      streamContext: streamContext)
+  }
+  /// Return a tensor with elements filled where the condition is true.
+  @inlinable
+  public func filled(_ value: Float, if condition: DynamicGraph.LessThanCondition<Self>) -> Self {
+    filled(value, if: condition, streamContext: nil)
   }
   /// Interpolate from this tensor to the other tensor.
   @inlinable

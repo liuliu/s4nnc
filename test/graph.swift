@@ -42,6 +42,66 @@ final class GraphTests: XCTestCase {
     XCTAssertEqual(a0.rawValue[1, 0], -1, accuracy: 1e-5)
   }
 
+  func testFillIfLessThan() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = dynamicGraph.variable(
+      Tensor<Float32>([1, 2, 3, 4, 5, 6], .CPU, .NC(2, 3)))
+    let leftValue = dynamicGraph.variable(Tensor<Float32>([0, 2, 3], .CPU, .NC(1, 3)))
+    let rightValue = dynamicGraph.variable(Tensor<Float32>([2], .CPU, .C(1)))
+
+    let output = input.filled(-1, if: leftValue, lessThan: rightValue)
+    XCTAssertEqual(output.rawValue[0, 0], -1, accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[0, 1], 2, accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[0, 2], 3, accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[1, 0], -1, accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[1, 1], 5, accuracy: 1e-5)
+    XCTAssertEqual(output.rawValue[1, 2], 6, accuracy: 1e-5)
+    XCTAssertEqual(input.rawValue[0, 0], 1, accuracy: 1e-5)
+
+    input.fill(9, if: leftValue < rightValue)
+    XCTAssertEqual(input.rawValue[0, 0], 9, accuracy: 1e-5)
+    XCTAssertEqual(input.rawValue[0, 1], 2, accuracy: 1e-5)
+    XCTAssertEqual(input.rawValue[0, 2], 3, accuracy: 1e-5)
+    XCTAssertEqual(input.rawValue[1, 0], 9, accuracy: 1e-5)
+    XCTAssertEqual(input.rawValue[1, 1], 5, accuracy: 1e-5)
+    XCTAssertEqual(input.rawValue[1, 2], 6, accuracy: 1e-5)
+  }
+
+  func testFillIfLessThanGroup() throws {
+    let dynamicGraph = DynamicGraph()
+    let input = DynamicGraph.Group(
+      dynamicGraph.variable(Tensor<Float32>([1, 2, 3, 4], .CPU, .C(4))),
+      dynamicGraph.variable(Tensor<Float32>([5, 6, 7, 8], .CPU, .C(4))))
+    let leftValue = DynamicGraph.Group(
+      dynamicGraph.variable(Tensor<Float32>([0, 2, 3, 4], .CPU, .C(4))),
+      dynamicGraph.variable(Tensor<Float32>([4, 3, 2, 1], .CPU, .C(4))))
+    let rightValue = DynamicGraph.Group(
+      dynamicGraph.variable(Tensor<Float32>([1, 2, 2, 5], .CPU, .C(4))),
+      dynamicGraph.variable(Tensor<Float32>([4, 4, 1, 1], .CPU, .C(4))))
+
+    let output = input.filled(-1, if: leftValue < rightValue)
+    XCTAssertEqual(output[0].rawValue[0], -1, accuracy: 1e-5)
+    XCTAssertEqual(output[0].rawValue[1], 2, accuracy: 1e-5)
+    XCTAssertEqual(output[0].rawValue[2], 3, accuracy: 1e-5)
+    XCTAssertEqual(output[0].rawValue[3], -1, accuracy: 1e-5)
+    XCTAssertEqual(output[1].rawValue[0], 5, accuracy: 1e-5)
+    XCTAssertEqual(output[1].rawValue[1], -1, accuracy: 1e-5)
+    XCTAssertEqual(output[1].rawValue[2], 7, accuracy: 1e-5)
+    XCTAssertEqual(output[1].rawValue[3], 8, accuracy: 1e-5)
+    XCTAssertEqual(input[0].rawValue[0], 1, accuracy: 1e-5)
+    XCTAssertEqual(input[1].rawValue[1], 6, accuracy: 1e-5)
+
+    input.fill(9, if: leftValue, lessThan: rightValue)
+    XCTAssertEqual(input[0].rawValue[0], 9, accuracy: 1e-5)
+    XCTAssertEqual(input[0].rawValue[1], 2, accuracy: 1e-5)
+    XCTAssertEqual(input[0].rawValue[2], 3, accuracy: 1e-5)
+    XCTAssertEqual(input[0].rawValue[3], 9, accuracy: 1e-5)
+    XCTAssertEqual(input[1].rawValue[0], 5, accuracy: 1e-5)
+    XCTAssertEqual(input[1].rawValue[1], 9, accuracy: 1e-5)
+    XCTAssertEqual(input[1].rawValue[2], 7, accuracy: 1e-5)
+    XCTAssertEqual(input[1].rawValue[3], 8, accuracy: 1e-5)
+  }
+
   func testLerp() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(.CPU, .NC(2, 1), of: Float32.self)
@@ -437,6 +497,8 @@ final class GraphTests: XCTestCase {
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
     ("testFull", testFull),
+    ("testFillIfLessThan", testFillIfLessThan),
+    ("testFillIfLessThanGroup", testFillIfLessThanGroup),
     ("testLerp", testLerp),
     ("testClamp", testClamp),
     ("testPartialAssign", testPartialAssign),

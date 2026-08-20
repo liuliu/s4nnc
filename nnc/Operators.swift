@@ -2,6 +2,13 @@ infix operator .* : MultiplicationPrecedence
 infix operator ./ : MultiplicationPrecedence
 infix operator .+ : AdditionPrecedence
 
+/// Build an element-wise less-than condition for conditional tensor operations.
+public func < <T: DynamicGraph.TensorGroup>(
+  left: T, right: T
+) -> DynamicGraph.LessThanCondition<T> {
+  DynamicGraph.LessThanCondition(leftValue: left, rightValue: right)
+}
+
 // Element-wise addition
 public func .+ <T: DynamicGraph.TensorGroup>(left: T, right: T) -> T {
   return Functional.sum(left, right)
