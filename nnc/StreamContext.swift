@@ -79,6 +79,13 @@ public final class StreamContext {
     ccv_nnc_stream_context_set_seed(_stream, seed)
   }
 
+  /**
+   * Generate a random unsigned 32-bit integer from this stream context.
+   */
+  public func random() -> UInt32 {
+    ccv_nnc_stream_context_genrand_uint32(_stream)
+  }
+
   deinit {
     guard selfOwned else { return }
     ccv_nnc_stream_context_free(_stream)

@@ -3,6 +3,19 @@ import XCTest
 
 final class GraphTests: XCTestCase {
 
+  func testRandom() throws {
+    DynamicGraph.setSeed(42)
+    let expectedGlobalSequence = [DynamicGraph.random(), DynamicGraph.random()]
+    DynamicGraph.setSeed(42)
+    XCTAssertEqual([DynamicGraph.random(), DynamicGraph.random()], expectedGlobalSequence)
+
+    let streamContext = StreamContext(.CPU)
+    streamContext.setSeed(42)
+    let expectedStreamSequence = [streamContext.random(), streamContext.random()]
+    streamContext.setSeed(42)
+    XCTAssertEqual([streamContext.random(), streamContext.random()], expectedStreamSequence)
+  }
+
   func testGEMM() throws {
     let dynamicGraph = DynamicGraph()
     let a0 = dynamicGraph.variable(Tensor<Float32>([1.1, 2.2], .CPU, .NC(2, 1)))
@@ -494,6 +507,7 @@ final class GraphTests: XCTestCase {
   }
 
   static let allTests = [
+    ("testRandom", testRandom),
     ("testGEMM", testGEMM),
     ("testGEMMGrad", testGEMMGrad),
     ("testFull", testFull),
