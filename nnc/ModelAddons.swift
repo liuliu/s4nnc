@@ -2414,6 +2414,29 @@ public final class SegmentedDense: Model {
   }
 }
 
+/// Gate and up projections followed by optionally clamped SwiGLU.
+public final class SwiGLU: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    count: Int, clamp: Float = 0, trainable: Bool? = nil, name: String = ""
+  ) {
+    super.init(
+      ccv_cnnp_swiglu(
+        Int32(count), clamp,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  public func callAsFunction<T: DynamicGraph.TensorGroup>(
+    _ input: T, streamContext: StreamContext? = nil
+  ) -> T {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return T(outputs[0])
+  }
+}
+
 /// Two segmented expert projections followed by weighted, clamped SwiGLU.
 public final class SegmentedSwiGLU: Model {
   required init(_ model: OpaquePointer) {
