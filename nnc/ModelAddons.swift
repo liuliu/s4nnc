@@ -2398,12 +2398,12 @@ public final class SegmentedDense: Model {
 
   public init(
     segments: Int, count: Int, noBias: Bool = false, flags: Functional.GEMMFlag = [],
-    trainable: Bool? = nil, name: String = ""
+    functional: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_segmented_dense(
         Int32(segments), Int32(count), noBias ? 1 : 0, Int32(flags.rawValue),
-        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+        functional ? 1 : 0, trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
@@ -2444,12 +2444,12 @@ public final class SegmentedSwiGLU: Model {
   }
 
   public init(
-    segments: Int, count: Int, clamp: Float = 0, trainable: Bool? = nil,
-    name: String = ""
+    segments: Int, count: Int, clamp: Float = 0, functional: Bool = false,
+    trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_segmented_swiglu(
-        Int32(segments), Int32(count), clamp,
+        Int32(segments), Int32(count), clamp, functional ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 

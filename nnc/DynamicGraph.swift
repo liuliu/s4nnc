@@ -334,6 +334,11 @@ extension DynamicGraph {
     set { ccv_nnc_set_queue_watermark(Int32(newValue)) }
     get { Int(ccv_nnc_queue_watermark()) }
   }
+  /// Set the maximum number of bytes in each shared whole-file mapping. Set to 0 to map the
+  /// complete file. This only affects mappings created after the call.
+  public static func setWholeFileMappingSizeLimit(_ sizeLimit: Int) {
+    ccv_nnc_set_whole_file_mapping_size_limit(sizeLimit)
+  }
   /// Set whether to enable profiler or not.
   public static func setProfiler(_ on: Bool) {
     ccv_nnc_set_profiler(on ? 1 : 0)
