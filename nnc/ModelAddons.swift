@@ -313,6 +313,22 @@ public final class MoERouting: Model {
   }
 }
 
+/// Stages all three MoE projection tables together. Decode keeps one resident
+/// pool and rewrites routing outputs to its physical slots. Prefill compacts
+/// the active experts into durable gate, up, and down staging buffers.
+public final class MoEWeightStreaming: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(residentSlots: Int, routingWidth: Int, name: String = "") {
+    precondition(residentSlots > 0, "residentSlots must be positive")
+    precondition(routingWidth > 0, "routingWidth must be positive")
+    super.init(
+      ccv_cnnp_moe_weights_streaming(Int32(residentSlots), Int32(routingWidth), name))
+  }
+}
+
 /// Emulates a lower-precision data format while retaining the input storage datatype.
 public final class ConformDataFormat: Model {
   public enum DataFormat {
