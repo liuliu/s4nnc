@@ -764,7 +764,7 @@ extension DynamicGraph {
   /**
    * Perform system level cache clean-up. This might negatively impact performance significantly.
    */
-  public func vacuum() {
+  public static func vacuum() {
     ccv_nnc_vacuum()
   }
 }
