@@ -761,6 +761,12 @@ extension DynamicGraph {
   public func garbageCollect() {
     ccv_nnc_dynamic_graph_gc(cGraph)
   }
+  /**
+   * Perform system level cache clean-up. This might negatively impact performance significantly.
+   */
+  public func vacuum() {
+    ccv_nnc_vacuum()
+  }
 }
 
 extension DynamicGraph {
