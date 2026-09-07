@@ -820,10 +820,16 @@ extension DynamicGraph {
      */
     public static let disableMFAGEMMSpecializingM = EnableBits(
       rawValue: UInt64(CCV_NNC_DISABLE_MFA_GEMM_SPECIALIZING_M))
+    /**
+     * Disable specializing C for MFA attention shader.
+     */
+    public static let disableMFAAttentionSpecializingC = EnableBits(
+      rawValue: UInt64(CCV_NNC_DISABLE_MFA_ATTENTION_SPECIALIZING_C))
     public static let allCases: [EnableBits] = [
       .disableMixedMPSGEMM, .disableMixedMPSSoftMax, .disableMmapMTLBuffer,
       .disableMFA, .disableMFAGEMM, .disableMFAAttention, .disableMFANeuralAccelerators,
-      .disableMFAAppleNeuralEngine, .disableMFAGEMMSpecializingM
+      .disableMFAAppleNeuralEngine, .disableMFAGEMMSpecializingM,
+      .disableMFAAttentionSpecializingC
     ]
   }
 
