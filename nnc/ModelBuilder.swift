@@ -64,6 +64,15 @@ public class AnyModelBuilder: AnyModel {
     }
   }
 
+  /*
+   * Whether pin the model related stateful weights in the RAM.
+   */
+  public var pinMemory: Bool = false {
+    didSet {
+      ccv_cnnp_model_pin_memory(model!.cModel, pinMemory ? 1 : 0)
+    }
+  }
+
   /**
    * Abstract representation of the stateful components from the model builder.
    */

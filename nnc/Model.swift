@@ -342,6 +342,15 @@ public class Model: AnyModel {
     }
   }
 
+  /*
+   * Whether pin the model related stateful weights in the RAM.
+   */
+  public var pinMemory: Bool = false {
+    didSet {
+      ccv_cnnp_model_pin_memory(cModel, pinMemory ? 1 : 0)
+    }
+  }
+
   public struct EnableBits: OptionSet, CaseIterable {
     public let rawValue: Int32
     public init(rawValue: Int32) {
