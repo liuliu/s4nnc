@@ -74,6 +74,22 @@ public class AnyModelBuilder: AnyModel {
   }
 
   /**
+   * The minimum occurrence index for this model's name when generating parameter names.
+   * Defaults to zero and must be nonnegative. Models with the same name in the same naming
+   * scope continue counting above previously assigned indices. This setting does not propagate
+   * to children and must be set before compiling the enclosing model. The getter returns the
+   * configured minimum, not the index assigned during compilation.
+   */
+  public var startIndex: Int {
+    get {
+      Int(ccv_cnnp_model_start_index(model!.cModel))
+    }
+    set {
+      ccv_cnnp_model_set_start_index(model!.cModel, Int32(newValue))
+    }
+  }
+
+  /**
    * Abstract representation of the stateful components from the model builder.
    */
   public var parameters: Model.Parameters {
