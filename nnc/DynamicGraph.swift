@@ -767,6 +767,18 @@ extension DynamicGraph {
   public static func vacuum() {
     ccv_nnc_vacuum()
   }
+  /**
+   * Run synchronous work with independent Metal state, then restore the default.
+   * Nested calls reuse the current fork. A scope that creates a fork releases it
+   * on return or throw, so a Dispatch worker can return to unrelated work.
+   */
+  public static func fork<T>(_ body: () throws -> T) rethrows -> T {
+    let detached = ccv_nnc_fork() != 0
+    defer {
+      if detached { ccv_nnc_join() }
+    }
+    return try body()
+  }
 }
 
 extension DynamicGraph {
