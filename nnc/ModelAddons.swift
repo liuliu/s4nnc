@@ -283,21 +283,27 @@ public final class HyperConnection: Model {
 /// Selects and groups routed MoE experts. With `singleInputToken`, the activation
 /// remains one row for a broadcast-capable expert operation; larger inputs are
 /// grouped by expert as usual.
+/// A positive `normalizationEpsilon` normalizes weights using the selected
+/// probability sum plus epsilon. Zero retains the denominator floor of 2^-14.
 public final class MoERouting: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
   public init(
-    kth: Int, weightScale: Float = 1, preselected: Bool = false,
+    kth: Int, weightScale: Float = 1, normalizationEpsilon: Float = 0, preselected: Bool = false,
     singleInputToken: Bool = false, name: String = ""
   ) {
     precondition(kth > 0, "kth must be positive")
     precondition(weightScale > 0, "weightScale must be positive")
+    precondition(
+      normalizationEpsilon.isFinite && normalizationEpsilon >= 0,
+      "normalizationEpsilon must be finite and non-negative")
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.moe_routing.kth = Int32(kth)
     params.moe_routing.weight_scale = weightScale
+    params.moe_routing.normalization_epsilon = normalizationEpsilon
     params.moe_routing.preselected = preselected ? 1 : 0
     params.moe_routing.flags = singleInputToken
       ? Int32(CCV_NNC_MOE_ROUTING_SINGLE_INPUT_TOKEN) : 0
@@ -363,6 +369,21 @@ public final class ConformDataFormat: Model {
       ccv_cnnp_cmd_exec(
         cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs, Int32(outputs.count),
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+}
+
+/// Computes copysign(sqrt(max(abs(x), minimumMagnitude)), x).
+/// Signed zeros produce signed sqrt(minimumMagnitude).
+public final class SignedSquareRoot: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(minimumMagnitude: Float = 1e-6, name: String = "") {
+    precondition(
+      minimumMagnitude.isFinite && minimumMagnitude > 0,
+      "minimumMagnitude must be finite and positive")
+    super.init(ccv_cnnp_signed_sqrt(minimumMagnitude, name))
   }
 }
 
