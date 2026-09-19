@@ -22,12 +22,14 @@ public class Model: AnyModel {
     let _io: ccv_cnnp_model_io_t
     let model: Model?
     private let inputs: [IO]?
+    private var dependencies: [IO]
 
     @usableFromInline
     init(_ io: ccv_cnnp_model_io_t, model: Model? = nil, inputs: [IO]? = nil) {
       _io = io
       self.model = model
       self.inputs = inputs
+      dependencies = []
     }
   }
 
@@ -607,5 +609,6 @@ extension Model.IO {
   public func add(dependencies: [Model.IO]) {
     let _dependencies: [ccv_cnnp_model_io_t?] = dependencies.map { $0._io }
     ccv_cnnp_model_add_dependencies(_io, _dependencies, Int32(dependencies.count))
+    self.dependencies.append(contentsOf: dependencies)
   }
 }
