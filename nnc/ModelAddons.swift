@@ -2140,14 +2140,27 @@ public final class ScaledDotProductAttention: Model {
   }
 }
 
-/// Scaled-dot-product arg partition model.
+/// Scaled-dot-product arg partition model. With `sortIndices`, selected valid row
+/// IDs are sorted ascending, followed by -1 padding.
 public final class ScaledDotProductArgPartition: Model {
+  /// Candidate pools contain Int32 block IDs shaped [queries, count].
+  /// `size` is the number of key rows per block; `count` is the pool capacity.
+  public enum CandidatePool {
+    /// Adds a second output containing sorted block IDs padded with -1.
+    /// The producer's own row selection remains unrestricted by the pool.
+    case produce(size: Int, count: Int)
+    /// Adds a fourth input containing block IDs that restrict row selection.
+    /// Rows within those blocks remain subject to the causal limit.
+    case consume(size: Int, count: Int)
+  }
+
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
   public init(
     kth: Int, scale: Float, isCausal: Bool, compressionRatio: Int, queryOffset: Int,
+    sortIndices: Bool = false, candidatePool: CandidatePool? = nil,
     trainable: Bool? = nil, name: String = ""
   ) {
     precondition(kth > 0, "kth must be positive")
@@ -2159,11 +2172,31 @@ public final class ScaledDotProductArgPartition: Model {
     params.scaled_dot_product_arg_partition.is_causal = isCausal ? 1 : 0
     params.scaled_dot_product_arg_partition.compression_ratio = Int32(compressionRatio)
     params.scaled_dot_product_arg_partition.query_offset = Int32(queryOffset)
+    params.scaled_dot_product_arg_partition.sort_indices = sortIndices ? 1 : 0
+    var inputCount = 3
+    var outputCount = 1
+    if let candidatePool = candidatePool {
+      let size: Int
+      let count: Int
+      switch candidatePool {
+      case .produce(let blockSize, let poolCount):
+        size = blockSize
+        count = poolCount
+        outputCount = 2
+      case .consume(let blockSize, let poolCount):
+        size = blockSize
+        count = poolCount
+        inputCount = 4
+      }
+      precondition(size > 0 && count > 0, "candidate pool block size and count must be positive")
+      params.scaled_dot_product_arg_partition.candidate_block_size = Int32(size)
+      params.scaled_dot_product_arg_partition.candidate_kth = Int32(count)
+    }
     let cmd = ccv_nnc_cmd(CCV_NNC_SCALED_DOT_PRODUCT_ARG_PARTITION_FORWARD, nil, params, 0)
     var io = ccv_cnnp_cmd_exec_io_t()
     io.type = Int32(CCV_CNNP_IO)
-    let inputs = [io, io, io]
-    let outputs = [Int32(CCV_CNNP_IO)]
+    let inputs = Array(repeating: io, count: inputCount)
+    let outputs = Array(repeating: Int32(CCV_CNNP_IO), count: outputCount)
     super.init(
       ccv_cnnp_cmd_exec(
         cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs, Int32(outputs.count),

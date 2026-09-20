@@ -8,6 +8,56 @@ import XCTest
 
 final class ModelTests: XCTestCase {
 
+  func testScaledDotProductArgPartitionCandidatePool() {
+    let graph = DynamicGraph()
+    let query = graph.variable(Tensor<Float>([1], .CPU, .HWC(1, 1, 1)))
+    let keys = graph.variable(Tensor<Float>([5, 9, 8, 1, 3, 100], .CPU, .NC(6, 1)))
+    let headWeights = graph.variable(Tensor<Float>([1], .CPU, .NC(1, 1)))
+    graph.withNoGrad {
+      // Only rows 0...4 are visible; row 5 must be excluded despite its score.
+      let ordinary = ScaledDotProductArgPartition(
+        kth: 3, scale: 1, isCausal: true, compressionRatio: 1, queryOffset: 4)
+      let ordinaryOutputs = ordinary(inputs: query, keys, headWeights)
+      XCTAssertEqual(ordinaryOutputs.count, 1)
+      let ranked = DynamicGraph.Tensor<Int32>(ordinaryOutputs[0]).rawValue
+      XCTAssertEqual((0..<3).map { ranked[0, $0] }, [1, 2, 0])
+
+      let sorted = ScaledDotProductArgPartition(
+        kth: 3, scale: 1, isCausal: true, compressionRatio: 1, queryOffset: 4,
+        sortIndices: true)
+      let sortedRows = DynamicGraph.Tensor<Int32>(sorted(inputs: query, keys, headWeights)[0])
+        .rawValue
+      XCTAssertEqual((0..<3).map { sortedRows[0, $0] }, [0, 1, 2])
+
+      for count in [1, 4] {
+        let producer = ScaledDotProductArgPartition(
+          kth: 3, scale: 1, isCausal: true, compressionRatio: 1, queryOffset: 4,
+          sortIndices: true, candidatePool: .produce(size: 2, count: count))
+        let produced = producer(inputs: query, keys, headWeights)
+        XCTAssertEqual(produced.count, 2)
+        let rows = DynamicGraph.Tensor<Int32>(produced[0]).rawValue
+        let pool = DynamicGraph.Tensor<Int32>(produced[1])
+        XCTAssertEqual((0..<3).map { rows[0, $0] }, [0, 1, 2])
+        XCTAssertEqual(pool.shape[0], 1)
+        XCTAssertEqual(pool.shape[1], count)
+        // A one-block pool includes the newest visible block, even though the
+        // producer's selected rows all belong to other blocks.
+        let expectedPool: [Int32] = count == 1 ? [2] : [0, 1, 2, -1]
+        let poolValues = pool.rawValue
+        XCTAssertEqual((0..<count).map { poolValues[0, $0] }, expectedPool)
+
+        let consumer = ScaledDotProductArgPartition(
+          kth: 3, scale: 1, isCausal: true, compressionRatio: 1, queryOffset: 4,
+          sortIndices: true, candidatePool: .consume(size: 2, count: count))
+        let consumed = consumer(inputs: query, keys, headWeights, pool)
+        XCTAssertEqual(consumed.count, 1)
+        let selected = DynamicGraph.Tensor<Int32>(consumed[0]).rawValue
+        let expectedRows: [Int32] = count == 1 ? [4, -1, -1] : [0, 1, 2]
+        XCTAssertEqual((0..<3).map { selected[0, $0] }, expectedRows)
+      }
+    }
+  }
+
   func testModel() throws {
     let dynamicGraph = DynamicGraph()
 
@@ -536,6 +586,7 @@ final class ModelTests: XCTestCase {
   }
 
   static let allTests = [
+    ("testScaledDotProductArgPartitionCandidatePool", testScaledDotProductArgPartitionCandidatePool),
     ("testModel", testModel),
     ("testFunctionalAddModel", testFunctionalAddModel),
     ("testConvolutionTransposeModel", testConvolutionTransposeModel),
