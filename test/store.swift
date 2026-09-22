@@ -779,15 +779,55 @@ final class StoreTests: XCTestCase {
     }
     let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
       ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
+      (
+        "q4k-h256", .i8x([.q4k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q5k", .i8x(.q5k), Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)),
+      (
+        "q5k-h256", .i8x([.q5k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q6k", .i8x(.q6k), Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)),
+      (
+        "q6k-h256", .i8x([.q6k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
+      (
+        "q3k-h256", .i8x([.q3k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
+      (
+        "q2k-h256", .i8x([.q2k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
+      (
+        "iq2s-h256", .i8x([.iq2s, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq2xs", .i8x(.iq2xs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)),
+      (
+        "iq2xs-h256", .i8x([.iq2xs, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq2xxs", .i8x(.iq2xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS)),
+      (
+        "iq2xxs-h256", .i8x([.iq2xxs, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
+      (
+        "iq3s-h256", .i8x([.iq3s, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq3xxs", .i8x(.iq3xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)),
+      (
+        "iq3xxs-h256", .i8x([.iq3xxs, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
     ]
     var readouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var jitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
@@ -804,8 +844,7 @@ final class StoreTests: XCTestCase {
           return
         }
         readouts[index] = store.read("i8x-format-\(format.0)", codec: format.1)
-        var jitCodec = format.1
-        jitCodec.insert(.jit)
+        let jitCodec: DynamicGraph.Store.Codec = [.jit]
         jitReadouts[index] = store.read("i8x-format-\(format.0)", codec: jitCodec)
         readoutCodecs[index] = store.codec(for: "i8x-format-\(format.0)")
       }
@@ -843,15 +882,55 @@ final class StoreTests: XCTestCase {
     }
     let formats: [(String, DynamicGraph.Store.Codec, Int32)] = [
       ("q4k", .i8x(.q4k), Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K)),
+      (
+        "q4k-h256", .i8x([.q4k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q4_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q5k", .i8x(.q5k), Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K)),
+      (
+        "q5k-h256", .i8x([.q5k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q5_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q6k", .i8x(.q6k), Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)),
+      (
+        "q6k-h256", .i8x([.q6k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q3k", .i8x(.q3k), Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K)),
+      (
+        "q3k-h256", .i8x([.q3k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q3_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("q2k", .i8x(.q2k), Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K)),
+      (
+        "q2k-h256", .i8x([.q2k, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_Q2_K) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq2s", .i8x(.iq2s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S)),
+      (
+        "iq2s-h256", .i8x([.iq2s, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_S) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq2xs", .i8x(.iq2xs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS)),
+      (
+        "iq2xs-h256", .i8x([.iq2xs, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq2xxs", .i8x(.iq2xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS)),
+      (
+        "iq2xxs-h256", .i8x([.iq2xxs, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
+      (
+        "iq3s-h256", .i8x([.iq3s, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq3xxs", .i8x(.iq3xxs), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS)),
+      (
+        "iq3xxs-h256", .i8x([.iq3xxs, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_XXS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
     ]
     var readouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
     var jitReadouts = Array<AnyTensor?>(repeating: nil, count: formats.count)
@@ -873,8 +952,7 @@ final class StoreTests: XCTestCase {
           return
         }
         readouts[index] = store.read("i8x-external-format-\(format.0)", codec: codec)
-        var jitCodec = codec
-        jitCodec.insert(.jit)
+        let jitCodec: DynamicGraph.Store.Codec = [.externalData, .jit]
         jitReadouts[index] = store.read("i8x-external-format-\(format.0)", codec: jitCodec)
         readoutCodecs[index] = store.codec(for: "i8x-external-format-\(format.0)")
       }
@@ -936,6 +1014,82 @@ final class StoreTests: XCTestCase {
         Int(onDemandJitReadouts[index]!.cTensor.pointee.info.datatype & 0xf00),
         CCV_NNC_QX_8I_ROWWISE_X)
       XCTAssertEqual(onDemandJitReadouts[index]!.cTensor.pointee.info.reserved, format.2)
+    }
+  }
+
+  func testI8XHadamard256RoundTrip() throws {
+    let graph = DynamicGraph()
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(3, 512))
+    for i in 0..<3 {
+      for j in 0..<512 {
+        tensor[i, j] = sin(Float(i * 512 + j) * 0.13) + Float(i) * 0.5
+      }
+    }
+    tensor[0, 0] = 16
+    let formats: [(DynamicGraph.Store.Codec, Int32)] = [
+      (.i8x([.iq2xxs, .hadamard256]), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS)),
+      (.i8x([.q6k, .hadamard256]), Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)),
+    ]
+    for (codec, baseFormat) in formats {
+      let format = baseFormat | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      let byteCount = ccv_nnc_8i_rowwise_x_data_size(format, Int32(CCV_32F), 3 * 512, 512)
+      var reference = [UInt8](repeating: 0, count: byteCount)
+      let expected: Tensor<Float> = Tensor(.CPU, .NC(3, 512))
+      reference.withUnsafeMutableBytes { bytes in
+        XCTAssertEqual(
+          ccv_nnc_quantize_8i_rowwise_x(
+            tensor.cTensor.pointee.data.u8, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY),
+            3 * 512, 512, format, nil, 0, bytes.baseAddress, byteCount), byteCount)
+        ccv_nnc_dequantize_8i_rowwise_x(
+          bytes.baseAddress, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), byteCount,
+          512, format, expected.cTensor.pointee.data.u8, 3 * 512)
+      }
+      let fromData = try XCTUnwrap(Tensor<Float>(data: tensor.data(using: codec), using: codec))
+      for i in 0..<3 {
+        for j in 0..<512 {
+          XCTAssertEqual(fromData[i, j], expected[i, j])
+        }
+      }
+      let partial = graph.variable(.CPU, .NC(1, 512), of: Float.self)
+      graph.openStore("test/tmp.db", externalStore: "test/tmp.db-tensordata") { store in
+        do {
+          let options: [DynamicGraph.Store.Codec] = [
+            [], .ezm7, .externalData, [.externalData, .ezm7],
+          ]
+          for option in options {
+            try store.withTransaction {
+              try store.write("h256", tensor: tensor, strict: true, codec: codec.union(option))
+            }
+            let detected = try XCTUnwrap(store.codec(for: "h256"))
+            XCTAssertEqual(detected, codec.union(option.intersection(.externalData)))
+            let packed = try XCTUnwrap(store.read("h256", codec: [.jit, .externalData]))
+            XCTAssertEqual(packed.cTensor.pointee.info.reserved, format)
+            XCTAssertEqual(
+              Data(bytes: packed.cTensor.pointee.data.u8, count: byteCount), Data(reference))
+            let dense = Tensor<Float>(try XCTUnwrap(store.read("h256", codec: detected)))
+            for i in 0..<3 {
+              for j in 0..<512 {
+                XCTAssertEqual(dense[i, j], expected[i, j])
+              }
+            }
+            XCTAssertTrue(store.read("h256", variable: partial, codec: detected))
+            for j in 0..<512 {
+              XCTAssertEqual(partial[0, j], expected[0, j])
+            }
+            // Rewriting a packed tensor must preserve both the flag and the payload.
+            try store.withTransaction {
+              try store.write("h256-copy", tensor: packed, strict: true, codec: detected)
+            }
+            XCTAssertEqual(store.codec(for: "h256-copy"), detected)
+            let copy = try XCTUnwrap(store.read("h256-copy", codec: [.jit, .externalData]))
+            XCTAssertEqual(copy.cTensor.pointee.info.reserved, format)
+            XCTAssertEqual(
+              Data(bytes: copy.cTensor.pointee.data.u8, count: byteCount), Data(reference))
+          }
+        } catch {
+          XCTFail("H256 round trip failed: \(error)")
+        }
+      }
     }
   }
 
@@ -1123,6 +1277,7 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithI8XJit", testWriteTensorAndReadBackWithI8XJit),
     ("testWriteTensorAndReadBackWithI8XImatrix", testWriteTensorAndReadBackWithI8XImatrix),
     ("testWriteTensorAndReadBackWithI8XFormats", testWriteTensorAndReadBackWithI8XFormats),
+    ("testI8XHadamard256RoundTrip", testI8XHadamard256RoundTrip),
     (
       "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
       testWriteTensorAndReadBackWithI8XFormatsAndExternalStore
