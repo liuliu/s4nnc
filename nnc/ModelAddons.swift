@@ -2140,6 +2140,61 @@ public final class ScaledDotProductAttention: Model {
   }
 }
 
+/// Forward-only, parameter-free Sol approximate attention with exactly three inputs: Q, K, V.
+///
+/// Inputs must have the same contiguous rank-4 NHWC `[N, T, H, D]` shape. Output
+/// retains that shape and separate heads; no layout conversion is implicit.
+/// `approximationRange` is half-open and applies to both Q and KV. Only query
+/// groups and KV blocks wholly within the range may use summaries; protected
+/// and boundary-crossing interactions remain token-level. `localBlockRadius`
+/// must be at least one and keeps neighboring KV blocks exact.
+///
+/// `scale` and `tau` must be finite. Zero and negative scales are supported;
+/// `tau = 0` does not request dense attention. Use `ScaledDotProductAttention`
+/// for dense attention.
+///
+/// CPU supports FP32 and general positive head, block, and query dimensions.
+/// MPS requires FP16, D=128, block/query sizes in {16, 32, 64}, and query size
+/// no larger than KV block size. MPS selects INT8 on neural-accelerator hardware
+/// and floating-point SIMD otherwise. `.disableMFANeuralAccelerators` selects
+/// the latter; it is distinct from `.disableMFAAppleNeuralEngine` (ANE).
+///
+/// CUDA, backward, causal/masked attention, GQA, unequal-length cross-attention,
+/// and noncontiguous inputs are unsupported. There is no fallback to another op.
+public final class SolAttention: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(
+    scale: Float, tau: Float, approximationRange: Range<Int>, blockSize: Int = 64,
+    queryBlockSize: Int? = nil, localBlockRadius: Int = 1, name: String = ""
+  ) {
+    precondition(scale.isFinite && tau.isFinite)
+    precondition(blockSize > 0 && localBlockRadius >= 1)
+    precondition(queryBlockSize == nil || queryBlockSize! > 0)
+    precondition(approximationRange.lowerBound >= 0)
+    var params = CmdParamsFactory.factory.newParams()
+    params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    params.sol_attention.scale = scale
+    params.sol_attention.tau = tau
+    params.sol_attention.block_size = Int32(blockSize)
+    params.sol_attention.approximation_start = Int32(approximationRange.lowerBound)
+    params.sol_attention.approximation_end = Int32(approximationRange.upperBound)
+    params.sol_attention.query_block_size = Int32(queryBlockSize ?? blockSize)
+    params.sol_attention.local_block_radius = Int32(localBlockRadius)
+    let cmd = ccv_nnc_cmd(CCV_NNC_SOL_ATTENTION_FORWARD, nil, params, 0)
+    var io = ccv_cnnp_cmd_exec_io_t()
+    io.type = Int32(CCV_CNNP_IO)
+    let inputs = [io, io, io]
+    let outputs = [Int32(CCV_CNNP_IO)]
+    super.init(
+      ccv_cnnp_cmd_exec(
+        cmd, ccv_nnc_no_hint, 0, inputs, Int32(inputs.count), outputs, Int32(outputs.count),
+        0, name))
+  }
+}
+
 /// Scaled-dot-product arg partition model. With `sortIndices`, selected valid row
 /// IDs are sorted ascending, followed by -1 padding.
 public final class ScaledDotProductArgPartition: Model {
