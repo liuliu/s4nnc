@@ -21,7 +21,7 @@ public class Model: AnyModel {
     @usableFromInline
     let _io: ccv_cnnp_model_io_t
     let model: Model?
-    private let inputs: [IO]?
+    private var inputs: [IO]?
     private var dependencies: [IO]
 
     @usableFromInline
@@ -30,6 +30,26 @@ public class Model: AnyModel {
       self.model = model
       self.inputs = inputs
       dependencies = []
+    }
+
+    deinit {
+      // Move the retained edges to a worklist before releasing them. Otherwise ARC
+      // recursively destroys the entire input / dependency chain on this stack.
+      var pending = inputs ?? []
+      inputs = nil
+      pending.append(contentsOf: dependencies)
+      dependencies = []
+      while var io = pending.popLast() {
+        // A shared IO must keep its ancestors alive for its remaining users.
+        guard isKnownUniquelyReferenced(&io) else { continue }
+        if let inputs = io.inputs {
+          pending.append(contentsOf: inputs)
+          io.inputs = nil
+        }
+        pending.append(contentsOf: io.dependencies)
+        io.dependencies = []
+        // This IO now has no retained edges, so its deinit cannot recurse.
+      }
     }
   }
 

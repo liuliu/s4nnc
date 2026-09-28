@@ -46,3 +46,9 @@ swift_test(
     ],
     discover_tests = False,
 )
+
+swift_test(
+    name = "model_io",
+    srcs = ["model_io.swift"],
+    deps = ["//nnc"],
+)

@@ -170,6 +170,7 @@ let package = Package(
         "graph.swift",
         "loss.swift",
         "model.swift",
+        "model_io.swift",
         "ops.swift",
         "optimizer.swift",
         "store.swift",
