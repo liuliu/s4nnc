@@ -2071,7 +2071,7 @@ public final class ScaledDotProductAttention: Model {
     scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
     hasAttentionSinks: Bool = false, isVariableLength: Bool = false,
     maxSequenceLength: (query: Int, keyValue: Int)? = nil,
-    slidingWindow: Int = 0, flags: Functional.GEMMFlag = [],
+    slidingWindow: Int = 0, useHadamard: Bool = false, flags: Functional.GEMMFlag = [],
     multiHeadOutputProjectionFused: Bool = false,
     noBias: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
@@ -2097,6 +2097,7 @@ public final class ScaledDotProductAttention: Model {
       ccv_cnnp_scaled_dot_product_attention(
         scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, isVariableLength ? 1 : 0,
         Int32(maxSequenceLength.query), Int32(maxSequenceLength.keyValue), Int32(flags.rawValue),
+        useHadamard ? 1 : 0,
         hasAttentionSinks ? 1 : 0, Int32(slidingWindow),
         multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
