@@ -844,14 +844,22 @@ extension AnyTensor {
 extension Tensor {
   @inlinable
   public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-    let count = strides[0] * shape[0] * MemoryLayout<Element>.size
+    // Only views need explicit strides. Strides are stored as Int32 in TensorShape, so a plain
+    // tensor with more than Int32.max elements per slice would overflow if we derived them.
+    let count =
+      (isTensorView
+        ? strides[0] * shape[0] : Int(ccv_nnc_tensor_count(cTensor.pointee.info)))
+      * MemoryLayout<Element>.size
     return try body(UnsafeRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
   }
   @inlinable
   public mutating func withUnsafeMutableBytes<R>(
     _ body: (UnsafeMutableRawBufferPointer) throws -> R
   ) rethrows -> R {
-    let count = strides[0] * shape[0] * MemoryLayout<Element>.size
+    let count =
+      (isTensorView
+        ? strides[0] * shape[0] : Int(ccv_nnc_tensor_count(cTensor.pointee.info)))
+      * MemoryLayout<Element>.size
     return try body(UnsafeMutableRawBufferPointer(start: cTensor.pointee.data.u8, count: count))
   }
 }
