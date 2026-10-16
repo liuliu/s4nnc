@@ -292,7 +292,7 @@ public final class MoERouting: Model {
 
   public init(
     kth: Int, weightScale: Float = 1, normalizationEpsilon: Float = 0, preselected: Bool = false,
-    singleInputToken: Bool = false, name: String = ""
+    singleInputToken: Bool = false, sigmoid: Bool = false, name: String = ""
   ) {
     precondition(kth > 0, "kth must be positive")
     precondition(weightScale > 0, "weightScale must be positive")
@@ -305,8 +305,10 @@ public final class MoERouting: Model {
     params.moe_routing.weight_scale = weightScale
     params.moe_routing.normalization_epsilon = normalizationEpsilon
     params.moe_routing.preselected = preselected ? 1 : 0
-    params.moe_routing.flags = singleInputToken
-      ? Int32(CCV_NNC_MOE_ROUTING_SINGLE_INPUT_TOKEN) : 0
+    // Sigmoid scores experts with sigmoid(logit) rather than sqrt(softplus(logit)).
+    params.moe_routing.flags =
+      (singleInputToken ? Int32(CCV_NNC_MOE_ROUTING_SINGLE_INPUT_TOKEN) : 0)
+      | (sigmoid ? Int32(CCV_NNC_MOE_ROUTING_SIGMOID) : 0)
     let cmd = ccv_nnc_cmd(CCV_NNC_MOE_ROUTING_FORWARD, nil, params, 0)
     var io = ccv_cnnp_cmd_exec_io_t()
     io.type = Int32(CCV_CNNP_IO)
@@ -2268,15 +2270,19 @@ public final class SparseIndexedAttention: Model {
 
   public init(
     scale: Float, isCausal: Bool = false, hasAttentionSinks: Bool = false,
-    slidingWindow: Int = 0,
+    slidingWindow: Int = 0, blockSize: Int = 1,
     trainable: Bool? = nil, name: String = ""
   ) {
+    precondition(blockSize >= 1, "blockSize must be positive")
+    precondition(blockSize == 1 || (isCausal && slidingWindow == 0), "blocks need causal, unwindowed rows")
     var params = CmdParamsFactory.factory.newParams()
     params.size.dim = (1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     params.sparse_indexed_attention.scale = scale
     params.sparse_indexed_attention.is_causal = isCausal ? 1 : 0
     params.sparse_indexed_attention.attention_sinks = hasAttentionSinks ? 1 : 0
     params.sparse_indexed_attention.sliding_window = Int32(slidingWindow)
+    // Each sparse index selects blockSize rows; dense rows are the query's incomplete block.
+    params.sparse_indexed_attention.block_size = Int32(blockSize)
     let cmd = ccv_nnc_cmd(CCV_NNC_SPARSE_INDEXED_ATTENTION_FORWARD, nil, params, 0)
     var io = ccv_cnnp_cmd_exec_io_t()
     io.type = Int32(CCV_CNNP_IO)
