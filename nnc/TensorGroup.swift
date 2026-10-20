@@ -113,7 +113,7 @@ public protocol DynamicGraph_TensorGroup: DynamicGraph_AnyTensorGroup {
   /// Apply sigmoid activation to the given tensor inplace.
   func sigmoid(streamContext: StreamContext?)
   /// Apply tanh activation to the given tensor inplace.
-  func tanh(streamContext: StreamContext?)
+  func tanh(softCap: Float, streamContext: StreamContext?)
   /// Apply softplus activation to the given tensor inplace.
   func softplus(streamContext: StreamContext?)
   /// Apply swish activation to the given tensor inplace.
@@ -398,8 +398,8 @@ extension DynamicGraph_TensorGroup {
   }
   /// Apply tanh activation to the given tensor inplace.
   @inlinable
-  public func tanh() {
-    tanh(streamContext: nil)
+  public func tanh(softCap: Float = 1) {
+    tanh(softCap: softCap, streamContext: nil)
   }
   /// Apply softplus activation to the given tensor inplace.
   @inlinable

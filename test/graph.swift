@@ -373,6 +373,20 @@ final class GraphTests: XCTestCase {
     let a0 = dynamicGraph.variable(Tensor<Float32>([4.4], .CPU, .C(1)))
     a0.tanh()
     XCTAssertEqual(a0.rawValue[0], tanh(4.4), accuracy: 1e-5)
+
+    let input = dynamicGraph.variable(Tensor<Float32>([4.4], .CPU, .C(1)))
+    let expected = Float32(2 * tanh(2.2))
+    let functional = Functional.tanh(input, softCap: 2)
+    XCTAssertEqual(functional.rawValue[0], expected, accuracy: 1e-5)
+
+    let inplace = dynamicGraph.variable(Tensor<Float32>([4.4], .CPU, .C(1)))
+    inplace.tanh(softCap: 2)
+    XCTAssertEqual(inplace.rawValue[0], expected, accuracy: 1e-5)
+
+    let modelInput = Input()
+    let model = Model([modelInput], [modelInput.tanh(softCap: 2)])
+    let modelOutput = DynamicGraph.Tensor<Float32>(model(inputs: input)[0])
+    XCTAssertEqual(modelOutput.rawValue[0], expected, accuracy: 1e-5)
   }
 
   func testSwish() throws {

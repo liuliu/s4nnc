@@ -225,13 +225,14 @@ extension Functional {
     return T(outputs[0])
   }
 
-  /// Tanh activation
+  /// Tanh activation, softCap * tanh(x / softCap) with a soft cap.
   public static func tanh<T: DynamicGraph.TensorGroup>(
-    _ one: T, streamContext: StreamContext? = nil
+    _ one: T, softCap: Float = 1, streamContext: StreamContext? = nil
   )
     -> T
   {
-    let params = CmdParamsFactory.factory.newParams()
+    var params = CmdParamsFactory.factory.newParams()
+    params.tanh.soft_cap = softCap
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
     let outputs = exec(
       cmd: cmd, hint: ccv_nnc_no_hint, inputs: one, outputSize: 1, streamContext: streamContext)
@@ -1862,8 +1863,9 @@ extension DynamicGraph.Group {
 
 extension DynamicGraph.Tensor {
   /// Apply tanh activation to the given tensor inplace.
-  public func tanh(streamContext: StreamContext?) {
-    let params = CmdParamsFactory.factory.newParams()
+  public func tanh(softCap: Float, streamContext: StreamContext?) {
+    var params = CmdParamsFactory.factory.newParams()
+    params.tanh.soft_cap = softCap
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
     let _graph = graph.cGraph
     let _streamContext = (streamContext ?? graph.streamContext)?._stream
@@ -1877,9 +1879,10 @@ extension DynamicGraph.Tensor {
 
 extension DynamicGraph.Group {
   /// Apply tanh activation to the given tensor inplace.
-  public func tanh(streamContext: StreamContext?) {
+  public func tanh(softCap: Float, streamContext: StreamContext?) {
     guard underlyingArray.count > 0 else { return }
-    let params = CmdParamsFactory.factory.newParams()
+    var params = CmdParamsFactory.factory.newParams()
+    params.tanh.soft_cap = softCap
     let cmd = ccv_nnc_cmd(CCV_NNC_TANH_FORWARD, nil, params, 0)
     let graph = underlyingArray[0].graph
     let _graph = graph.cGraph

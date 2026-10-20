@@ -816,8 +816,9 @@ public final class Tanh: Model {
     super.init(model)
   }
 
-  public init(name: String = "") {
-    super.init(ccv_cnnp_tanh(name))
+  /// - Parameter softCap: The soft cap in softCap * tanh(x / softCap), 1 is the plain tanh.
+  public init(softCap: Float = 1, name: String = "") {
+    super.init(ccv_cnnp_tanh(softCap, name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup>(
@@ -830,10 +831,10 @@ public final class Tanh: Model {
 
 extension ModelIOConvertible {
   /**
-   * Apply tanh activation to the said IO.
+   * Apply tanh activation to the said IO, softCap * tanh(x / softCap) with a soft cap.
    */
-  public func tanh() -> Model.IO {
-    return Tanh()(self)
+  public func tanh(softCap: Float = 1) -> Model.IO {
+    return Tanh(softCap: softCap)(self)
   }
 }
 
