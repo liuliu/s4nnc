@@ -1039,7 +1039,7 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(
           ccv_nnc_quantize_8i_rowwise_x(
             tensor.cTensor.pointee.data.u8, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY),
-            3 * 512, 512, format, nil, 0, bytes.baseAddress, byteCount), byteCount)
+            3 * 512, 512, format, nil, 0, nil, 0, bytes.baseAddress, byteCount), byteCount)
         ccv_nnc_dequantize_8i_rowwise_x(
           bytes.baseAddress, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), byteCount,
           512, format, expected.cTensor.pointee.data.u8, 3 * 512)

@@ -1980,12 +1980,12 @@ private func i8xXEncode(
     quantizedSize = withExtendedLifetime(imatrix) {
       ccv_nnc_quantize_8i_rowwise_x(
         data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, format,
-        imatrixPointer, imatrixCount, encoded, encodedSize[0])
+        imatrixPointer, imatrixCount, nil, 0, encoded, encodedSize[0])
     }
   } else {
     quantizedSize = ccv_nnc_quantize_8i_rowwise_x(
       data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), numberOfElements, rowLength, format, nil, 0,
-      encoded, encodedSize[0])
+      nil, 0, encoded, encodedSize[0])
   }
   guard quantizedSize > 0 else { return 0 }
   encodedSize[0] = quantizedSize
