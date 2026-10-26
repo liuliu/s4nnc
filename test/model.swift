@@ -279,6 +279,24 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(output.rawValue[1], -0.2, accuracy: 1e-5)
   }
 
+  func testRMSNormGatedModel() throws {
+    let graph = DynamicGraph()
+    let input = graph.variable(Tensor<Float32>([1.0, -1.0], .CPU, .NC(1, 2)))
+    let gate = graph.variable(Tensor<Float32>([0.0, 2.0], .CPU, .NC(1, 2)))
+    let scale = Float32(1 / sqrt(1 + 1e-6))
+
+    let swish = RMSNormGated(epsilon: 1e-6, axis: [1], elementwiseAffine: false)
+    let swishOutput = DynamicGraph.Tensor<Float32>(swish(inputs: input, gate)[0])
+    XCTAssertEqual(swishOutput.rawValue[0, 0], 0, accuracy: 1e-5)
+    XCTAssertEqual(swishOutput.rawValue[0, 1], -scale * 2 / (1 + exp(-2)), accuracy: 1e-5)
+
+    let sigmoid = RMSNormGated(
+      epsilon: 1e-6, axis: [1], elementwiseAffine: false, sigmoidGate: true)
+    let sigmoidOutput = DynamicGraph.Tensor<Float32>(sigmoid(inputs: input, gate)[0])
+    XCTAssertEqual(sigmoidOutput.rawValue[0, 0], scale * 0.5, accuracy: 1e-5)
+    XCTAssertEqual(sigmoidOutput.rawValue[0, 1], -scale / (1 + exp(-2)), accuracy: 1e-5)
+  }
+
   func testModelDebug() throws {
     let dynamicGraph = DynamicGraph()
 
@@ -598,6 +616,7 @@ final class ModelTests: XCTestCase {
     ("testModelDiv", testModelDiv),
     ("testSoftmaxModel", testSoftmaxModel),
     ("testLeakyReLUModel", testLeakyReLUModel),
+    ("testRMSNormGatedModel", testRMSNormGatedModel),
     ("testModelDebug", testModelDebug),
     ("testModelScaledDotProductAttention", testModelScaledDotProductAttention),
     ("testCustomModel", testCustomModel),

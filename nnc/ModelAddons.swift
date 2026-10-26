@@ -1234,20 +1234,22 @@ public final class RMSNormCmul: Model {
   }
 }
 
-/// RMSNorm followed by a swish-gated multiply.
+/// RMSNorm followed by a swish- or sigmoid-gated multiply.
 public final class RMSNormGated: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
   public init(
-    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, trainable: Bool? = nil,
+    epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, sigmoid: Bool = false,
+    trainable: Bool? = nil,
     name: String = ""
   ) {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
       ccv_cnnp_rmsnorm_gated(
         epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0,
+        sigmoid ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1),
         name))
   }
