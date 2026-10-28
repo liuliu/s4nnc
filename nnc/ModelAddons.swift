@@ -247,19 +247,37 @@ public final class WalshHadamardTransform: Model {
   }
 }
 
-/// Hyper-connection split, fused pre-weighted residual reduction, or expansion.
+/// Hyper-connection split, fused pre-weighted residual reduction, expansion, or fused mix.
 /// Expansion computes `post * block + transpose(combination) * residual`.
 public final class HyperConnection: Model {
   public enum Operation {
     case split
     case splitWeightedSum
     case expand
+    /// Expansion of `block + addend`, with the FP32 addend after the expansion inputs.
+    case expandSum
+    /// Inputs: residual `[..., count, hidden]`, incoming pre-mix `[..., count]`, mixing projection
+    /// `[2 * count + count * count, count * hidden]`, scale `[3]`, base `[2 * count + count * count]`
+    /// and RMSNorm scale `[hidden]`. The flattened residual is RMS-normalized before the projection
+    /// and split.
+    /// Outputs: pre, post, combination, and the residual collapsed with the incoming pre-mix,
+    /// then RMS-normalized and scaled.
+    case mix(normEpsilon: Float)
 
     fileprivate var cValue: Int32 {
       switch self {
       case .split: return 0
       case .splitWeightedSum: return 1
       case .expand: return 2
+      case .mix: return 3
+      case .expandSum: return 4
+      }
+    }
+
+    fileprivate var normEpsilon: Float {
+      switch self {
+      case .split, .splitWeightedSum, .expand, .expandSum: return 0
+      case .mix(let normEpsilon): return normEpsilon
       }
     }
   }
@@ -274,9 +292,13 @@ public final class HyperConnection: Model {
   ) {
     precondition(count > 0 && count <= 16, "count must be between 1 and 16")
     precondition(sinkhornIterations > 0, "sinkhornIterations must be positive")
+    if case .mix(let normEpsilon) = operation {
+      precondition(normEpsilon > 0, "mix normEpsilon must be positive")
+    }
     super.init(
       ccv_cnnp_hyper_connection(
-        Int32(count), Int32(sinkhornIterations), epsilon, operation.cValue, name))
+        Int32(count), Int32(sinkhornIterations), epsilon, operation.normEpsilon,
+        operation.cValue, name))
   }
 }
 
@@ -2573,6 +2595,10 @@ public final class SwiGLU: Model {
 }
 
 /// Two segmented expert projections followed by weighted, clamped SwiGLU.
+/// With `sharedExpert`, it also takes a shared expert's activation after the route weights (then
+/// its gate and up weights when functional), and returns that expert's clamped SwiGLU as a second
+/// output. Without `functional`, the model owns the shared expert's gate and up weights, `count`
+/// rows each, after the routed ones.
 public final class SegmentedSwiGLU: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
@@ -2580,11 +2606,11 @@ public final class SegmentedSwiGLU: Model {
 
   public init(
     segments: Int, count: Int, clamp: Float = 0, functional: Bool = false,
-    trainable: Bool? = nil, name: String = ""
+    sharedExpert: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_segmented_swiglu(
-        Int32(segments), Int32(count), clamp, functional ? 1 : 0,
+        Int32(segments), Int32(count), clamp, functional ? 1 : 0, sharedExpert ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
