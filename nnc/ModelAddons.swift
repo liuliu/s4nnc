@@ -2606,11 +2606,11 @@ public final class SegmentedSwiGLU: Model {
 
   public init(
     segments: Int, count: Int, clamp: Float = 0, functional: Bool = false,
-    sharedExpert: Bool = false, trainable: Bool? = nil, name: String = ""
+    sharedExpertFused: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_segmented_swiglu(
-        Int32(segments), Int32(count), clamp, functional ? 1 : 0, sharedExpert ? 1 : 0,
+        Int32(segments), Int32(count), clamp, functional ? 1 : 0, sharedExpertFused ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
