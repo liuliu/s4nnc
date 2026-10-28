@@ -767,6 +767,10 @@ extension DynamicGraph {
   public static func vacuum() {
     ccv_nnc_vacuum()
   }
+  /// Abort any ongoing execution on heterogeneous hardware.
+  public static func abort() {
+    ccv_nnc_abort()
+  }
   /**
    * Run synchronous work with independent Metal state, then restore the default.
    * Nested calls reuse the current fork. A scope that creates a fork releases it
