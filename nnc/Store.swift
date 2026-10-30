@@ -3656,6 +3656,9 @@ private let ezm7EncodeWithExternalStore:
     encodedSize[0] = 8 + 8  // Start offset, length.
     encoded.storeBytes(of: offset, as: UInt64.self)
     (encoded + MemoryLayout<UInt64>.size).storeBytes(of: UInt64(length), as: UInt64.self)
+    if let identifier = identifier {
+      identifier[0] = identifier[0] | 0x1000_0000
+    }
     return 1
   }
 
