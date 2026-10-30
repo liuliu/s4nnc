@@ -270,6 +270,19 @@ final class ModelTests: XCTestCase {
     XCTAssertEqual(output.rawValue[2], Float32(e2 / sum), accuracy: 1e-5)
   }
 
+  func testGumbelArgmaxModel() throws {
+    let graph = DynamicGraph()
+    let input = graph.variable(Tensor<Float32>([1.0, 5.0, 2.0], .CPU, .NC(1, 3)))
+
+    let direct = GumbelArgmax(axis: 1, scale: 0)(input)
+    XCTAssertEqual(direct.rawValue[0, 0], 1)
+
+    let modelInput = Input()
+    let model = Model([modelInput], [modelInput.gumbelArgmax(axis: 1, scale: 0)])
+    let output = DynamicGraph.Tensor<Int32>(model(inputs: input)[0])
+    XCTAssertEqual(output.rawValue[0, 0], 1)
+  }
+
   func testLeakyReLUModel() throws {
     let graph = DynamicGraph()
     let model = LeakyReLU(negativeSlope: 0.1)
@@ -615,6 +628,7 @@ final class ModelTests: XCTestCase {
     ("testModelWithParameter", testModelWithParameter),
     ("testModelDiv", testModelDiv),
     ("testSoftmaxModel", testSoftmaxModel),
+    ("testGumbelArgmaxModel", testGumbelArgmaxModel),
     ("testLeakyReLUModel", testLeakyReLUModel),
     ("testRMSNormGatedModel", testRMSNormGatedModel),
     ("testModelDebug", testModelDebug),

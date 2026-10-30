@@ -1676,6 +1676,30 @@ extension ModelIOConvertible {
   }
 }
 
+/// Gumbel argmax model, which samples indices by adding scaled Gumbel noise before argmax.
+public final class GumbelArgmax: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(axis: Int, scale: Float = 1, name: String = "") {
+    super.init(ccv_cnnp_gumbel_argmax(Int32(axis), scale, name))
+  }
+
+  public func callAsFunction(
+    _ input: DynamicGraph.AnyTensor, streamContext: StreamContext? = nil
+  ) -> DynamicGraph.Tensor<Int32> {
+    let outputs = self(inputs: input, streamContext: streamContext)
+    return DynamicGraph.Tensor<Int32>(outputs[0])
+  }
+}
+
+extension ModelIOConvertible {
+  public func gumbelArgmax(axis: Int, scale: Float = 1) -> Model.IO {
+    return GumbelArgmax(axis: axis, scale: scale)(self)
+  }
+}
+
 /// Argmin model.
 public final class Argmin: Model {
   required init(_ model: OpaquePointer) {
