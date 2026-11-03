@@ -263,6 +263,12 @@ public final class HyperConnection: Model {
     /// Outputs: pre, post, combination, and the residual collapsed with the incoming pre-mix,
     /// then RMS-normalized and scaled.
     case mix(normEpsilon: Float)
+    /// Inputs: residual `[..., count, hidden]`, mixing projection
+    /// `[2 * count + count * count, count * hidden]`, scale `[3]`, base `[2 * count + count * count]`
+    /// and RMSNorm scale `[hidden]`. Like `mix`, but the residual collapses with the pre-mix it
+    /// computes, as `splitWeightedSum` does.
+    /// Outputs: pre, post, combination, and the collapse, RMS-normalized and scaled.
+    case mixOwnPre(normEpsilon: Float)
 
     fileprivate var cValue: Int32 {
       switch self {
@@ -271,13 +277,14 @@ public final class HyperConnection: Model {
       case .expand: return 2
       case .mix: return 3
       case .expandSum: return 4
+      case .mixOwnPre: return 5
       }
     }
 
     fileprivate var normEpsilon: Float {
       switch self {
       case .split, .splitWeightedSum, .expand, .expandSum: return 0
-      case .mix(let normEpsilon): return normEpsilon
+      case .mix(let normEpsilon), .mixOwnPre(let normEpsilon): return normEpsilon
       }
     }
   }
@@ -292,8 +299,11 @@ public final class HyperConnection: Model {
   ) {
     precondition(count > 0 && count <= 16, "count must be between 1 and 16")
     precondition(sinkhornIterations > 0, "sinkhornIterations must be positive")
-    if case .mix(let normEpsilon) = operation {
+    switch operation {
+    case .mix(let normEpsilon), .mixOwnPre(let normEpsilon):
       precondition(normEpsilon > 0, "mix normEpsilon must be positive")
+    default:
+      break
     }
     super.init(
       ccv_cnnp_hyper_connection(
