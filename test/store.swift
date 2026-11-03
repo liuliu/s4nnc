@@ -818,6 +818,16 @@ final class StoreTests: XCTestCase {
         "iq2xxs-h256", .i8x([.iq2xxs, .hadamard256]),
         Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
       ),
+      ("iq1s", .i8x(.iq1s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S)),
+      (
+        "iq1s-h256", .i8x([.iq1s, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
+      ("iq1m", .i8x(.iq1m), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M)),
+      (
+        "iq1m-h256", .i8x([.iq1m, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
       ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
       (
         "iq3s-h256", .i8x([.iq3s, .hadamard256]),
@@ -920,6 +930,16 @@ final class StoreTests: XCTestCase {
       (
         "iq2xxs-h256", .i8x([.iq2xxs, .hadamard256]),
         Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
+      ("iq1s", .i8x(.iq1s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S)),
+      (
+        "iq1s-h256", .i8x([.iq1s, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
+      ),
+      ("iq1m", .i8x(.iq1m), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M)),
+      (
+        "iq1m-h256", .i8x([.iq1m, .hadamard256]),
+        Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M) | Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)
       ),
       ("iq3s", .i8x(.iq3s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ3_S)),
       (
@@ -1028,6 +1048,8 @@ final class StoreTests: XCTestCase {
     tensor[0, 0] = 16
     let formats: [(DynamicGraph.Store.Codec, Int32)] = [
       (.i8x([.iq2xxs, .hadamard256]), Int32(CCV_NNC_QX_8I_ROWWISE_IQ2_XXS)),
+      (.i8x([.iq1s, .hadamard256]), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S)),
+      (.i8x([.iq1m, .hadamard256]), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M)),
       (.i8x([.q6k, .hadamard256]), Int32(CCV_NNC_QX_8I_ROWWISE_Q6_K)),
     ]
     for (codec, baseFormat) in formats {
@@ -1090,6 +1112,82 @@ final class StoreTests: XCTestCase {
           XCTFail("H256 round trip failed: \(error)")
         }
       }
+    }
+  }
+
+  func testIQ1FormatsInTrailerStore() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let graph = DynamicGraph()
+    // A partial final group exercises both the 32-value IQ1_S and 16-value IQ1_M layouts.
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(3, 70))
+    for i in 0..<3 {
+      for j in 0..<70 {
+        tensor[i, j] = sin(Float(i * 70 + j) * 0.13) + Float(i) * 0.25
+      }
+    }
+    let formats: [(String, DynamicGraph.Store.Codec, Int32, UInt32)] = [
+      ("iq1s", .i8x(.iq1s), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S), 0x8a1eb5),
+      ("iq1m", .i8x(.iq1m), Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M), 0x8a1eb6),
+    ]
+    for (name, codec, format, identifier) in formats {
+      let byteCount = ccv_nnc_8i_rowwise_x_data_size(format, Int32(CCV_32F), 3 * 70, 70)
+      var reference = [UInt8](repeating: 0, count: byteCount)
+      let expected: Tensor<Float> = Tensor(.CPU, .NC(3, 70))
+      reference.withUnsafeMutableBytes { bytes in
+        XCTAssertEqual(
+          ccv_nnc_quantize_8i_rowwise_x(
+            tensor.cTensor.pointee.data.u8, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY),
+            3 * 70, 70, format, nil, 0, nil, 0, bytes.baseAddress, byteCount), byteCount)
+        ccv_nnc_dequantize_8i_rowwise_x(
+          bytes.baseAddress, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), byteCount,
+          70, format, expected.cTensor.pointee.data.u8, 3 * 70)
+      }
+      let serialized = tensor.data(using: codec)
+      let storedIdentifier = serialized.prefix(4).enumerated().reduce(UInt32(0)) {
+        $0 | (UInt32($1.element) << (8 * $1.offset))
+      }
+      XCTAssertEqual(storedIdentifier, identifier)
+      let fromData = try XCTUnwrap(Tensor<Float>(data: serialized, using: codec))
+      for i in 0..<3 {
+        for j in 0..<70 {
+          XCTAssertEqual(fromData[i, j], expected[i, j])
+        }
+      }
+      let sqlitePath = directory.appendingPathComponent(name + ".db").path
+      let externalPath = sqlitePath + "-tensordata"
+      let trailerPath = directory.appendingPathComponent(name + "_trailer.ckpt").path
+      try graph.openStore(sqlitePath, externalStore: externalPath) { store in
+        for (key, extra): (String, DynamicGraph.Store.Codec) in [("plain", []), ("ezm7", .ezm7)] {
+          try store.write(
+            key, tensor: tensor, strict: true, codec: codec.union([.externalData, extra]))
+        }
+      }.get()
+      try DynamicGraph.Store.makeTrailerStore(
+        sqlitePath, externalStore: externalPath, to: trailerPath)
+      try FileManager.default.removeItem(atPath: externalPath)
+      XCTAssertTrue(DynamicGraph.Store.isTrailerStore(trailerPath))
+      try graph.openStore(trailerPath, flags: .readOnly) { store in
+        for key in ["plain", "ezm7"] {
+          XCTAssertEqual(store.codec(for: key), codec.union(.externalData))
+          let dense = Tensor<Float>(try XCTUnwrap(store.read(key, codec: .externalData)))
+          for i in 0..<3 {
+            for j in 0..<70 {
+              XCTAssertEqual(dense[i, j], expected[i, j])
+            }
+          }
+          let modes: [DynamicGraph.Store.Codec] = [
+            .externalData, .externalData(.mmap), .externalData(.wholeFile), .externalOnDemand,
+          ]
+          for mode in modes {
+            let packed = try XCTUnwrap(store.read(key, codec: mode.union(.jit)))
+            XCTAssertEqual(packed.cTensor.pointee.info.reserved, format)
+            XCTAssertEqual(
+              Data(bytes: packed.cTensor.pointee.data.u8, count: byteCount), Data(reference))
+          }
+        }
+      }.get()
     }
   }
 
@@ -1278,6 +1376,7 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithI8XImatrix", testWriteTensorAndReadBackWithI8XImatrix),
     ("testWriteTensorAndReadBackWithI8XFormats", testWriteTensorAndReadBackWithI8XFormats),
     ("testI8XHadamard256RoundTrip", testI8XHadamard256RoundTrip),
+    ("testIQ1FormatsInTrailerStore", testIQ1FormatsInTrailerStore),
     (
       "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
       testWriteTensorAndReadBackWithI8XFormatsAndExternalStore
