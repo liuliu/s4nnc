@@ -507,8 +507,35 @@ public final class GatedDelta: Model {
     super.init(model)
   }
 
-  public init(logDecay: Bool, stateCheckpointCount: Int = 0, name: String = "") {
-    super.init(ccv_cnnp_gated_delta(logDecay ? 1 : 0, Int32(stateCheckpointCount), name))
+  /// - Parameters:
+  ///   - queryKeyL2Norm: L2-normalize queries and keys per head, x / sqrt(sum(x^2) + 1e-6) as in
+  ///     FLA.
+  ///   - queryScale: Scale of the L2-normalized queries.
+  ///   - sigmoidGateLowerBound: The decay input is a raw per key channel gate, and the call takes
+  ///     its bias `[valueHeads * keyDim]` and per head scale `[valueHeads]` (FP32); the log decay is
+  ///     `sigmoidGateLowerBound * sigmoid(scale * (gate + bias))`. Needs `logDecay`.
+  ///   - sigmoidBeta: Beta is sigmoid of the beta input.
+  public init(
+    logDecay: Bool, stateCheckpointCount: Int = 0,
+    queryKeyL2Norm: Bool = false, queryScale: Float = 1,
+    sigmoidGateLowerBound: Float? = nil, sigmoidBeta: Bool = false, name: String = ""
+  ) {
+    precondition(sigmoidGateLowerBound == nil || logDecay)
+    precondition(queryKeyL2Norm || queryScale == 1)
+    super.init(
+      ccv_cnnp_gated_delta(
+        logDecay ? 1 : 0, Int32(stateCheckpointCount), queryKeyL2Norm ? 1 : 0, queryScale,
+        sigmoidGateLowerBound != nil ? 1 : 0, sigmoidGateLowerBound ?? 0, sigmoidBeta ? 1 : 0, name))
+  }
+
+  /// With a sigmoid gate: the raw gate, then its bias and per head scale.
+  public func callAsFunction(
+    queries q: ModelIOConvertible, keys k: ModelIOConvertible, values v: ModelIOConvertible,
+    gate: ModelIOConvertible, beta: ModelIOConvertible, state: ModelIOConvertible,
+    gateBias: ModelIOConvertible, gateScale: ModelIOConvertible
+  ) -> (output: Model.IO, state: Model.IO) {
+    let outputs = self(q, k, v, gate, beta, state, gateBias, gateScale)
+    return (outputs[0], outputs[1])
   }
 
   public func callAsFunction(
@@ -541,6 +568,41 @@ public final class GatedDelta: Model {
   ) -> (output: T, state: T) {
     let outputs = self(inputs: q, k, v, decay, beta, state, streamContext: streamContext)
     return (T(outputs[0]), T(outputs[1]))
+  }
+}
+
+/// A depthwise causal convolution along the token axis that carries its previous rows, as the
+/// short convolution before linear attention. It owns its weights `[channels, 1, kernelSize, 1]`.
+public final class CausalConvolution: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  /// - Parameters:
+  ///   - kernelSize: The number of taps, at least 2.
+  ///   - silu: Apply SiLU to the output.
+  ///   - stateCheckpointCount: The next rows also keep the rows before each of the last this many
+  ///     tokens.
+  public init(
+    kernelSize: Int, silu: Bool = false, stateCheckpointCount: Int = 0, trainable: Bool? = nil,
+    name: String = ""
+  ) {
+    precondition(kernelSize >= 2)
+    super.init(
+      ccv_cnnp_causal_convolution(
+        Int32(kernelSize), silu ? 1 : 0, Int32(stateCheckpointCount),
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  /// The input `[B, T, channels]` and its previous `kernelSize - 1` rows
+  /// `[B, kernelSize - 1, channels]`. Returns the output and the next rows
+  /// `[B, kernelSize - 1 + stateCheckpointCount, channels]`: the last rows of the previous rows
+  /// followed by the input.
+  public func callAsFunction(_ x: ModelIOConvertible, previousRows: ModelIOConvertible) -> (
+    output: Model.IO, nextRows: Model.IO
+  ) {
+    let outputs = self(x, previousRows)
+    return (outputs[0], outputs[1])
   }
 }
 
@@ -2587,14 +2649,20 @@ public final class SegmentedDense: Model {
     super.init(model)
   }
 
+  /// - Parameter sharedExpertFused: Also take a shared expert's activation after the counts and
+  ///   return its projection (`count` outputs, with its own weights after the experts') as a
+  ///   second output. Decode can evaluate both in one dispatch.
   public init(
     segments: Int, count: Int, noBias: Bool = false, flags: Functional.GEMMFlag = [],
-    functional: Bool = false, trainable: Bool? = nil, name: String = ""
+    functional: Bool = false, sharedExpertFused: Bool = false, trainable: Bool? = nil,
+    name: String = ""
   ) {
+    precondition(!sharedExpertFused || !functional)
     super.init(
       ccv_cnnp_segmented_dense(
         Int32(segments), Int32(count), noBias ? 1 : 0, Int32(flags.rawValue),
-        functional ? 1 : 0, trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+        functional ? 1 : 0, sharedExpertFused ? 1 : 0,
+        trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
   public func callAsFunction<T: DynamicGraph.TensorGroup, U: DynamicGraph.TensorGroup>(
@@ -2629,7 +2697,7 @@ public final class SwiGLU: Model {
 }
 
 /// Two segmented expert projections followed by weighted, clamped SwiGLU.
-/// With `sharedExpert`, it also takes a shared expert's activation after the route weights (then
+/// With `sharedExpertFused`, it also takes a shared expert's activation after the route weights (then
 /// its gate and up weights when functional), and returns that expert's clamped SwiGLU as a second
 /// output. Without `functional`, the model owns the shared expert's gate and up weights, `count`
 /// rows each, after the routed ones.
