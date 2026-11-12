@@ -1191,6 +1191,101 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testTMCQFormatsInTrailerStore() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let graph = DynamicGraph()
+    // TMCQ tiles 16 rows x 16 columns: two tile rows, two 256-column groups per row.
+    let rows = 32
+    let columns = 512
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+    for i in 0..<rows {
+      for j in 0..<columns {
+        tensor[i, j] = sin(Float(i * columns + j) * 0.13) + Float(i % 5) * 0.25
+      }
+    }
+    let formats: [(String, DynamicGraph.Store.Codec, Int32, UInt32)] = [
+      ("tmcqn16", .i8x(.tmcqn16), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16), 0x8a1eb7),
+      ("tmcqn18", .i8x(.tmcqn18), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18), 0x8a1eb8),
+      ("tmcqn20", .i8x(.tmcqn20), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20), 0x8a1eb9),
+      ("tmcqn22", .i8x(.tmcqn22), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22), 0x8a1eba),
+      ("tmcqn24", .i8x(.tmcqn24), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24), 0x8a1ebb),
+      ("tmcqn26", .i8x(.tmcqn26), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26), 0x8a1ebc),
+      ("tmcqn28", .i8x(.tmcqn28), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28), 0x8a1ebd),
+      ("tmcqn30", .i8x(.tmcqn30), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30), 0x8a1ebe),
+      ("tmcqn32", .i8x(.tmcqn32), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32), 0x8a1ebf),
+    ]
+    for (name, codec, format, identifier) in formats {
+      let count = rows * columns
+      let byteCount = ccv_nnc_8i_rowwise_x_data_size(format, Int32(CCV_32F), count, columns)
+      XCTAssertGreaterThan(byteCount, 0)
+      var reference = [UInt8](repeating: 0, count: byteCount)
+      let expected: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+      reference.withUnsafeMutableBytes { bytes in
+        XCTAssertEqual(
+          ccv_nnc_quantize_8i_rowwise_x(
+            tensor.cTensor.pointee.data.u8, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY),
+            count, columns, format, nil, 0, nil, 0, bytes.baseAddress, byteCount), byteCount)
+        ccv_nnc_dequantize_8i_rowwise_x(
+          bytes.baseAddress, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), byteCount,
+          columns, format, expected.cTensor.pointee.data.u8, count)
+      }
+      let serialized = tensor.data(using: codec)
+      let storedIdentifier = serialized.prefix(4).enumerated().reduce(UInt32(0)) {
+        $0 | (UInt32($1.element) << (8 * $1.offset))
+      }
+      XCTAssertEqual(storedIdentifier, identifier)
+      let fromData = try XCTUnwrap(Tensor<Float>(data: serialized, using: codec))
+      for i in 0..<rows {
+        for j in 0..<columns {
+          XCTAssertEqual(fromData[i, j], expected[i, j])
+        }
+      }
+      let sqlitePath = directory.appendingPathComponent(name + ".db").path
+      let externalPath = sqlitePath + "-tensordata"
+      let trailerPath = directory.appendingPathComponent(name + "_trailer.ckpt").path
+      try graph.openStore(sqlitePath, externalStore: externalPath) { store in
+        for (key, extra): (String, DynamicGraph.Store.Codec) in [("plain", []), ("ezm7", .ezm7)] {
+          try store.write(
+            key, tensor: tensor, strict: true, codec: codec.union([.externalData, extra]))
+        }
+      }.get()
+      try DynamicGraph.Store.makeTrailerStore(
+        sqlitePath, externalStore: externalPath, to: trailerPath)
+      try FileManager.default.removeItem(atPath: externalPath)
+      XCTAssertTrue(DynamicGraph.Store.isTrailerStore(trailerPath))
+      // Reading whole tiles of a larger tensor decodes the payload prefix.
+      let partial = graph.variable(.CPU, .NC(16, columns), of: Float.self)
+      try graph.openStore(trailerPath, flags: .readOnly) { store in
+        for key in ["plain", "ezm7"] {
+          XCTAssertEqual(store.codec(for: key), codec.union(.externalData))
+          let dense = Tensor<Float>(try XCTUnwrap(store.read(key, codec: .externalData)))
+          for i in 0..<rows {
+            for j in 0..<columns {
+              XCTAssertEqual(dense[i, j], expected[i, j])
+            }
+          }
+          XCTAssertTrue(store.read(key, variable: partial, codec: .externalData))
+          for i in 0..<16 {
+            for j in 0..<columns {
+              XCTAssertEqual(partial[i, j], expected[i, j])
+            }
+          }
+          let modes: [DynamicGraph.Store.Codec] = [
+            .externalData, .externalData(.mmap), .externalData(.wholeFile), .externalOnDemand,
+          ]
+          for mode in modes {
+            let packed = try XCTUnwrap(store.read(key, codec: mode.union(.jit)))
+            XCTAssertEqual(packed.cTensor.pointee.info.reserved, format)
+            XCTAssertEqual(
+              Data(bytes: packed.cTensor.pointee.data.u8, count: byteCount), Data(reference))
+          }
+        }
+      }.get()
+    }
+  }
+
   func testWriteTensorWithI8XFormatRejectsInvalidImatrix() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
@@ -1377,6 +1472,7 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithI8XFormats", testWriteTensorAndReadBackWithI8XFormats),
     ("testI8XHadamard256RoundTrip", testI8XHadamard256RoundTrip),
     ("testIQ1FormatsInTrailerStore", testIQ1FormatsInTrailerStore),
+    ("testTMCQFormatsInTrailerStore", testTMCQFormatsInTrailerStore),
     (
       "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
       testWriteTensorAndReadBackWithI8XFormatsAndExternalStore

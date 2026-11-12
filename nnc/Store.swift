@@ -53,6 +53,24 @@ private func i8xXIdentifier(for format: Int32) -> UInt32? {
     return 0x8a1eb5 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M):
     return 0x8a1eb6 | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16):
+    return 0x8a1eb7 | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18):
+    return 0x8a1eb8 | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20):
+    return 0x8a1eb9 | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22):
+    return 0x8a1eba | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24):
+    return 0x8a1ebb | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26):
+    return 0x8a1ebc | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28):
+    return 0x8a1ebd | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30):
+    return 0x8a1ebe | modifier
+  case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32):
+    return 0x8a1ebf | modifier
   default:
     return nil
   }
@@ -86,6 +104,24 @@ private func i8xXFormat(from identifier: UInt32) -> Int32? {
     return Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S) | modifier
   case 0x8a1eb6:
     return Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M) | modifier
+  case 0x8a1eb7:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16) | modifier
+  case 0x8a1eb8:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18) | modifier
+  case 0x8a1eb9:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20) | modifier
+  case 0x8a1eba:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22) | modifier
+  case 0x8a1ebb:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24) | modifier
+  case 0x8a1ebc:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26) | modifier
+  case 0x8a1ebd:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28) | modifier
+  case 0x8a1ebe:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30) | modifier
+  case 0x8a1ebf:
+    return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32) | modifier
   default:
     return nil
   }
@@ -2229,6 +2265,123 @@ private let i8xXIQ1MEncode:
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
+private let i8xXTMCQN16Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN18Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN20Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN22Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN24Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN26Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN28Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN30Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN32Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
 private let i8xXIQ2XXSEncodeHadamard256:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -2380,6 +2533,7 @@ private let i8xXDecode:
     let partialRowCount = maxDecodedElements / rowLength
     let partialDataSize = ccv_nnc_8i_rowwise_x_data_size(
       format, dataType, maxDecodedElements, rowLength)
+    guard partialDataSize > 0 else { return 0 }
     let partialScaleOffset = partialDataSize - partialRowCount * elementSize
     let partialScaleSize = partialRowCount * elementSize
     let partialData = UnsafeMutableRawPointer.allocate(
@@ -3234,6 +3388,123 @@ private let i8xXIQ1MAndEzm7Encode:
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
+private let i8xXTMCQN16AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN18AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN20AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN22AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN24AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN26AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN28AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN30AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN32AndEzm7Encode:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7Encode(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
 private let i8xXIQ2XXSAndEzm7EncodeHadamard256:
   @convention(c) (
     UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
@@ -3707,6 +3978,123 @@ private let i8xXIQ1MAndEzm7EncodeWithExternalStore:
   identifier in
   i8xXAndEzm7EncodeWithExternalStore(
     format: Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN16AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN18AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN20AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN22AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN24AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN26AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN28AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN30AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN32AndEzm7EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXAndEzm7EncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32), data, dataSize, dataType, dimensions,
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
@@ -4250,6 +4638,123 @@ private let i8xXIQ1MEncodeWithExternalStore:
   identifier in
   i8xXEncodeWithExternalStore(
     format: Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN16EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN18EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN20EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN22EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN24EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN26EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN28EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN30EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30), data, dataSize, dataType, dimensions,
+    dimensionCount, context, encoded, encodedSize, params, identifier)
+}
+
+private let i8xXTMCQN32EncodeWithExternalStore:
+  @convention(c) (
+    UnsafeRawPointer?, Int, Int32, UnsafePointer<Int32>?, Int32, UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?, UnsafeMutablePointer<Int>?,
+    UnsafeMutablePointer<ccv_nnc_tensor_param_t>?, UnsafeMutablePointer<UInt32>?
+  ) -> Int32 = {
+  data, dataSize, dataType, dimensions, dimensionCount, context, encoded, encodedSize, params,
+  identifier in
+  i8xXEncodeWithExternalStore(
+    format: Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32), data, dataSize, dataType, dimensions,
     dimensionCount, context, encoded, encodedSize, params, identifier)
 }
 
@@ -4884,7 +5389,8 @@ private let uDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5572,7 +6078,8 @@ private func uDecodeJitWithExternalStoreFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize, memoryMapFlags)
@@ -6050,7 +6557,8 @@ private let uDecodeJitWithExternalStoreMmap:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecodeJitWithExternalEagerMmap(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6505,7 +7013,8 @@ private let uDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6720,7 +7229,8 @@ private let uDecodeWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6783,7 +7293,8 @@ private let uDecodeWithExternalStore:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6841,7 +7352,8 @@ private let uDecode:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
+      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
       return i8xXDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -7226,10 +7738,25 @@ extension DynamicGraph {
       private static let i8xIQ2XXS = Codec(rawValue: 1 << 21)
       private static let i8xIQ1S = Codec(rawValue: 1 << 25)
       private static let i8xIQ1M = Codec(rawValue: 1 << 26)
+      private static let i8xTMCQN16 = Codec(rawValue: 1 << 27)
+      private static let i8xTMCQN18 = Codec(rawValue: 1 << 28)
+      private static let i8xTMCQN20 = Codec(rawValue: 1 << 29)
+      private static let i8xTMCQN22 = Codec(rawValue: 1 << 30)
+      private static let i8xTMCQN24 = Codec(rawValue: 1 << 31)
+      private static let i8xTMCQN26 = Codec(rawValue: 1 << 32)
+      private static let i8xTMCQN28 = Codec(rawValue: 1 << 33)
+      private static let i8xTMCQN30 = Codec(rawValue: 1 << 34)
+      private static let i8xTMCQN32 = Codec(rawValue: 1 << 35)
       private static let i8xHadamard256 = Codec(rawValue: 1 << 24)
       private static let i8xFormatMask: Codec = [
         .i8xQ4K, .i8xQ5K, .i8xQ6K, .i8xQ3K, .i8xQ2K, .i8xIQ2S, .i8xIQ2XS, .i8xIQ3S,
-        .i8xIQ3XXS, .i8xIQ2XXS, .i8xIQ1S, .i8xIQ1M,
+        .i8xIQ3XXS, .i8xIQ2XXS, .i8xIQ1S, .i8xIQ1M, .i8xTMCQN16, .i8xTMCQN18, .i8xTMCQN20,
+        .i8xTMCQN22, .i8xTMCQN24, .i8xTMCQN26, .i8xTMCQN28, .i8xTMCQN30, .i8xTMCQN32,
+      ]
+      // TMCQ tiles 16 rows x 16 columns and does not support hadamard256.
+      private static let i8xTMCQMask: Codec = [
+        .i8xTMCQN16, .i8xTMCQN18, .i8xTMCQN20, .i8xTMCQN22, .i8xTMCQN24, .i8xTMCQN26,
+        .i8xTMCQN28, .i8xTMCQN30, .i8xTMCQN32,
       ]
       public static let jit = Codec(rawValue: 1 << 8)
       public static let externalData = Codec(rawValue: 1 << 9)
@@ -7268,6 +7795,17 @@ extension DynamicGraph {
         public static let iq2xxs = I8XFormat(rawValue: Codec.i8xIQ2XXS.rawValue)
         public static let iq1s = I8XFormat(rawValue: Codec.i8xIQ1S.rawValue)
         public static let iq1m = I8XFormat(rawValue: Codec.i8xIQ1M.rawValue)
+        /// TMCQ at n / 16 bits per weight (n = 16, 18, ..., 32). Requires a row count divisible
+        /// by 16 and a last dimension divisible by 256. Not compatible with hadamard256.
+        public static let tmcqn16 = I8XFormat(rawValue: Codec.i8xTMCQN16.rawValue)
+        public static let tmcqn18 = I8XFormat(rawValue: Codec.i8xTMCQN18.rawValue)
+        public static let tmcqn20 = I8XFormat(rawValue: Codec.i8xTMCQN20.rawValue)
+        public static let tmcqn22 = I8XFormat(rawValue: Codec.i8xTMCQN22.rawValue)
+        public static let tmcqn24 = I8XFormat(rawValue: Codec.i8xTMCQN24.rawValue)
+        public static let tmcqn26 = I8XFormat(rawValue: Codec.i8xTMCQN26.rawValue)
+        public static let tmcqn28 = I8XFormat(rawValue: Codec.i8xTMCQN28.rawValue)
+        public static let tmcqn30 = I8XFormat(rawValue: Codec.i8xTMCQN30.rawValue)
+        public static let tmcqn32 = I8XFormat(rawValue: Codec.i8xTMCQN32.rawValue)
         /// Rotate each 256-feature block before quantization. Requires a packed format and
         /// a last dimension divisible by 256. Any imatrix must describe rotated activations.
         public static let hadamard256 = I8XFormat(rawValue: Codec.i8xHadamard256.rawValue)
@@ -7280,6 +7818,9 @@ extension DynamicGraph {
             && base.rawValue.nonzeroBitCount <= 1
             && (!codec.contains(.i8xHadamard256) || !base.isEmpty),
           "Select one packed i8x format when using hadamard256")
+        precondition(
+          !codec.contains(.i8xHadamard256) || base.isDisjoint(with: .i8xTMCQMask),
+          "TMCQ formats do not support hadamard256")
         return codec.union(.i8x)
       }
       var i8xFormat: I8XFormat? {
@@ -7319,6 +7860,24 @@ extension DynamicGraph {
           return contains(.i8xHadamard256) ? i8xXIQ1SEncodeHadamard256 : i8xXIQ1SEncode
         case .iq1m:
           return contains(.i8xHadamard256) ? i8xXIQ1MEncodeHadamard256 : i8xXIQ1MEncode
+        case .tmcqn16:
+          return i8xXTMCQN16Encode
+        case .tmcqn18:
+          return i8xXTMCQN18Encode
+        case .tmcqn20:
+          return i8xXTMCQN20Encode
+        case .tmcqn22:
+          return i8xXTMCQN22Encode
+        case .tmcqn24:
+          return i8xXTMCQN24Encode
+        case .tmcqn26:
+          return i8xXTMCQN26Encode
+        case .tmcqn28:
+          return i8xXTMCQN28Encode
+        case .tmcqn30:
+          return i8xXTMCQN30Encode
+        case .tmcqn32:
+          return i8xXTMCQN32Encode
         default:
           return nil
         }
@@ -7362,6 +7921,24 @@ extension DynamicGraph {
         case .iq1m:
           return contains(.i8xHadamard256)
             ? i8xXIQ1MAndEzm7EncodeHadamard256 : i8xXIQ1MAndEzm7Encode
+        case .tmcqn16:
+          return i8xXTMCQN16AndEzm7Encode
+        case .tmcqn18:
+          return i8xXTMCQN18AndEzm7Encode
+        case .tmcqn20:
+          return i8xXTMCQN20AndEzm7Encode
+        case .tmcqn22:
+          return i8xXTMCQN22AndEzm7Encode
+        case .tmcqn24:
+          return i8xXTMCQN24AndEzm7Encode
+        case .tmcqn26:
+          return i8xXTMCQN26AndEzm7Encode
+        case .tmcqn28:
+          return i8xXTMCQN28AndEzm7Encode
+        case .tmcqn30:
+          return i8xXTMCQN30AndEzm7Encode
+        case .tmcqn32:
+          return i8xXTMCQN32AndEzm7Encode
         default:
           return nil
         }
@@ -7410,6 +7987,24 @@ extension DynamicGraph {
         case .iq1m:
           return contains(.i8xHadamard256)
             ? i8xXIQ1MEncodeWithExternalStoreHadamard256 : i8xXIQ1MEncodeWithExternalStore
+        case .tmcqn16:
+          return i8xXTMCQN16EncodeWithExternalStore
+        case .tmcqn18:
+          return i8xXTMCQN18EncodeWithExternalStore
+        case .tmcqn20:
+          return i8xXTMCQN20EncodeWithExternalStore
+        case .tmcqn22:
+          return i8xXTMCQN22EncodeWithExternalStore
+        case .tmcqn24:
+          return i8xXTMCQN24EncodeWithExternalStore
+        case .tmcqn26:
+          return i8xXTMCQN26EncodeWithExternalStore
+        case .tmcqn28:
+          return i8xXTMCQN28EncodeWithExternalStore
+        case .tmcqn30:
+          return i8xXTMCQN30EncodeWithExternalStore
+        case .tmcqn32:
+          return i8xXTMCQN32EncodeWithExternalStore
         default:
           return nil
         }
@@ -7470,6 +8065,24 @@ extension DynamicGraph {
           return contains(.i8xHadamard256)
             ? i8xXIQ1MAndEzm7EncodeWithExternalStoreHadamard256
             : i8xXIQ1MAndEzm7EncodeWithExternalStore
+        case .tmcqn16:
+          return i8xXTMCQN16AndEzm7EncodeWithExternalStore
+        case .tmcqn18:
+          return i8xXTMCQN18AndEzm7EncodeWithExternalStore
+        case .tmcqn20:
+          return i8xXTMCQN20AndEzm7EncodeWithExternalStore
+        case .tmcqn22:
+          return i8xXTMCQN22AndEzm7EncodeWithExternalStore
+        case .tmcqn24:
+          return i8xXTMCQN24AndEzm7EncodeWithExternalStore
+        case .tmcqn26:
+          return i8xXTMCQN26AndEzm7EncodeWithExternalStore
+        case .tmcqn28:
+          return i8xXTMCQN28AndEzm7EncodeWithExternalStore
+        case .tmcqn30:
+          return i8xXTMCQN30AndEzm7EncodeWithExternalStore
+        case .tmcqn32:
+          return i8xXTMCQN32AndEzm7EncodeWithExternalStore
         default:
           return nil
         }
@@ -7747,6 +8360,24 @@ extension DynamicGraph {
           detected = .i8x(.iq1s)
         case 0x8a1eb6:
           detected = .i8x(.iq1m)
+        case 0x8a1eb7:
+          detected = .i8x(.tmcqn16)
+        case 0x8a1eb8:
+          detected = .i8x(.tmcqn18)
+        case 0x8a1eb9:
+          detected = .i8x(.tmcqn20)
+        case 0x8a1eba:
+          detected = .i8x(.tmcqn22)
+        case 0x8a1ebb:
+          detected = .i8x(.tmcqn24)
+        case 0x8a1ebc:
+          detected = .i8x(.tmcqn26)
+        case 0x8a1ebd:
+          detected = .i8x(.tmcqn28)
+        case 0x8a1ebe:
+          detected = .i8x(.tmcqn30)
+        case 0x8a1ebf:
+          detected = .i8x(.tmcqn32)
         default:
           detected = []
         }
