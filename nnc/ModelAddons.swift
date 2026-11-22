@@ -650,6 +650,27 @@ public final class AttentionResidual: Model {
   }
 }
 
+/// A message gated into a state: with mix = down [RMSNorm(state), RMSNorm(message)]^T (norms without
+/// scales), forget = tanh(mix forget^T) and gain = tanh(mix gain^T), the output is
+/// state - forget * state + gain * message. It owns the down projection `[rank, 2 * channels]` and
+/// the forget and gain projections `[channels, rank]`, in that order.
+public final class MessageGate: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(rank: Int, epsilon: Float, trainable: Bool? = nil, name: String = "") {
+    super.init(
+      ccv_cnnp_message_gate(
+        Int32(rank), epsilon, trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  /// The state and message `[..., channels]`. Returns the gated state, in the state's shape.
+  public func callAsFunction(state: ModelIOConvertible, message: ModelIOConvertible) -> Model.IO {
+    self(state, message)
+  }
+}
+
 /// A linear layer model.
 public final class Dense: Model {
   required init(_ model: OpaquePointer) {
