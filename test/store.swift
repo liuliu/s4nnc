@@ -1295,6 +1295,69 @@ final class StoreTests: XCTestCase {
   // A TMCQ weight with its pair codebook inline (identifier bits 25 - 27 = 7): the data starts with the serialized
   // table, zeros up to 128 + 2 P bytes, then the payload and row scales. It decodes like ccv decodes it, passes
   // through the packed (jit) read and write, external stores included, and a bad table fails the read.
+  func testI8XJitReadIntoOtherScaleType() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let graph = DynamicGraph()
+    let rows = 32
+    let columns = 512
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+    for i in 0..<rows {
+      for j in 0..<columns {
+        tensor[i, j] = sin(Float(i * columns + j) * 0.07) * 0.5 + Float(i % 3) * 0.1
+      }
+    }
+    let x: Tensor<Float16> = Tensor(.CPU, .NC(2, columns))
+    // Float32 weights store Float32 row scales. A Float16 model asks for Float16, so a JIT read
+    // must decode instead of handing it a packed tensor whose scales it would read as Float16.
+    for codec: DynamicGraph.Store.Codec in [.i8x, .i8x(.tmcqn24), .i8x(.q4k)] {
+      let sqlitePath = directory.appendingPathComponent("scale\(codec.rawValue).db").path
+      let externalPath = sqlitePath + "-tensordata"
+      let externalSqlitePath = directory.appendingPathComponent(
+        "scale\(codec.rawValue)-external.db"
+      ).path
+      let trailerPath = directory.appendingPathComponent("scale\(codec.rawValue)_trailer.ckpt").path
+      try graph.openStore(sqlitePath) { store in
+        try store.write("w", tensor: tensor, strict: true, codec: codec)
+      }.get()
+      try graph.openStore(externalSqlitePath, externalStore: externalPath) { store in
+        try store.write("w", tensor: tensor, strict: true, codec: codec.union(.externalData))
+      }.get()
+      try DynamicGraph.Store.makeTrailerStore(
+        externalSqlitePath, externalStore: externalPath, to: trailerPath)
+      let reads: [(String, DynamicGraph.Store.Codec)] = [
+        (sqlitePath, codec), (trailerPath, codec.union(.externalData)),
+        (trailerPath, codec.union(.externalData(.mmap))),
+        (trailerPath, codec.union(.externalOnDemand)),
+      ]
+      for (path, readCodec) in reads {
+        var w: Tensor<Float>? = nil
+        var loaded: Tensor<Float16>? = nil
+        try graph.openStore(path, flags: .readOnly) { store in
+          w = Tensor<Float>(try XCTUnwrap(store.read("w", codec: readCodec)))
+          let linear = Dense(count: rows, noBias: true)
+          linear.compile(inputs: graph.variable(x))
+          try store.read("linear", model: linear, strict: true, codec: readCodec.union(.jit)) {
+            _, _, _, _ in .continue("w")
+          }
+          loaded = linear.weight.copied(Float16.self)
+        }.get()
+        let weights = try XCTUnwrap(w)
+        let parameter = try XCTUnwrap(loaded)
+        XCTAssertEqual(
+          parameter.cTensor.pointee.info.datatype, Int32(CCV_16F), "\(path) \(readCodec)")
+        for o in 0..<rows {
+          for j in 0..<columns {
+            XCTAssertEqual(
+              Float(parameter[o, j]), weights[o, j], accuracy: 2e-3,
+              "\(path) \(readCodec) [\(o), \(j)]")
+          }
+        }
+      }
+    }
+  }
+
   func testTMCQInlineCodebook() throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -1621,6 +1684,7 @@ final class StoreTests: XCTestCase {
     ("testIQ1FormatsInTrailerStore", testIQ1FormatsInTrailerStore),
     ("testTMCQFormatsInTrailerStore", testTMCQFormatsInTrailerStore),
     ("testTMCQInlineCodebook", testTMCQInlineCodebook),
+    ("testI8XJitReadIntoOtherScaleType", testI8XJitReadIntoOtherScaleType),
     (
       "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
       testWriteTensorAndReadBackWithI8XFormatsAndExternalStore

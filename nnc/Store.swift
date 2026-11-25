@@ -1973,6 +1973,9 @@ private let i8xDecodeJit:
   else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing packed tensor must have the stored row-scale type, which the bytes are
+      // laid out in.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       guard dataSize > 0, let decoded = decoded, decodedSize[0] >= dataSize else {
         return 0
       }
@@ -1988,7 +1991,11 @@ private let i8xDecodeJit:
   for i in 1..<Int(dimensionCount) {
     numberOfElements *= Int(dimensions[i])
   }
-  guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+  // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+  // another one.
+  guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+    dataType == params.datatype
+  else {
     return i8xDecode(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
@@ -2642,6 +2649,8 @@ private let i8xXDecodeJit:
       let codebookMask = Int32(CCV_NNC_QX_8I_ROWWISE_CODEBOOK_SLOT_MASK)
         | Int32(CCV_NNC_QX_8I_ROWWISE_CODEBOOK_INLINE_MASK)
       guard (reserved & codebookMask) == (format & codebookMask) else { return 0 }
+      // ... and the stored row-scale type, which the bytes are laid out in.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       guard dataSize > 0, let decoded = decoded, decodedSize[0] >= dataSize else {
         return 0
       }
@@ -2657,7 +2666,11 @@ private let i8xXDecodeJit:
   for i in 1..<Int(dimensionCount) {
     numberOfElements *= Int(dimensions[i])
   }
-  guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+  // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+  // another one.
+  guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+    dataType == params.datatype
+  else {
     return i8xXDecode(
       data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
       tensorOut, decoded, decodedSize)
@@ -6009,7 +6022,11 @@ private func i8xDecodeJitWithExternalEagerFile(
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+    // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+    // another one.
+    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+      dataType == params.datatype
+    else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return i8xDecodeJit(
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -6061,7 +6078,11 @@ private func i8xXDecodeJitWithExternalEagerFile(
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+    // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+    // another one.
+    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+      dataType == params.datatype
+    else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return i8xXDecodeJit(
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -6489,7 +6510,11 @@ private let i8xDecodeJitWithExternalEagerMmap:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+    // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+    // another one.
+    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+      dataType == params.datatype
+    else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return i8xDecodeJit(
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -6541,7 +6566,11 @@ private let i8xXDecodeJitWithExternalEagerMmap:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+    // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+    // another one.
+    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+      dataType == params.datatype
+    else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return i8xXDecodeJit(
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -6949,7 +6978,11 @@ private let i8xDecodeJitWithExternalOnDemand:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+    // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+    // another one.
+    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+      dataType == params.datatype
+    else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return i8xDecodeJit(
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -7002,7 +7035,11 @@ private let i8xXDecodeJitWithExternalOnDemand:
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
     }
-    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements else {
+    // A packed tensor keeps the stored row-scale type: decode when the caller asks for
+    // another one.
+    guard TensorShape(dims: params.dim).reduce(1, *) == numberOfElements,
+      dataType == params.datatype
+    else {
       let mappedData = store.loadBytes(offset: offset, length: length)
       return i8xXDecodeJit(
         mappedData, length, dataType, dimensions, dimensionCount, identifier, context, params,
