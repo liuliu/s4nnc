@@ -3,6 +3,12 @@ import XCTest
 import C_nnc
 import Foundation
 
+#if canImport(SQLite3)
+  import SQLite3
+#else
+  import _SQLite3Shims
+#endif
+
 final class StoreTests: XCTestCase {
   private func removeFiles(_ paths: String...) {
     for path in paths {
@@ -1191,6 +1197,308 @@ final class StoreTests: XCTestCase {
     }
   }
 
+  func testTMCQFormatsInTrailerStore() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let graph = DynamicGraph()
+    // TMCQ tiles 16 rows x 16 columns: two tile rows, two 256-column groups per row.
+    let rows = 32
+    let columns = 512
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+    for i in 0..<rows {
+      for j in 0..<columns {
+        tensor[i, j] = sin(Float(i * columns + j) * 0.13) + Float(i % 5) * 0.25
+      }
+    }
+    let formats: [(String, DynamicGraph.Store.Codec, Int32, UInt32)] = [
+      ("tmcqn16", .i8x(.tmcqn16), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16), 0x8a1ec0),
+      ("tmcqn18", .i8x(.tmcqn18), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18), 0x8a1ec1),
+      ("tmcqn20", .i8x(.tmcqn20), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20), 0x8a1ec2),
+      ("tmcqn22", .i8x(.tmcqn22), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22), 0x8a1ec3),
+      ("tmcqn24", .i8x(.tmcqn24), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24), 0x8a1ec4),
+      ("tmcqn26", .i8x(.tmcqn26), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26), 0x8a1ec5),
+      ("tmcqn28", .i8x(.tmcqn28), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28), 0x8a1ec6),
+      ("tmcqn30", .i8x(.tmcqn30), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30), 0x8a1ec7),
+      ("tmcqn32", .i8x(.tmcqn32), Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32), 0x8a1ec8),
+    ]
+    for (name, codec, format, identifier) in formats {
+      let count = rows * columns
+      let byteCount = ccv_nnc_8i_rowwise_x_data_size(format, Int32(CCV_32F), count, columns)
+      XCTAssertGreaterThan(byteCount, 0)
+      var reference = [UInt8](repeating: 0, count: byteCount)
+      let expected: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+      reference.withUnsafeMutableBytes { bytes in
+        XCTAssertEqual(
+          ccv_nnc_quantize_8i_rowwise_x(
+            tensor.cTensor.pointee.data.u8, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY),
+            count, columns, format, nil, 0, nil, 0, bytes.baseAddress, byteCount), byteCount)
+        ccv_nnc_dequantize_8i_rowwise_x(
+          bytes.baseAddress, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), byteCount,
+          columns, format, expected.cTensor.pointee.data.u8, count)
+      }
+      let serialized = tensor.data(using: codec)
+      let storedIdentifier = serialized.prefix(4).enumerated().reduce(UInt32(0)) {
+        $0 | (UInt32($1.element) << (8 * $1.offset))
+      }
+      XCTAssertEqual(storedIdentifier, identifier)
+      let fromData = try XCTUnwrap(Tensor<Float>(data: serialized, using: codec))
+      for i in 0..<rows {
+        for j in 0..<columns {
+          XCTAssertEqual(fromData[i, j], expected[i, j])
+        }
+      }
+      let sqlitePath = directory.appendingPathComponent(name + ".db").path
+      let externalPath = sqlitePath + "-tensordata"
+      let trailerPath = directory.appendingPathComponent(name + "_trailer.ckpt").path
+      try graph.openStore(sqlitePath, externalStore: externalPath) { store in
+        for (key, extra): (String, DynamicGraph.Store.Codec) in [("plain", []), ("ezm7", .ezm7)] {
+          try store.write(
+            key, tensor: tensor, strict: true, codec: codec.union([.externalData, extra]))
+        }
+      }.get()
+      try DynamicGraph.Store.makeTrailerStore(
+        sqlitePath, externalStore: externalPath, to: trailerPath)
+      try FileManager.default.removeItem(atPath: externalPath)
+      XCTAssertTrue(DynamicGraph.Store.isTrailerStore(trailerPath))
+      // Reading whole tiles of a larger tensor decodes the payload prefix.
+      let partial = graph.variable(.CPU, .NC(16, columns), of: Float.self)
+      try graph.openStore(trailerPath, flags: .readOnly) { store in
+        for key in ["plain", "ezm7"] {
+          XCTAssertEqual(store.codec(for: key), codec.union(.externalData))
+          let dense = Tensor<Float>(try XCTUnwrap(store.read(key, codec: .externalData)))
+          for i in 0..<rows {
+            for j in 0..<columns {
+              XCTAssertEqual(dense[i, j], expected[i, j])
+            }
+          }
+          XCTAssertTrue(store.read(key, variable: partial, codec: .externalData))
+          for i in 0..<16 {
+            for j in 0..<columns {
+              XCTAssertEqual(partial[i, j], expected[i, j])
+            }
+          }
+          let modes: [DynamicGraph.Store.Codec] = [
+            .externalData, .externalData(.mmap), .externalData(.wholeFile), .externalOnDemand,
+          ]
+          for mode in modes {
+            let packed = try XCTUnwrap(store.read(key, codec: mode.union(.jit)))
+            XCTAssertEqual(packed.cTensor.pointee.info.reserved, format)
+            XCTAssertEqual(
+              Data(bytes: packed.cTensor.pointee.data.u8, count: byteCount), Data(reference))
+          }
+        }
+      }.get()
+    }
+  }
+
+  // A TMCQ weight with its pair codebook inline (identifier bits 25 - 27 = 7): the data starts with the serialized
+  // table, zeros up to 128 + 2 P bytes, then the payload and row scales. It decodes like ccv decodes it, passes
+  // through the packed (jit) read and write, external stores included, and a bad table fails the read.
+  func testI8XJitReadIntoOtherScaleType() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let graph = DynamicGraph()
+    let rows = 32
+    let columns = 512
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+    for i in 0..<rows {
+      for j in 0..<columns {
+        tensor[i, j] = sin(Float(i * columns + j) * 0.07) * 0.5 + Float(i % 3) * 0.1
+      }
+    }
+    let x: Tensor<Float16> = Tensor(.CPU, .NC(2, columns))
+    // Float32 weights store Float32 row scales (palettes for q4p ... q8p). A Float16 model asks for
+    // Float16, so a JIT read must decode instead of handing it a packed tensor whose scales (or
+    // palette) it would read as Float16.
+    for codec: DynamicGraph.Store.Codec in [
+      .i8x, .i8x(.tmcqn24), .i8x(.q4k), .q4p, .q5p, .q6p, .q7p, .q8p,
+    ] {
+      let sqlitePath = directory.appendingPathComponent("scale\(codec.rawValue).db").path
+      let externalPath = sqlitePath + "-tensordata"
+      let externalSqlitePath = directory.appendingPathComponent(
+        "scale\(codec.rawValue)-external.db"
+      ).path
+      let trailerPath = directory.appendingPathComponent("scale\(codec.rawValue)_trailer.ckpt").path
+      try graph.openStore(sqlitePath) { store in
+        try store.write("w", tensor: tensor, strict: true, codec: codec)
+      }.get()
+      try graph.openStore(externalSqlitePath, externalStore: externalPath) { store in
+        try store.write("w", tensor: tensor, strict: true, codec: codec.union(.externalData))
+      }.get()
+      try DynamicGraph.Store.makeTrailerStore(
+        externalSqlitePath, externalStore: externalPath, to: trailerPath)
+      let reads: [(String, DynamicGraph.Store.Codec)] = [
+        (sqlitePath, codec), (trailerPath, codec.union(.externalData)),
+        (trailerPath, codec.union(.externalData(.mmap))),
+        (trailerPath, codec.union(.externalOnDemand)),
+      ]
+      for (path, readCodec) in reads {
+        var w: Tensor<Float>? = nil
+        var loaded: Tensor<Float16>? = nil
+        try graph.openStore(path, flags: .readOnly) { store in
+          w = Tensor<Float>(try XCTUnwrap(store.read("w", codec: readCodec)))
+          let linear = Dense(count: rows, noBias: true)
+          linear.compile(inputs: graph.variable(x))
+          try store.read("linear", model: linear, strict: true, codec: readCodec.union(.jit)) {
+            _, _, _, _ in .continue("w")
+          }
+          loaded = linear.weight.copied(Float16.self)
+        }.get()
+        let weights = try XCTUnwrap(w)
+        let parameter = try XCTUnwrap(loaded)
+        XCTAssertEqual(
+          parameter.cTensor.pointee.info.datatype, Int32(CCV_16F), "\(path) \(readCodec)")
+        for o in 0..<rows {
+          for j in 0..<columns {
+            XCTAssertEqual(
+              Float(parameter[o, j]), weights[o, j], accuracy: 2e-3,
+              "\(path) \(readCodec) [\(o), \(j)]")
+          }
+        }
+      }
+    }
+  }
+
+  func testTMCQInlineCodebook() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let graph = DynamicGraph()
+    let rows = 32
+    let columns = 512
+    let count = rows * columns
+    var tensor: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+    for i in 0..<rows {
+      for j in 0..<columns {
+        tensor[i, j] = sin(Float(i * columns + j) * 0.11) + Float(i % 7) * 0.2
+      }
+    }
+    let codecFormat = Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24)
+    let codec: DynamicGraph.Store.Codec = .i8x(.tmcqn24)
+    for entries in [Int32(512), Int32(2048)] {
+      // A random table, serialized the way ccv serializes it.
+      var state: UInt32 = 0x1234_5678 &+ UInt32(entries)
+      var pairs = [Int8](repeating: 0, count: Int(entries) * 2)
+      for i in 0..<pairs.count {
+        state = state &* 1_664_525 &+ 1_013_904_223
+        pairs[i] = Int8(Int((state >> 8) % 255) - 127)
+      }
+      let slot = ccv_nnc_codebook_register(pairs, entries)
+      XCTAssertGreaterThan(slot, 0)
+      let format = ccv_nnc_8i_rowwise_x_with_inline_codebook(codecFormat, entries)
+      let prefixSize = Int(ccv_nnc_8i_rowwise_x_inline_codebook_size(format))
+      XCTAssertEqual(prefixSize, 128 + 2 * Int(entries))
+      let payloadSize = ccv_nnc_8i_rowwise_x_data_size(codecFormat, Int32(CCV_32F), count, columns)
+      XCTAssertEqual(
+        ccv_nnc_8i_rowwise_x_data_size(format, Int32(CCV_32F), count, columns), prefixSize + payloadSize)
+      var bytes = [UInt8](repeating: 0, count: prefixSize + payloadSize)
+      bytes.withUnsafeMutableBytes { buffer in
+        XCTAssertEqual(
+          ccv_nnc_codebook_serialize(slot, buffer.baseAddress, prefixSize), 16 + 2 * Int(entries))
+        XCTAssertEqual(
+          ccv_nnc_quantize_8i_rowwise_x(
+            tensor.cTensor.pointee.data.u8, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), count,
+            columns, codecFormat, nil, 0, nil, 0, buffer.baseAddress! + prefixSize, payloadSize),
+          payloadSize)
+      }
+      XCTAssertEqual(Array(bytes[0..<8]), Array("CCVCBOOK".utf8))
+      // ccv's own decode of the inline weights is the reference.
+      let expected: Tensor<Float> = Tensor(.CPU, .NC(rows, columns))
+      bytes.withUnsafeBytes { buffer in
+        XCTAssertEqual(
+          ccv_nnc_dequantize_8i_rowwise_x(
+            buffer.baseAddress, Int32(CCV_32F), Int32(CCV_TENSOR_CPU_MEMORY), buffer.count,
+            columns, format, expected.cTensor.pointee.data.u8, count), 0)
+      }
+      // The serialized form of tensor.data(using:): identifier, params, then the bytes.
+      func serialized(_ bytes: [UInt8], identifier: UInt32) -> Data {
+        var data = Data()
+        var identifier = identifier
+        data.append(Data(bytes: &identifier, count: MemoryLayout<UInt32>.size))
+        var params = tensor.cTensor.pointee.info
+        data.append(Data(bytes: &params, count: MemoryLayout<ccv_nnc_tensor_param_t>.size))
+        data.append(contentsOf: bytes)
+        return data
+      }
+      let identifier: UInt32 = 0x8a1ec4 | 0x0E00_0000
+      let fromData = try XCTUnwrap(Tensor<Float>(data: serialized(bytes, identifier: identifier), using: codec))
+      for i in 0..<rows {
+        for j in 0..<columns {
+          XCTAssertEqual(fromData[i, j], expected[i, j])
+        }
+      }
+      // A bad crc32, table value or padding byte fails; so do the file-level codebook ids 1 - 6.
+      for corrupt in [12, 16 + 9, 16 + 2 * Int(entries) + 3] {
+        var bad = bytes
+        bad[corrupt] ^= 1
+        XCTAssertNil(Tensor<Float>(data: serialized(bad, identifier: identifier), using: codec))
+      }
+      for id in 1...6 {
+        XCTAssertNil(
+          Tensor<Float>(data: serialized(bytes, identifier: 0x8a1ec4 | (UInt32(id) << 25)), using: codec))
+      }
+      // In a store: write the built-in weights, then make the row inline in place (sqlite), and read it back packed.
+      let sqlitePath = directory.appendingPathComponent("inline\(entries).db").path
+      try graph.openStore(sqlitePath) { store in
+        try store.write("w", tensor: tensor, strict: true, codec: codec)
+      }.get()
+      var db: OpaquePointer? = nil
+      XCTAssertEqual(sqlite3_open(sqlitePath, &db), SQLITE_OK)
+      var statement: OpaquePointer? = nil
+      XCTAssertEqual(
+        sqlite3_prepare_v2(db, "UPDATE tensors SET type = type | ?1, data = ?2 WHERE name = 'w'", -1, &statement, nil),
+        SQLITE_OK)
+      sqlite3_bind_int64(statement, 1, Int64(0x0E00_0000) << 32)
+      let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+      bytes.withUnsafeBytes { buffer in
+        _ = sqlite3_bind_blob(statement, 2, buffer.baseAddress, Int32(buffer.count), SQLITE_TRANSIENT)
+      }
+      XCTAssertEqual(sqlite3_step(statement), SQLITE_DONE)
+      sqlite3_finalize(statement)
+      sqlite3_close(db)
+      let externalPath = sqlitePath + "-external"
+      let externalSqlitePath = directory.appendingPathComponent("inline\(entries)-external.db").path
+      let trailerPath = directory.appendingPathComponent("inline\(entries)_trailer.ckpt").path
+      var packedCopy: AnyTensor? = nil
+      try graph.openStore(sqlitePath, flags: .readOnly) { store in
+        let dense = Tensor<Float>(try XCTUnwrap(store.read("w", codec: codec)))
+        for i in 0..<rows {
+          for j in 0..<columns {
+            XCTAssertEqual(dense[i, j], expected[i, j])
+          }
+        }
+        let packed = try XCTUnwrap(store.read("w", codec: [codec, .jit]))
+        XCTAssertEqual(packed.cTensor.pointee.info.reserved, format)
+        XCTAssertEqual(
+          Data(bytes: packed.cTensor.pointee.data.u8, count: bytes.count), Data(bytes))
+        packedCopy = packed
+      }.get()
+      // The packed weights write through with their inline codebook, to an external store and a trailer store.
+      try graph.openStore(externalSqlitePath, externalStore: externalPath) { store in
+        try store.write("w", tensor: XCTUnwrap(packedCopy), strict: true, codec: [codec, .externalData])
+      }.get()
+      try DynamicGraph.Store.makeTrailerStore(externalSqlitePath, externalStore: externalPath, to: trailerPath)
+      try graph.openStore(trailerPath, flags: .readOnly) { store in
+        let dense = Tensor<Float>(try XCTUnwrap(store.read("w", codec: .externalData)))
+        for i in 0..<rows {
+          for j in 0..<columns {
+            XCTAssertEqual(dense[i, j], expected[i, j])
+          }
+        }
+        let modes: [DynamicGraph.Store.Codec] = [
+          .externalData, .externalData(.mmap), .externalData(.wholeFile), .externalOnDemand,
+        ]
+        for mode in modes {
+          let packed = try XCTUnwrap(store.read("w", codec: mode.union(.jit)))
+          XCTAssertEqual(packed.cTensor.pointee.info.reserved, format)
+          XCTAssertEqual(Data(bytes: packed.cTensor.pointee.data.u8, count: bytes.count), Data(bytes))
+        }
+      }.get()
+    }
+  }
+
   func testWriteTensorWithI8XFormatRejectsInvalidImatrix() throws {
     let graph = DynamicGraph()
     var tensor: Tensor<Float16> = Tensor(.CPU, .NC(4, 128))
@@ -1377,6 +1685,9 @@ final class StoreTests: XCTestCase {
     ("testWriteTensorAndReadBackWithI8XFormats", testWriteTensorAndReadBackWithI8XFormats),
     ("testI8XHadamard256RoundTrip", testI8XHadamard256RoundTrip),
     ("testIQ1FormatsInTrailerStore", testIQ1FormatsInTrailerStore),
+    ("testTMCQFormatsInTrailerStore", testTMCQFormatsInTrailerStore),
+    ("testTMCQInlineCodebook", testTMCQInlineCodebook),
+    ("testI8XJitReadIntoOtherScaleType", testI8XJitReadIntoOtherScaleType),
     (
       "testWriteTensorAndReadBackWithI8XFormatsAndExternalStore",
       testWriteTensorAndReadBackWithI8XFormatsAndExternalStore
