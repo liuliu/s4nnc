@@ -334,6 +334,14 @@ extension DynamicGraph {
     set { ccv_nnc_set_queue_watermark(Int32(newValue)) }
     get { Int(ccv_nnc_queue_watermark()) }
   }
+  /// The watermark, in bytes, of streamed weights staged for in-flight Metal operations. A
+  /// streaming call that would pass it waits for the operations ahead of it, and a call with none
+  /// ahead of it always proceeds, so 1 stages one call's weights at a time. 0, the default, sets
+  /// none. It only counts what is staged after it is set.
+  public static var weightsStreamingWatermarkBytes: Int {
+    set { ccv_nnc_set_weights_streaming_watermark_bytes(newValue) }
+    get { ccv_nnc_weights_streaming_watermark_bytes() }
+  }
   /// Set the maximum number of bytes in each shared whole-file mapping. Set to 0 to map the
   /// complete file. This only affects mappings created after the call.
   public static func setWholeFileMappingSizeLimit(_ sizeLimit: Int) {

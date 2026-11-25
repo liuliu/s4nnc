@@ -583,14 +583,15 @@ public final class CausalConvolution: Model {
   ///   - silu: Apply SiLU to the output.
   ///   - stateCheckpointCount: The next rows also keep the rows before each of the last this many
   ///     tokens.
+  ///   - hasDynamicWeights: Per-token dynamic weights are a third input.
   public init(
-    kernelSize: Int, silu: Bool = false, stateCheckpointCount: Int = 0, trainable: Bool? = nil,
-    name: String = ""
+    kernelSize: Int, silu: Bool = false, stateCheckpointCount: Int = 0,
+    hasDynamicWeights: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     precondition(kernelSize >= 2)
     super.init(
       ccv_cnnp_causal_convolution(
-        Int32(kernelSize), silu ? 1 : 0, Int32(stateCheckpointCount),
+        Int32(kernelSize), silu ? 1 : 0, Int32(stateCheckpointCount), hasDynamicWeights ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
@@ -603,6 +604,70 @@ public final class CausalConvolution: Model {
   ) {
     let outputs = self(x, previousRows)
     return (outputs[0], outputs[1])
+  }
+
+  /// With `hasDynamicWeights`, the per-token dynamic weights `[B, T, groups, kernelSize]`: each
+  /// token adds its own to the weights of the channels in each of its `groups` groups.
+  public func callAsFunction(
+    _ x: ModelIOConvertible, previousRows: ModelIOConvertible, dynamicWeights: ModelIOConvertible
+  ) -> (
+    output: Model.IO, nextRows: Model.IO
+  ) {
+    let outputs = self(x, previousRows, dynamicWeights)
+    return (outputs[0], outputs[1])
+  }
+}
+
+/// An attention residual: each output is, for one learned query, a softmax mixture of the
+/// RMS-normalized states, scored by the query's dot product with them. It owns its queries
+/// `[queries, channels]`.
+public final class AttentionResidual: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  /// - Parameters:
+  ///   - queries: The number of queries, and of outputs.
+  ///   - epsilon: The epsilon of the RMS normalization of each state.
+  ///   - scale: The scale applied to the dot products of the queries and the normalized states.
+  public init(
+    queries: Int, epsilon: Float, scale: Float, trainable: Bool? = nil, name: String = ""
+  ) {
+    precondition(queries >= 1)
+    super.init(
+      ccv_cnnp_attention_residual(
+        Int32(queries), epsilon, scale, trainable == true ? 1 : (trainable == false ? 0 : -1),
+        name))
+  }
+
+  /// The block states `[n, ..., channels]` and the partial state `[..., channels]`, which is the
+  /// last state. Returns a mixture `[..., channels]` for each query.
+  public func callAsFunction(blocks: ModelIOConvertible, partial: ModelIOConvertible) -> [Model.IO]
+  {
+    let outputs = self(blocks, partial)
+    // The C model has an output for each query, which a copy keeps.
+    return (0..<Int(ccv_cnnp_model_output_size(cModel))).map { outputs[$0] }
+  }
+}
+
+/// A message gated into a state: with mix = down [RMSNorm(state), RMSNorm(message)]^T (norms without
+/// scales), forget = tanh(mix forget^T) and gain = tanh(mix gain^T), the output is
+/// state - forget * state + gain * message. It owns the down projection `[rank, 2 * channels]` and
+/// the forget and gain projections `[channels, rank]`, in that order.
+public final class MessageGate: Model {
+  required init(_ model: OpaquePointer) {
+    super.init(model)
+  }
+
+  public init(rank: Int, epsilon: Float, trainable: Bool? = nil, name: String = "") {
+    super.init(
+      ccv_cnnp_message_gate(
+        Int32(rank), epsilon, trainable == true ? 1 : (trainable == false ? 0 : -1), name))
+  }
+
+  /// The state and message `[..., channels]`. Returns the gated state, in the state's shape.
+  public func callAsFunction(state: ModelIOConvertible, message: ModelIOConvertible) -> Model.IO {
+    self(state, message)
   }
 }
 
@@ -1282,14 +1347,18 @@ public final class RMSNorm: Model {
     super.init(model)
   }
 
+  /// - Parameters:
+  ///   - scale: The scale applied to the output.
+  ///   - clip: The factor `scale / rms` never exceeds 1, so the output is the input whenever its
+  ///     RMS is within `scale`: an L2 clip at `scale * sqrt(n)`.
   public init(
     epsilon: Float, axis: [Int], elementwiseAffine: Bool = true, scale: Float = 1,
-    trainable: Bool? = nil, name: String = ""
+    clip: Bool = false, trainable: Bool? = nil, name: String = ""
   ) {
     let axis32: [Int32] = axis.map { Int32($0) }
     super.init(
       ccv_cnnp_rmsnorm(
-        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0, scale,
+        epsilon, axis32, Int32(axis.count), elementwiseAffine ? 1 : 0, scale, clip ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1),
         name))
   }
@@ -2190,9 +2259,16 @@ public final class ScaledDotProductAttention: Model {
     super.init(model)
   }
 
+  /// - Parameters:
+  ///   - hasAttentionSinks: An input after the attention mask holds the sinks: a scalar, one for
+  ///     each query head, or one for each query and head as `[batch, R, Hq]`.
+  ///   - hasRelativeBias: An input after the sinks holds a relative-position bias
+  ///     `[batch, R, Hq, extent]`: the key `d` positions before a query's own, for
+  ///     `0 <= d < extent`, adds the query's bias at `d` to its score.
   public init(
     scale: Float, isCausal: Bool = false, hasAttentionMask: Bool = false,
-    hasAttentionSinks: Bool = false, isVariableLength: Bool = false,
+    hasAttentionSinks: Bool = false, hasRelativeBias: Bool = false,
+    isVariableLength: Bool = false,
     maxSequenceLength: (query: Int, keyValue: Int)? = nil,
     slidingWindow: Int = 0, useHadamard: Bool = false, flags: Functional.GEMMFlag = [],
     multiHeadOutputProjectionFused: Bool = false,
@@ -2215,13 +2291,16 @@ public final class ScaledDotProductAttention: Model {
       slidingWindow == 0 || !isVariableLength,
       "variable-length scaled dot product attention does not support slidingWindow")
     precondition(slidingWindow <= Int(Int32.max), "slidingWindow must fit in Int32")
+    precondition(
+      !hasRelativeBias || !isVariableLength,
+      "variable-length scaled dot product attention does not support a relative-position bias")
     let maxSequenceLength = maxSequenceLength ?? (query: 0, keyValue: 0)
     super.init(
       ccv_cnnp_scaled_dot_product_attention(
         scale, isCausal ? 1 : 0, hasAttentionMask ? 1 : 0, isVariableLength ? 1 : 0,
         Int32(maxSequenceLength.query), Int32(maxSequenceLength.keyValue), Int32(flags.rawValue),
         useHadamard ? 1 : 0,
-        hasAttentionSinks ? 1 : 0, Int32(slidingWindow),
+        hasAttentionSinks ? 1 : 0, Int32(slidingWindow), hasRelativeBias ? 1 : 0,
         multiHeadOutputProjectionFused ? 1 : 0, noBias ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
@@ -2673,18 +2752,23 @@ public final class SegmentedDense: Model {
   }
 }
 
-/// Gate and up projections followed by optionally clamped SwiGLU.
+/// Gate and up projections followed by optionally clamped or soft-capped SwiGLU.
 public final class SwiGLU: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
+  /// - Parameters:
+  ///   - gateSoftCap: When positive, the gate's linear factor is
+  ///     `gateSoftCap * tanh(gate / gateSoftCap)`, while the sigmoid reads the gate itself.
+  ///   - upSoftCap: When positive, the up projection is `upSoftCap * tanh(up / upSoftCap)`.
   public init(
-    count: Int, clamp: Float = 0, trainable: Bool? = nil, name: String = ""
+    count: Int, clamp: Float = 0, gateSoftCap: Float = 0, upSoftCap: Float = 0,
+    trainable: Bool? = nil, name: String = ""
   ) {
     super.init(
       ccv_cnnp_swiglu(
-        Int32(count), clamp,
+        Int32(count), clamp, gateSoftCap, upSoftCap,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
@@ -2696,23 +2780,29 @@ public final class SwiGLU: Model {
   }
 }
 
-/// Two segmented expert projections followed by weighted, clamped SwiGLU.
+/// Two segmented expert projections followed by weighted, clamped or soft-capped SwiGLU.
 /// With `sharedExpertFused`, it also takes a shared expert's activation after the route weights (then
-/// its gate and up weights when functional), and returns that expert's clamped SwiGLU as a second
-/// output. Without `functional`, the model owns the shared expert's gate and up weights, `count`
-/// rows each, after the routed ones.
+/// its gate and up weights when functional), and returns that expert's SwiGLU, clamped and
+/// soft-capped the same way, as a second output. Without `functional`, the model owns the shared
+/// expert's gate and up weights, `count` rows each, after the routed ones.
 public final class SegmentedSwiGLU: Model {
   required init(_ model: OpaquePointer) {
     super.init(model)
   }
 
+  /// - Parameters:
+  ///   - gateSoftCap: When positive, the gate's linear factor is
+  ///     `gateSoftCap * tanh(gate / gateSoftCap)`, while the sigmoid reads the gate itself.
+  ///   - upSoftCap: When positive, the up projection is `upSoftCap * tanh(up / upSoftCap)`.
   public init(
-    segments: Int, count: Int, clamp: Float = 0, functional: Bool = false,
-    sharedExpertFused: Bool = false, trainable: Bool? = nil, name: String = ""
+    segments: Int, count: Int, clamp: Float = 0, gateSoftCap: Float = 0, upSoftCap: Float = 0,
+    functional: Bool = false, sharedExpertFused: Bool = false, trainable: Bool? = nil,
+    name: String = ""
   ) {
     super.init(
       ccv_cnnp_segmented_swiglu(
-        Int32(segments), Int32(count), clamp, functional ? 1 : 0, sharedExpertFused ? 1 : 0,
+        Int32(segments), Int32(count), clamp, gateSoftCap, upSoftCap, functional ? 1 : 0,
+        sharedExpertFused ? 1 : 0,
         trainable == true ? 1 : (trainable == false ? 0 : -1), name))
   }
 
