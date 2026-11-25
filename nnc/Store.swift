@@ -24,6 +24,11 @@ private let trailerStoreOffsetHeaderRange = 60..<64
 
 // Independent of the external-data marker (0x1000_0000).
 private let i8xHadamard256Identifier: UInt32 = 0x0100_0000
+// Bits 25 - 27 of a TMCQ identifier name its codebook: 0 the built-in table, 7 a codebook inline at the start of the
+// data (ccv_nnc_codebook.h: the serialized table, zeros up to 128 + 2 P bytes, then the payload and row scales).
+// 1 - 6 were file-level codebook tensors, which ccv no longer reads; they are rejected.
+private let i8xCodebookIdentifierMask: UInt32 = 0x0E00_0000
+private let i8xInlineCodebookIdentifier: UInt32 = 0x0E00_0000
 
 private func i8xXIdentifier(for format: Int32) -> UInt32? {
   let modifier: UInt32 = (format & Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)) != 0
@@ -54,23 +59,23 @@ private func i8xXIdentifier(for format: Int32) -> UInt32? {
   case Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M):
     return 0x8a1eb6 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16):
-    return 0x8a1eb7 | modifier
+    return 0x8a1ec0 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18):
-    return 0x8a1eb8 | modifier
+    return 0x8a1ec1 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20):
-    return 0x8a1eb9 | modifier
+    return 0x8a1ec2 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22):
-    return 0x8a1eba | modifier
+    return 0x8a1ec3 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24):
-    return 0x8a1ebb | modifier
+    return 0x8a1ec4 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26):
-    return 0x8a1ebc | modifier
+    return 0x8a1ec5 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28):
-    return 0x8a1ebd | modifier
+    return 0x8a1ec6 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30):
-    return 0x8a1ebe | modifier
+    return 0x8a1ec7 | modifier
   case Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32):
-    return 0x8a1ebf | modifier
+    return 0x8a1ec8 | modifier
   default:
     return nil
   }
@@ -104,27 +109,70 @@ private func i8xXFormat(from identifier: UInt32) -> Int32? {
     return Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_S) | modifier
   case 0x8a1eb6:
     return Int32(CCV_NNC_QX_8I_ROWWISE_IQ1_M) | modifier
-  case 0x8a1eb7:
+  case 0x8a1ec0:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N16) | modifier
-  case 0x8a1eb8:
+  case 0x8a1ec1:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N18) | modifier
-  case 0x8a1eb9:
+  case 0x8a1ec2:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N20) | modifier
-  case 0x8a1eba:
+  case 0x8a1ec3:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N22) | modifier
-  case 0x8a1ebb:
+  case 0x8a1ec4:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N24) | modifier
-  case 0x8a1ebc:
+  case 0x8a1ec5:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N26) | modifier
-  case 0x8a1ebd:
+  case 0x8a1ec6:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N28) | modifier
-  case 0x8a1ebe:
+  case 0x8a1ec7:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N30) | modifier
-  case 0x8a1ebf:
+  case 0x8a1ec8:
     return Int32(CCV_NNC_QX_8I_ROWWISE_TMCQ_N32) | modifier
   default:
     return nil
   }
+}
+
+// The ccv format of an i8x identifier that may name a codebook (bits 25 - 27), for data that starts at prefix
+// (prefixSize bytes of it readable). The built-in table: the codec. An inline codebook: the codec with ccv's inline
+// codebook bits for the entry count P in the serialized header (TMCQ only, never with Hadamard). nil for an unknown
+// codec, a file-level codebook id or a bad header. Use i8xXInlineCodebookIsValid on the data before decoding it.
+private func i8xXFormat(from identifier: UInt32, prefix: UnsafeRawPointer?, prefixSize: Int) -> Int32? {
+  let codebook = identifier & i8xCodebookIdentifierMask
+  guard let format = i8xXFormat(from: identifier & ~i8xCodebookIdentifierMask) else { return nil }
+  guard codebook != 0 else { return format }
+  guard codebook == i8xInlineCodebookIdentifier, ccv_nnc_8i_rowwise_x_is_tmcq(format) != 0,
+    (format & Int32(CCV_NNC_QX_8I_ROWWISE_HADAMARD_256)) == 0, let prefix = prefix,
+    prefixSize >= Int(CCV_NNC_CODEBOOK_HEADER_SIZE)
+  else { return nil }
+  let entries = Int32(littleEndian: prefix.loadUnaligned(fromByteOffset: 8, as: Int32.self))
+  guard entries == 512 || entries == 1024 || entries == 2048 else { return nil }
+  return ccv_nnc_8i_rowwise_x_with_inline_codebook(format, entries)
+}
+
+// Whether data (host memory, dataSize bytes) starts with a valid inline codebook when format names one: magic, entry
+// count, crc32, zero padding and values, as ccv checks them (ccv_nnc_codebook_resolve_inline). True without one.
+private func i8xXInlineCodebookIsValid(_ data: UnsafeRawPointer?, _ dataSize: Int, format: Int32) -> Bool {
+  let prefixSize = Int(ccv_nnc_8i_rowwise_x_inline_codebook_size(format))
+  guard prefixSize > 0 else { return true }
+  guard let data = data, dataSize >= prefixSize else { return false }
+  return ccv_nnc_codebook_resolve_inline(data, format) >= 0
+}
+
+// i8xXFormat(from:prefix:prefixSize:) for data in the external store at offset (length bytes), with the inline
+// codebook read from the store and checked.
+private func i8xXExternalFormat(
+  from identifier: UInt32, store: DynamicGraph._Store, offset: UInt64, length: Int
+) -> Int32? {
+  guard (identifier & i8xCodebookIdentifierMask) != 0 else {
+    return i8xXFormat(from: identifier)
+  }
+  // The largest prefix: 128 bytes and a 2048-pair table.
+  let prefixLength = min(length, 128 + 4096)
+  guard let prefix = store.loadBytes(offset: offset, length: prefixLength),
+    let format = i8xXFormat(from: identifier, prefix: prefix, prefixSize: prefixLength),
+    i8xXInlineCodebookIsValid(prefix, prefixLength, format: format)
+  else { return nil }
+  return format
 }
 
 // Quantize to 4-bit.
@@ -1977,7 +2025,16 @@ private func i8xXEncode(
       let encodedSize = encodedSize, let params = params, dimensionCount > 0
     else { return 0 }
     let qxSubtype = dataType & 0xF00
-    guard qxSubtype == Int32(CCV_NNC_QX_8I_ROWWISE_X), params.pointee.reserved == format else {
+    // Packed weights pass through with the built-in table or an inline codebook, which stays in the data (a slot
+    // registered in this process means nothing in a file).
+    let reserved = params.pointee.reserved
+    let inlineCodebook = ccv_nnc_8i_rowwise_x_inline_codebook_entries(reserved) != 0
+    guard qxSubtype == Int32(CCV_NNC_QX_8I_ROWWISE_X),
+      ccv_nnc_8i_rowwise_x_kernel_format(reserved) == format,
+      ccv_nnc_8i_rowwise_x_codebook_is_valid(reserved) != 0,
+      inlineCodebook || ccv_nnc_8i_rowwise_x_codebook_slot(reserved) == 0,
+      i8xXInlineCodebookIsValid(data, dataSize, format: reserved)
+    else {
       return 0
     }
     let originalDataType = (dataType & 0xFF) << 12
@@ -1986,7 +2043,7 @@ private func i8xXEncode(
     encodedSize[0] = copiedSize
     params.pointee.datatype = originalDataType
     params.pointee.reserved = 0
-    identifier?[0] = i8xIdentifier
+    identifier?[0] = i8xIdentifier | (inlineCodebook ? i8xInlineCodebookIdentifier : 0)
     return 1
   }
   guard let data = data, let dimensions = dimensions, let encoded = encoded,
@@ -2486,7 +2543,9 @@ private let i8xXDecode:
   ) -> Int32 = {
   data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
   decoded, decodedSize in
-  guard let format = i8xXFormat(from: identifier) else { return 0 }
+  guard let format = i8xXFormat(from: identifier, prefix: data, prefixSize: dataSize) else {
+    return 0
+  }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
       || dataType == Int32(CCV_16BF)
@@ -2526,9 +2585,12 @@ private let i8xXDecode:
   let originalScaleOffset = originalDataSize - rowCount * elementSize
     guard originalDataSize > 0, dataSize >= originalDataSize else { return 0 }
     if maxDecodedElements == numberOfElements {
-    ccv_nnc_dequantize_8i_rowwise_x(
-      data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), dataSize, rowLength, format, decoded,
-      maxDecodedElements)
+    // It checks an inline codebook and fails on a bad one.
+    guard
+      ccv_nnc_dequantize_8i_rowwise_x(
+        data, dataType, Int32(CCV_TENSOR_CPU_MEMORY), dataSize, rowLength, format, decoded,
+        maxDecodedElements) == 0
+    else { return 0 }
   } else {
     let partialRowCount = maxDecodedElements / rowLength
     let partialDataSize = ccv_nnc_8i_rowwise_x_data_size(
@@ -2539,11 +2601,14 @@ private let i8xXDecode:
     let partialData = UnsafeMutableRawPointer.allocate(
       byteCount: partialDataSize, alignment: MemoryLayout<UInt64>.alignment)
     defer { partialData.deallocate() }
+    // An inline codebook comes first and is part of both scale offsets, so it is copied with the payload prefix.
     memcpy(partialData, data, partialScaleOffset)
     memcpy(partialData + partialScaleOffset, data + originalScaleOffset, partialScaleSize)
-    ccv_nnc_dequantize_8i_rowwise_x(
-      partialData, dataType, Int32(CCV_TENSOR_CPU_MEMORY), partialDataSize, rowLength, format,
-      decoded, maxDecodedElements)
+    guard
+      ccv_nnc_dequantize_8i_rowwise_x(
+        partialData, dataType, Int32(CCV_TENSOR_CPU_MEMORY), partialDataSize, rowLength, format,
+        decoded, maxDecodedElements) == 0
+    else { return 0 }
   }
   decodedSize[0] = maxDecodedElements * elementSize
   return 1
@@ -2557,7 +2622,9 @@ private let i8xXDecodeJit:
   ) -> Int32 = {
   data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
   decoded, decodedSize in
-  guard let format = i8xXFormat(from: identifier) else { return 0 }
+  guard let format = i8xXFormat(from: identifier, prefix: data, prefixSize: dataSize) else {
+    return 0
+  }
   guard
     dataType == Int32(CCV_64F) || dataType == Int32(CCV_32F) || dataType == Int32(CCV_16F)
       || dataType == Int32(CCV_16BF)
@@ -2565,8 +2632,16 @@ private let i8xXDecodeJit:
   guard let data = data, let dimensions = dimensions, let decodedSize = decodedSize,
     dimensionCount > 0
   else { return 0 }
+  // The packed bytes go to the tensor as they are: check an inline codebook here, on the host, since a backend may
+  // not read it on the host again (CUDA).
+  guard i8xXInlineCodebookIsValid(data, dataSize, format: format) else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing packed tensor must name the same codebook, which sets its size.
+      let reserved = tensorOut!.pointee!.pointee.info.reserved
+      let codebookMask = Int32(CCV_NNC_QX_8I_ROWWISE_CODEBOOK_SLOT_MASK)
+        | Int32(CCV_NNC_QX_8I_ROWWISE_CODEBOOK_INLINE_MASK)
+      guard (reserved & codebookMask) == (format & codebookMask) else { return 0 }
       guard dataSize > 0, let decoded = decoded, decodedSize[0] >= dataSize else {
         return 0
       }
@@ -5351,7 +5426,7 @@ private let uDecodeJit:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    switch identifier & ~i8xHadamard256Identifier {
+    switch identifier & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
     case 0xf7217:
       return fpzipDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -5389,8 +5464,8 @@ private let uDecodeJit:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecodeJit(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -5974,10 +6049,14 @@ private func i8xXDecodeJitWithExternalEagerFile(
     }
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
-    guard let format = i8xXFormat(from: identifier) else { return 0 }
     let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    // An inline codebook is read from the store and checked here: the tensor maps the file without a host copy.
+    guard
+      let format = i8xXExternalFormat(
+        from: identifier, store: store, offset: offset, length: length)
+    else { return 0 }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -6040,7 +6119,7 @@ private func uDecodeJitWithExternalStoreFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-  switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier {
+  switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
   case 0xf7217:
       return fpzipDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -6078,8 +6157,8 @@ private func uDecodeJitWithExternalStoreFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize, memoryMapFlags)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecodeJitWithExternalEagerFile(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize, memoryMapFlags)
@@ -6450,10 +6529,14 @@ private let i8xXDecodeJitWithExternalEagerMmap:
     }
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
-    guard let format = i8xXFormat(from: identifier) else { return 0 }
     let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    // An inline codebook is read from the store and checked here: the tensor maps the file without a host copy.
+    guard
+      let format = i8xXExternalFormat(
+        from: identifier, store: store, offset: offset, length: length)
+    else { return 0 }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -6519,7 +6602,7 @@ private let uDecodeJitWithExternalStoreMmap:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier {
+    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
     case 0xf7217:
       return fpzipDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -6557,8 +6640,8 @@ private let uDecodeJitWithExternalStoreMmap:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecodeJitWithExternalEagerMmap(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -6907,10 +6990,14 @@ private let i8xXDecodeJitWithExternalOnDemand:
     }
     assert((identifier & 0x1000_0000) != 0)
     let identifier = identifier & 0x0fff_ffff
-    guard let format = i8xXFormat(from: identifier) else { return 0 }
     let offset = data.load(as: UInt64.self)
     let length = Int((data + MemoryLayout<UInt64>.size).load(as: UInt64.self))
     let store = Unmanaged<DynamicGraph._Store>.fromOpaque(context!).takeUnretainedValue()
+    // An inline codebook is read from the store and checked here: the tensor maps the file without a host copy.
+    guard
+      let format = i8xXExternalFormat(
+        from: identifier, store: store, offset: offset, length: length)
+    else { return 0 }
     var numberOfElements = Int(dimensions[0])
     for i in 1..<Int(dimensionCount) {
       numberOfElements *= Int(dimensions[i])
@@ -6975,7 +7062,7 @@ private let uDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier {
+    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
     case 0xf7217:
       return fpzipDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -7013,8 +7100,8 @@ private let uDecodeJitWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecodeJitWithExternalOnDemand(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -7191,7 +7278,7 @@ private let uDecodeWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier {
+    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
     case 0xf7217:
       return fpzipDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -7229,8 +7316,8 @@ private let uDecodeWithExternalOnDemand:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -7255,7 +7342,7 @@ private let uDecodeWithExternalStore:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     }
-    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier {
+    switch identifier & 0x0fff_ffff & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
     case 0xf7217:
       return fpzipDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -7293,8 +7380,8 @@ private let uDecodeWithExternalStore:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecodeWithExternalStore(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -7314,7 +7401,7 @@ private let uDecode:
     data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params, tensorOut,
     decoded, decodedSize
     in
-    switch identifier & ~i8xHadamard256Identifier {
+    switch identifier & ~i8xHadamard256Identifier & ~i8xCodebookIdentifierMask {
     case 0xf7217:
       return fpzipDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
@@ -7352,8 +7439,8 @@ private let uDecode:
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
     case 0x8a1eab, 0x8a1eac, 0x8a1ead, 0x8a1eae, 0x8a1eaf, 0x8a1eb0, 0x8a1eb1, 0x8a1eb2,
-      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1eb7, 0x8a1eb8, 0x8a1eb9, 0x8a1eba,
-      0x8a1ebb, 0x8a1ebc, 0x8a1ebd, 0x8a1ebe, 0x8a1ebf:
+      0x8a1eb3, 0x8a1eb4, 0x8a1eb5, 0x8a1eb6, 0x8a1ec0, 0x8a1ec1, 0x8a1ec2, 0x8a1ec3,
+      0x8a1ec4, 0x8a1ec5, 0x8a1ec6, 0x8a1ec7, 0x8a1ec8:
       return i8xXDecode(
         data, dataSize, dataType, dimensions, dimensionCount, identifier, context, params,
         tensorOut, decoded, decodedSize)
@@ -8317,7 +8404,9 @@ extension DynamicGraph {
         let type = sqlite3_column_int64(selectCodec, 0)
         let identifier = (type >> 32) & 0xffff_ffff
         var detected: Codec
-        switch identifier & 0x0fff_ffff & ~Int64(i8xHadamard256Identifier) {
+        switch identifier & 0x0fff_ffff & ~Int64(i8xHadamard256Identifier)
+          & ~Int64(i8xCodebookIdentifierMask)
+        {
         case 0x217:
           detected = .zip
         case 0xf7217:
@@ -8360,23 +8449,23 @@ extension DynamicGraph {
           detected = .i8x(.iq1s)
         case 0x8a1eb6:
           detected = .i8x(.iq1m)
-        case 0x8a1eb7:
+        case 0x8a1ec0:
           detected = .i8x(.tmcqn16)
-        case 0x8a1eb8:
+        case 0x8a1ec1:
           detected = .i8x(.tmcqn18)
-        case 0x8a1eb9:
+        case 0x8a1ec2:
           detected = .i8x(.tmcqn20)
-        case 0x8a1eba:
+        case 0x8a1ec3:
           detected = .i8x(.tmcqn22)
-        case 0x8a1ebb:
+        case 0x8a1ec4:
           detected = .i8x(.tmcqn24)
-        case 0x8a1ebc:
+        case 0x8a1ec5:
           detected = .i8x(.tmcqn26)
-        case 0x8a1ebd:
+        case 0x8a1ec6:
           detected = .i8x(.tmcqn28)
-        case 0x8a1ebe:
+        case 0x8a1ec7:
           detected = .i8x(.tmcqn30)
-        case 0x8a1ebf:
+        case 0x8a1ec8:
           detected = .i8x(.tmcqn32)
         default:
           detected = []
