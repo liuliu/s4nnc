@@ -1309,9 +1309,12 @@ final class StoreTests: XCTestCase {
       }
     }
     let x: Tensor<Float16> = Tensor(.CPU, .NC(2, columns))
-    // Float32 weights store Float32 row scales. A Float16 model asks for Float16, so a JIT read
-    // must decode instead of handing it a packed tensor whose scales it would read as Float16.
-    for codec: DynamicGraph.Store.Codec in [.i8x, .i8x(.tmcqn24), .i8x(.q4k)] {
+    // Float32 weights store Float32 row scales (palettes for q4p ... q8p). A Float16 model asks for
+    // Float16, so a JIT read must decode instead of handing it a packed tensor whose scales (or
+    // palette) it would read as Float16.
+    for codec: DynamicGraph.Store.Codec in [
+      .i8x, .i8x(.tmcqn24), .i8x(.q4k), .q4p, .q5p, .q6p, .q7p, .q8p,
+    ] {
       let sqlitePath = directory.appendingPathComponent("scale\(codec.rawValue).db").path
       let externalPath = sqlitePath + "-tensordata"
       let externalSqlitePath = directory.appendingPathComponent(

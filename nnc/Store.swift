@@ -5056,6 +5056,8 @@ private func q4pDecodeJit(
   else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing palettized tensor must have the stored palette type.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       let decodedDataSize = dataSize
       guard decodedDataSize > 0, let decoded = decoded else {
         return 0
@@ -5075,6 +5077,7 @@ private func q4pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && dataType == params.datatype  // The palette is in the stored type.
       && (numberOfElements % blockSize) == 0
   else {
     return q4pDecode(
@@ -5134,6 +5137,8 @@ private func q5pDecodeJit(
   else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing palettized tensor must have the stored palette type.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       let decodedDataSize = dataSize
       guard decodedDataSize > 0, let decoded = decoded else {
         return 0
@@ -5153,6 +5158,7 @@ private func q5pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && dataType == params.datatype  // The palette is in the stored type.
       && (numberOfElements % blockSize) == 0
   else {
     return q5pDecode(
@@ -5212,6 +5218,8 @@ private func q6pDecodeJit(
   else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing palettized tensor must have the stored palette type.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       let decodedDataSize = dataSize
       guard decodedDataSize > 0, let decoded = decoded else {
         return 0
@@ -5231,6 +5239,7 @@ private func q6pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && dataType == params.datatype  // The palette is in the stored type.
       && (numberOfElements % blockSize) == 0
   else {
     return q6pDecode(
@@ -5290,6 +5299,8 @@ private func q7pDecodeJit(
   else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing palettized tensor must have the stored palette type.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       let decodedDataSize = dataSize
       guard decodedDataSize > 0, let decoded = decoded else {
         return 0
@@ -5309,6 +5320,7 @@ private func q7pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && dataType == params.datatype  // The palette is in the stored type.
       && (numberOfElements % blockSize) == 0
   else {
     return q7pDecode(
@@ -5368,6 +5380,8 @@ private func q8pDecodeJit(
   else { return 0 }
   guard tensorOut!.pointee == nil else {
     guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF000) != Int32(CCV_QX) else {
+      // An existing palettized tensor must have the stored palette type.
+      guard (tensorOut!.pointee!.pointee.info.datatype & 0xFF) << 12 == dataType else { return 0 }
       let decodedDataSize = dataSize
       guard decodedDataSize > 0, let decoded = decoded else {
         return 0
@@ -5387,6 +5401,7 @@ private func q8pDecodeJit(
   }
   guard
     TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+      && dataType == params.datatype  // The palette is in the stored type.
       && (numberOfElements % (256 * 4)) == 0
       && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
   else {
@@ -5759,6 +5774,7 @@ private func q4pDecodeJitWithExternalEagerFile(
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -5812,6 +5828,7 @@ private func q5pDecodeJitWithExternalEagerFile(
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -5865,6 +5882,7 @@ private func q6pDecodeJitWithExternalEagerFile(
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -5918,6 +5936,7 @@ private func q7pDecodeJitWithExternalEagerFile(
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -5971,6 +5990,7 @@ private func q8pDecodeJitWithExternalEagerFile(
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % (256 * 4)) == 0
         && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
     else {
@@ -6247,6 +6267,7 @@ private let q4pDecodeJitWithExternalEagerMmap:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6300,6 +6321,7 @@ private let q5pDecodeJitWithExternalEagerMmap:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6353,6 +6375,7 @@ private let q6pDecodeJitWithExternalEagerMmap:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6406,6 +6429,7 @@ private let q7pDecodeJitWithExternalEagerMmap:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6459,6 +6483,7 @@ private let q8pDecodeJitWithExternalEagerMmap:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % (256 * 4)) == 0
         && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
     else {
@@ -6710,6 +6735,7 @@ private let q4pDecodeJitWithExternalOnDemand:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6764,6 +6790,7 @@ private let q5pDecodeJitWithExternalOnDemand:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6818,6 +6845,7 @@ private let q6pDecodeJitWithExternalOnDemand:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6872,6 +6900,7 @@ private let q7pDecodeJitWithExternalOnDemand:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % blockSize) == 0
     else {
       let mappedData = store.loadBytes(offset: offset, length: length)
@@ -6926,6 +6955,7 @@ private let q8pDecodeJitWithExternalOnDemand:
     }
     guard
       TensorShape(dims: params.dim).reduce(1, *) == numberOfElements
+        && dataType == params.datatype  // The palette is in the stored type.
         && (numberOfElements % (256 * 4)) == 0
         && (blockSize % (256 * 4)) == 0  // We support non-block size length for q8p only.
     else {
